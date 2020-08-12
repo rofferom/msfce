@@ -414,7 +414,7 @@ void Cpu65816::executeSingle()
         break;
 
     case AddressingMode::Immediate:
-        data = m_Membus->readU8(m_Registers.PC);
+        data = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC += 1;
         snprintf(strIntruction, sizeof(strIntruction), "%s #%02X", opcodeDesc.m_Name, data);
         break;
@@ -424,12 +424,12 @@ void Cpu65816::executeSingle()
 
         // 0: 16 bits, 1: 8 bits
         if (accumulatorSize) {
-            data = m_Membus->readU8(m_Registers.PC);
+            data = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
             m_Registers.PC += 1;
 
             snprintf(strIntruction, sizeof(strIntruction), "%s #%02X", opcodeDesc.m_Name, data);
         } else {
-            data = m_Membus->readU16(m_Registers.PC);
+            data = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
             m_Registers.PC += 2;
 
             snprintf(strIntruction, sizeof(strIntruction), "%s #%04X", opcodeDesc.m_Name, data);
@@ -443,12 +443,12 @@ void Cpu65816::executeSingle()
 
         // 0: 16 bits, 1: 8 bits
         if (indexSize) {
-            data = m_Membus->readU8(m_Registers.PC);
+            data = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
             m_Registers.PC += 1;
 
             snprintf(strIntruction, sizeof(strIntruction), "%s #%02X", opcodeDesc.m_Name, data);
         } else {
-            data = m_Membus->readU16(m_Registers.PC);
+            data = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
             m_Registers.PC += 2;
 
             snprintf(strIntruction, sizeof(strIntruction), "%s #%04X", opcodeDesc.m_Name, data);
@@ -458,7 +458,7 @@ void Cpu65816::executeSingle()
     }
 
     case AddressingMode::Absolute: {
-        uint16_t rawData = m_Membus->readU16(m_Registers.PC);
+        uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC += 2;
 
         data = (m_Registers.DB << 16) | rawData;
@@ -468,7 +468,7 @@ void Cpu65816::executeSingle()
     }
 
     case AddressingMode::AbsoluteIndexedX: {
-        uint16_t rawData = m_Membus->readU16(m_Registers.PC);
+        uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC += 2;
 
         data = (m_Registers.DB << 16) | rawData;
@@ -479,7 +479,7 @@ void Cpu65816::executeSingle()
     }
 
     case AddressingMode::AbsoluteLong: {
-        data = m_Membus->readU24(m_Registers.PC);
+        data = m_Membus->readU24((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC += 3;
 
         snprintf(strIntruction, sizeof(strIntruction), "%s $%06X ", opcodeDesc.m_Name, data);
@@ -487,7 +487,7 @@ void Cpu65816::executeSingle()
     }
 
     case AddressingMode::AbsoluteIndirectLong: {
-        uint16_t rawData = m_Membus->readU16(m_Registers.PC);
+        uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC += 2;
 
         uint32_t address = (m_Registers.DB << 16) | rawData;
@@ -500,7 +500,7 @@ void Cpu65816::executeSingle()
     }
 
     case AddressingMode::AbsoluteLongIndexedX: {
-        uint32_t rawData = m_Membus->readU24(m_Registers.PC);
+        uint32_t rawData = m_Membus->readU24((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC += 3;
 
         data = rawData + m_Registers.X;
@@ -510,7 +510,7 @@ void Cpu65816::executeSingle()
     }
 
     case AddressingMode::Dp: {
-        uint32_t rawData =  m_Membus->readU8(m_Registers.PC);
+        uint32_t rawData =  m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC++;
 
         data = rawData;
@@ -520,7 +520,7 @@ void Cpu65816::executeSingle()
     }
 
     case AddressingMode::DpIndexedX: {
-        uint32_t rawData =  m_Membus->readU8(m_Registers.PC);
+        uint32_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC++;
 
         data = rawData + m_Registers.X;
@@ -530,7 +530,7 @@ void Cpu65816::executeSingle()
     }
 
     case AddressingMode::DpIndirectLongIndexedY: {
-        uint8_t rawData = m_Membus->readU8(m_Registers.PC);
+        uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC++;
 
         uint32_t address = ((m_Registers.DB << 16) | rawData);
@@ -543,7 +543,7 @@ void Cpu65816::executeSingle()
     }
 
     case AddressingMode::PcRelative: {
-        uint8_t rawData = m_Membus->readU8(m_Registers.PC);
+        uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC += 1;
 
         data = m_Registers.PC + static_cast<int8_t>(rawData);
