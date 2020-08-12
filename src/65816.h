@@ -54,6 +54,7 @@ private:
     void handlePLY(uint32_t data);
     void handleREP(uint32_t data);
     void handleROL_A(uint32_t data);
+    void handleRTL(uint32_t data);
     void handleRTS(uint32_t data);
     void handleSBC(uint32_t data);
     void handleSEC(uint32_t data);

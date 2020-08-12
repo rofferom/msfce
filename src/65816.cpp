@@ -254,6 +254,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handleROL_A,
         }, {
+            "RTL",
+            0x6B,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handleRTL,
+        }, {
             "RTS",
             0x60,
             Cpu65816::AddressingMode::Implied,
@@ -1147,6 +1152,18 @@ void Cpu65816::handleROL_A(uint32_t data)
     } else {
         m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
     }
+}
+
+void Cpu65816::handleRTL(uint32_t data)
+{
+    uint16_t PC = m_Membus->readU16(m_Registers.S) + 1;
+    m_Registers.S += 2;
+
+    uint16_t PB = m_Membus->readU8(m_Registers.S);
+    m_Registers.S++;
+
+    m_Registers.PC = PC;
+    m_Registers.PB = PB;
 }
 
 void Cpu65816::handleRTS(uint32_t data)
