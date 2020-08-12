@@ -68,7 +68,7 @@ const uint8_t* Membus::getReadPointer(size_t addr)
     // WRAM
     if (kWramBankStart <= bank && bank <= kWramBankEnd) {
         // Direct access
-        return &m_Wram[(bank - kWramBankStart) * kBankSize];
+        return &m_Wram[(bank - kWramBankStart) * kBankSize + offset];
     } else if (bank <= 0x3F && offset <= 0x1FFF) {
         // Bank 0x00 => 0x3F mirror
         return &m_Wram[offset];
@@ -143,7 +143,7 @@ uint8_t* Membus::getWritePointer(size_t addr)
     // WRAM
     if (kWramBankStart <= bank && bank <= kWramBankEnd) {
         // Direct access
-        return &m_Wram[(bank - kWramBankStart) * kBankSize];
+        return &m_Wram[(bank - kWramBankStart) * kBankSize + offset];
     } else if (bank <= 0x3F && offset <= 0x1FFF) {
         // Bank 0x00 => 0x3F mirror
         return &m_Wram[offset];
