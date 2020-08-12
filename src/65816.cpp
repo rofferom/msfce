@@ -1052,10 +1052,8 @@ void Cpu65816::handlePHA(uint32_t data)
 
 void Cpu65816::handlePHK(uint32_t data)
 {
-    auto PB = m_Registers.PC >> 16;
-
     m_Registers.S--;
-    m_Membus->writeU8(m_Registers.S, PB);
+    m_Membus->writeU8(m_Registers.S, m_Registers.PB);
 }
 
 void Cpu65816::handlePHP(uint32_t data)
