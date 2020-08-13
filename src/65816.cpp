@@ -819,7 +819,7 @@ void Cpu65816::handleADC(uint32_t address)
         m_Registers.A = (m_Registers.A & 0xFF00) | (result & 0xFF);
 
         // Z and N Flag
-        setZFlag(m_Registers.A);
+        setZFlag(m_Registers.A & 0xFF);
         setNFlag(m_Registers.A, 0x80);
 
         // C Flag
@@ -876,7 +876,7 @@ void Cpu65816::handleADCImmediate(uint32_t data)
         m_Registers.A = (m_Registers.A & 0xFF00) | (result & 0xFF);
 
         // Z and N Flag
-        setZFlag(m_Registers.A);
+        setZFlag(m_Registers.A & 0xFF);
         setNFlag(m_Registers.A, 0x80);
 
         // C Flag
@@ -913,43 +913,34 @@ void Cpu65816::handleADCImmediate(uint32_t data)
 
 void Cpu65816::handleANDImmediate(uint32_t data)
 {
-    uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
         m_Registers.A &= data;
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
         m_Registers.A &= data;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.A, 0x8000);
     }
-
-    setNZFlags(m_Registers.A, negativeMask);
 }
 
 void Cpu65816::handleAND(uint32_t data)
 {
-    uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
         m_Registers.A &= m_Membus->readU8(data);
-
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
         m_Registers.A &= m_Membus->readU16(data);
-
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.A, 0x8000);
     }
-
-    setNZFlags(m_Registers.A, negativeMask);
 }
 
 void Cpu65816::handleASL_A(uint32_t data)
 {
-    uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
     uint32_t C = getBit(m_Registers.P, kPRegister_C);
 
@@ -961,7 +952,7 @@ void Cpu65816::handleASL_A(uint32_t data)
         C = v >> 8;
 
         m_Registers.A = (m_Registers.A & 0xFF00) | (v & 0xFF);
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
         uint32_t v = m_Registers.A;
 
@@ -969,7 +960,7 @@ void Cpu65816::handleASL_A(uint32_t data)
         C = v >> 16;
 
         m_Registers.A = v & 0xFFFF;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.A, 0x8000);
     }
 
     if (C) {
@@ -977,8 +968,6 @@ void Cpu65816::handleASL_A(uint32_t data)
     } else {
         m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
     }
-
-    setNZFlags(m_Registers.A, negativeMask);
 }
 
 void Cpu65816::handleBCC(uint32_t data)
@@ -1137,38 +1126,32 @@ void Cpu65816::handleDEC(uint32_t data)
 
 void Cpu65816::handleDEX(uint32_t data)
 {
-    uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
         m_Registers.X--;
         m_Registers.X &= 0xFF;
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.X & 0xFF, 0x80);
     } else {
         m_Registers.X--;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.X, 0x8000);
     }
-
-    setNZFlags(m_Registers.X, negativeMask);
 }
 
 void Cpu65816::handleDEY(uint32_t data)
 {
-    uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
         m_Registers.Y--;
         m_Registers.Y &= 0xFF;
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.Y & 0xFF, 0x80);
     } else {
         m_Registers.Y--;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.Y, 0x8000);
     }
-
-    setNZFlags(m_Registers.Y, negativeMask);
 }
 
 void Cpu65816::handleINC_A(uint32_t data)
@@ -1179,13 +1162,11 @@ void Cpu65816::handleINC_A(uint32_t data)
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
         m_Registers.A = (m_Registers.A & 0xFF00) | ((m_Registers.A + 1) & 0xFF);
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
         m_Registers.A++;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.A, 0x8000);
     }
-
-    setNZFlags(m_Registers.A, negativeMask);
 }
 
 void Cpu65816::handleINC(uint32_t data)
@@ -1211,36 +1192,30 @@ void Cpu65816::handleINC(uint32_t data)
 
 void Cpu65816::handleINX(uint32_t data)
 {
-    uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
         m_Registers.X = (m_Registers.X & 0xFF00) | ((m_Registers.X + 1) & 0xFF);
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.X & 0xFF, 0x80);
     } else {
         m_Registers.X++;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.X, 0x8000);
     }
-
-    setNZFlags(m_Registers.X, negativeMask);
 }
 
 void Cpu65816::handleINY(uint32_t data)
 {
-    uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
         m_Registers.Y = (m_Registers.Y & 0xFF00) | ((m_Registers.Y + 1) & 0xFF);
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.Y & 0xFF, 0x80);
     } else {
         m_Registers.Y++;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.Y, 0x8000);
     }
-
-    setNZFlags(m_Registers.Y, negativeMask);
 }
 
 void Cpu65816::handleJMP(uint32_t data)
@@ -1270,25 +1245,21 @@ void Cpu65816::handleJSL(uint32_t data)
 
 void Cpu65816::handleLDAImmediate(uint32_t data)
 {
-    uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
         m_Registers.A &= 0xFF00;
         m_Registers.A |= data & 0xFF;
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
         m_Registers.A = data;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.A, 0x8000);
     }
-
-    setNZFlags(m_Registers.A, negativeMask);
 }
 
 void Cpu65816::handleLDA(uint32_t data)
 {
-    uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
@@ -1296,81 +1267,67 @@ void Cpu65816::handleLDA(uint32_t data)
         uint16_t value = m_Membus->readU8(data);
         m_Registers.A &= 0xFF00;
         m_Registers.A |= value & 0xFF;
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
         m_Registers.A = m_Membus->readU16(data);;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.A, 0x8000);
     }
-
-    setNZFlags(m_Registers.A, negativeMask);
 }
 
 void Cpu65816::handleLDXImmediate(uint32_t data)
 {
-    uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
         m_Registers.X = data & 0xFF;
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.X & 0xFF, 0x80);
     } else {
         m_Registers.X = data;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.X, 0x8000);
     }
-
-    setNZFlags(m_Registers.X, negativeMask);
 }
 
 void Cpu65816::handleLDX(uint32_t data)
 {
-    uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
         m_Registers.X = m_Membus->readU8(data);
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.X & 0xFF, 0x80);
     } else {
         m_Registers.X = m_Membus->readU16(data);
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.X, 0x8000);
     }
-
-    setNZFlags(m_Registers.X, negativeMask);
 }
 
 void Cpu65816::handleLDYImmediate(uint32_t data)
 {
-    uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
         m_Registers.Y = data & 0xFF;
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.Y & 0xFF, 0x80);
     } else {
         m_Registers.Y = data;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.Y, 0x8000);
     }
-
-    setNZFlags(m_Registers.Y, negativeMask);
 }
 
 void Cpu65816::handleLDY(uint32_t data)
 {
-    uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
         m_Registers.Y = m_Membus->readU8(data);
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.Y & 0xFF, 0x80);
     } else {
         m_Registers.Y = m_Membus->readU16(data);
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.Y, 0x8000);
     }
-
-    setNZFlags(m_Registers.X, negativeMask);
 }
 
 void Cpu65816::handleNOP(uint32_t data)
@@ -1385,15 +1342,11 @@ void Cpu65816::handleORA(uint32_t data)
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
         m_Registers.A |= m_Membus->readU8(data);
-
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
         m_Registers.A |= m_Membus->readU16(data);
-
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.A, 0x8000);
     }
-
-    setNZFlags(m_Registers.A, negativeMask);
 }
 
 void Cpu65816::handlePHA(uint32_t data)
@@ -1470,7 +1423,7 @@ void Cpu65816::handlePLA(uint32_t data)
     if (accumulatorSize) {
         m_Registers.A = (m_Registers.A & 0xFF00) | m_Membus->readU8(m_Registers.S);
         m_Registers.S++;
-        setNZFlags(m_Registers.A, 0x80);
+        setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
         m_Registers.A = m_Membus->readU16(m_Registers.S);
         m_Registers.S += 2;
@@ -1507,44 +1460,34 @@ void Cpu65816::handlePLP(uint32_t data)
 
 void Cpu65816::handlePLX(uint32_t data)
 {
-    uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
         m_Registers.X = m_Membus->readU8(m_Registers.S);
         m_Registers.S++;
-
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.X & 0xFF, 0x80);
     } else {
         m_Registers.X = m_Membus->readU16(m_Registers.S);
         m_Registers.S += 2;
-
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.X, 0x8000);
     }
-
-    setNZFlags(m_Registers.Y, negativeMask);
 }
 
 void Cpu65816::handlePLY(uint32_t data)
 {
-    uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
         m_Registers.Y = m_Membus->readU8(m_Registers.S);
         m_Registers.S++;
-
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.Y & 0xFF, 0x80);
     } else {
         m_Registers.Y = m_Membus->readU16(m_Registers.S);
         m_Registers.S += 2;
-
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.Y, 0x8000);
     }
-
-    setNZFlags(m_Registers.Y, negativeMask);
 }
 
 void Cpu65816::handleREP(uint32_t data)
@@ -1685,31 +1628,26 @@ void Cpu65816::handleTAX(uint32_t data)
     if (indexSize) {
         m_Registers.X &= 0xFF00;
         m_Registers.X |= m_Registers.A & 0xFF;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.X & 0xFF, 0x80);
     } else {
         m_Registers.X = m_Registers.A;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.X, 0x8000);
     }
-
-    setNZFlags(m_Registers.X, negativeMask);
 }
 
 void Cpu65816::handleTAY(uint32_t data)
 {
-    uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
         m_Registers.Y &= 0xFF00;
         m_Registers.Y |= m_Registers.A & 0xFF;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.Y & 0xFF, 0x80);
     } else {
         m_Registers.Y = m_Registers.A;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.Y, 0x8000);
     }
-
-    setNZFlags(m_Registers.Y, negativeMask);
 }
 
 void Cpu65816::handleTCD(uint32_t data)
@@ -1726,22 +1664,17 @@ void Cpu65816::handleTCS(uint32_t data)
 
 void Cpu65816::handleTXA(uint32_t data)
 {
-    uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
         m_Registers.A &= 0xFF00;
         m_Registers.A |= m_Registers.X & 0xFF;
-
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
         m_Registers.A = m_Registers.X;
-
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.A, 0x8000);
     }
-
-    setNZFlags(m_Registers.A, negativeMask);
 }
 
 void Cpu65816::handleTXS(uint32_t data)
@@ -1751,58 +1684,47 @@ void Cpu65816::handleTXS(uint32_t data)
 
 void Cpu65816::handleTXY(uint32_t data)
 {
-    uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
         m_Registers.Y &= 0xFF00;
         m_Registers.Y |= m_Registers.X & 0xFF;
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.Y & 0xFF, 0x80);
     } else {
         m_Registers.Y = m_Registers.X;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.Y, 0x8000);
     }
-
-    setNZFlags(m_Registers.Y, negativeMask);
 }
 
 void Cpu65816::handleTYA(uint32_t data)
 {
-    uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
         m_Registers.A &= 0xFF00;
         m_Registers.A |= m_Registers.Y & 0xFF;
-
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
         m_Registers.A = m_Registers.Y;
-
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.A, 0x8000);
     }
-
-    setNZFlags(m_Registers.A, negativeMask);
 }
 
 void Cpu65816::handleTYX(uint32_t data)
 {
-    uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
         m_Registers.X &= 0xFF00;
         m_Registers.X |= m_Registers.Y & 0xFF;
-        negativeMask = 0x80;
+        setNZFlags(m_Registers.X & 0xFF, 0x80);
     } else {
         m_Registers.X = m_Registers.Y;
-        negativeMask = 0x8000;
+        setNZFlags(m_Registers.X, 0x8000);
     }
-
-    setNZFlags(m_Registers.X, negativeMask);
 }
 
 void Cpu65816::handleXBA(uint32_t data)
