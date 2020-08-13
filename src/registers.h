@@ -36,6 +36,12 @@ constexpr size_t kRegisterWMADDH = 0x2183;
 constexpr size_t kRegisterJoyWr = 0x4016;
 constexpr size_t kRegisterJoyWrio = 0x4201;
 
+constexpr size_t kRegisterJoy1L = 0x4218;
+constexpr size_t kRegisterJoy1H = 0x4219;
+
+constexpr size_t kRegisterJoy2L = 0x421A;
+constexpr size_t kRegisterJoy2H = 0x421B;
+
 // Maths registers
 constexpr size_t kRegisterWRMPYA = 0x4202;
 constexpr size_t kRegisterWRMPYB = 0x4203;
@@ -56,7 +62,6 @@ constexpr size_t kRegisterHDMAEN = 0x420C;
 
 constexpr size_t kRegDmaStart = 0x4300;
 constexpr size_t kRegDmaEnd = 0x437F;
-
 
 // Misc Registers
 constexpr size_t kRegisterHTIMEL = 0x4207;

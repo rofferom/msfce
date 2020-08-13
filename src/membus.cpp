@@ -81,6 +81,13 @@ uint8_t Membus::readU8(size_t addr)
         return m_Ppu->readU8(addr);
     }
 
+    // Joypad
+    if (bank == 0 && (offset == kRegisterJoy1L || offset == kRegisterJoy1H)) {
+        return 0;
+    } else if (bank == 0 && (offset == kRegisterJoy2L || offset == kRegisterJoy2H)) {
+        return 0;
+    }
+
     auto ptr = getReadPointer(addr);
     return *ptr;
 }
@@ -100,6 +107,13 @@ uint16_t Membus::readU16(size_t addr)
         return m_Ppu->readU16(addr);
     }
 
+    // Joypad
+    if (bank == 0 && offset == kRegisterJoy1L) {
+        return 0;
+    } else if (bank == 0 && offset == kRegisterJoy2L) {
+        return 0;
+    }
+
     auto ptr = getReadPointer(addr);
     return *ptr | (*(ptr + 1) << 8);
 }
@@ -117,6 +131,15 @@ uint32_t Membus::readU24(size_t addr)
 
     // PPU
     if (isPpuAddress(addr, bank, offset)) {
+        assert(false);
+        return 0;
+    }
+
+    // Joypad
+    if (bank == 0 && offset == kRegisterJoy1L) {
+        assert(false);
+        return 0;
+    } else if (bank == 0 && offset == kRegisterJoy2L) {
         assert(false);
         return 0;
     }
