@@ -163,10 +163,15 @@ uint8_t* Membus::getWritePointer(size_t addr)
 
     // Misc registers
     switch (addr) {
+    case kRegNmitimen:
+    case kRegisterMDMAEN:
+    case kRegisterHDMAEN:
+        LOGW(TAG , "%02X write ignored", static_cast<uint32_t>(addr));
+        return nullptr;
+
     case kRegisterMemsel:
     case kRegisterJoyWr:
     case kRegisterJoyWrio:
-    case kRegNmitimen:
     case kRegisterWRMPYA:
     case kRegisterWRMPYB:
     case kRegisterWRDIVL:
@@ -176,13 +181,11 @@ uint8_t* Membus::getWritePointer(size_t addr)
     case kRegisterHTIMEH:
     case kRegisterVTIMEL:
     case kRegisterVTIMEH:
-    case kRegisterMDMAEN:
-    case kRegisterHDMAEN:
-    case kRegisterWMDATA:
     case kRegisterWMADDL:
     case kRegisterWMADDM:
     case kRegisterWMADDH:
-        LOGW(TAG , "%02X write ignored", static_cast<uint32_t>(addr));
+    case kRegisterWMDATA:
+        assert(false);
         return nullptr;
 
     default:
