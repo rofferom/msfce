@@ -239,7 +239,7 @@ void Membus::writeU24(size_t addr, uint32_t value)
 
     // APU
     if (bank == 0 && (kRegApuStart <= offset && offset <= kRegApuEnd)) {
-        m_Apu->writeU16(addr, value);
+        assert(false);
         return;
     }
 
