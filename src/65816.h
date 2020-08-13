@@ -27,6 +27,7 @@ private:
     void handleAND(uint32_t data);
     void handleASL_A(uint32_t data);
     void handleBCC(uint32_t data);
+    void handleBCS(uint32_t data);
     void handleBEQ(uint32_t data);
     void handleBMI(uint32_t data);
     void handleBRA(uint32_t data);
@@ -37,11 +38,16 @@ private:
     void handleCLI(uint32_t data);
     void handleCMP(uint32_t data);
     void handleCMPImmediate(uint32_t data);
+    void handleCPX(uint32_t data);
     void handleCPXImmediate(uint32_t data);
+    void handleCPY(uint32_t data);
     void handleCPYImmediate(uint32_t data);
+    void handleDEC_A(uint32_t data);
     void handleDEC(uint32_t data);
     void handleDEX(uint32_t data);
     void handleDEY(uint32_t data);
+    void handleEOR(uint32_t data);
+    void handleEORImmediate(uint32_t data);
     void handleINC_A(uint32_t data);
     void handleINC(uint32_t data);
     void handleINX(uint32_t data);
@@ -55,6 +61,7 @@ private:
     void handleLDX(uint32_t data);
     void handleLDYImmediate(uint32_t data);
     void handleLDY(uint32_t data);
+    void handleLSR_A(uint32_t data);
     void handleNOP(uint32_t data);
     void handleORA(uint32_t data);
     void handlePHA(uint32_t data);
