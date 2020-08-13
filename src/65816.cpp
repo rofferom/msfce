@@ -451,7 +451,7 @@ void Cpu65816::executeSingle()
     case AddressingMode::Immediate:
         data = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC += 1;
-        snprintf(strIntruction, sizeof(strIntruction), "%s #%02X", opcodeDesc.m_Name, data);
+        snprintf(strIntruction, sizeof(strIntruction), "%s #$%02X", opcodeDesc.m_Name, data);
         break;
 
     case AddressingMode::ImmediateA: {
@@ -462,12 +462,12 @@ void Cpu65816::executeSingle()
             data = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
             m_Registers.PC += 1;
 
-            snprintf(strIntruction, sizeof(strIntruction), "%s #%02X", opcodeDesc.m_Name, data);
+            snprintf(strIntruction, sizeof(strIntruction), "%s #$%02X", opcodeDesc.m_Name, data);
         } else {
             data = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
             m_Registers.PC += 2;
 
-            snprintf(strIntruction, sizeof(strIntruction), "%s #%04X", opcodeDesc.m_Name, data);
+            snprintf(strIntruction, sizeof(strIntruction), "%s #$%04X", opcodeDesc.m_Name, data);
         }
 
         break;
@@ -481,12 +481,12 @@ void Cpu65816::executeSingle()
             data = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
             m_Registers.PC += 1;
 
-            snprintf(strIntruction, sizeof(strIntruction), "%s #%02X", opcodeDesc.m_Name, data);
+            snprintf(strIntruction, sizeof(strIntruction), "%s #$%02X", opcodeDesc.m_Name, data);
         } else {
             data = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
             m_Registers.PC += 2;
 
-            snprintf(strIntruction, sizeof(strIntruction), "%s #%04X", opcodeDesc.m_Name, data);
+            snprintf(strIntruction, sizeof(strIntruction), "%s #$%04X", opcodeDesc.m_Name, data);
         }
 
         break;
