@@ -956,7 +956,7 @@ void Cpu65816::handleANDImmediate(uint32_t data)
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        m_Registers.A &= data;
+        m_Registers.A = (m_Registers.A & 0xFF00) | ((m_Registers.A & 0xFF) & data);
         setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
         m_Registers.A &= data;
@@ -970,7 +970,8 @@ void Cpu65816::handleAND(uint32_t data)
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        m_Registers.A &= m_Membus->readU8(data);
+        uint8_t value = m_Membus->readU8(data);
+        m_Registers.A = (m_Registers.A & 0xFF00) | ((m_Registers.A & 0xFF) & value);
         setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
         m_Registers.A &= m_Membus->readU16(data);
@@ -1380,7 +1381,8 @@ void Cpu65816::handleORA(uint32_t data)
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        m_Registers.A |= m_Membus->readU8(data);
+        uint8_t value = m_Membus->readU8(data);
+        m_Registers.A = (m_Registers.A & 0xFF00) | ((m_Registers.A & 0xFF) | value);
         setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
         m_Registers.A |= m_Membus->readU16(data);
