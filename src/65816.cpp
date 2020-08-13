@@ -49,10 +49,20 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::ImmediateA,
             &Cpu65816::handleADCImmediate,
         }, {
+            "ADC",
+            0x65,
+            Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleADC,
+        }, {
             "AND",
             0x29,
             Cpu65816::AddressingMode::ImmediateA,
             &Cpu65816::handleANDImmediate,
+        }, {
+            "AND",
+            0x25,
+            Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleAND,
         }, {
             "ASL",
             0x0A,
@@ -63,6 +73,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0xF0,
             Cpu65816::AddressingMode::PcRelative,
             &Cpu65816::handleBEQ,
+        }, {
+            "BCC",
+            0x90,
+            Cpu65816::AddressingMode::PcRelative,
+            &Cpu65816::handleBCC,
+        }, {
+            "BMI",
+            0x30,
+            Cpu65816::AddressingMode::PcRelative,
+            &Cpu65816::handleBMI,
         }, {
             "BNE",
             0xD0,
@@ -95,6 +115,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleCLI,
         }, {
             "CMP",
+            0xC9,
+            Cpu65816::AddressingMode::ImmediateA,
+            &Cpu65816::handleCMPImmediate,
+        }, {
+            "CMP",
             0xCD,
             Cpu65816::AddressingMode::Absolute,
             &Cpu65816::handleCMP,
@@ -103,6 +128,21 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0xE0,
             Cpu65816::AddressingMode::ImmediateIndex,
             &Cpu65816::handleCPXImmediate,
+        }, {
+            "CPY",
+            0xC0,
+            Cpu65816::AddressingMode::ImmediateIndex,
+            &Cpu65816::handleCPYImmediate,
+        }, {
+            "DEC",
+            0xC6,
+            Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleDEC,
+        }, {
+            "DEC",
+            0xCE,
+            Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleDEC,
         }, {
             "DEX",
             0xCA,
@@ -122,6 +162,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "INC",
             0xE6,
             Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleINC,
+        }, {
+            "INC",
+            0xEE,
+            Cpu65816::AddressingMode::Absolute,
             &Cpu65816::handleINC,
         }, {
             "INX",
@@ -175,8 +220,23 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleLDA,
         }, {
             "LDA",
+            0xB9,
+            Cpu65816::AddressingMode::AbsoluteIndexedY,
+            &Cpu65816::handleLDA,
+        }, {
+            "LDA",
             0xA5,
             Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleLDA,
+        }, {
+            "LDA",
+            0xB2,
+            Cpu65816::AddressingMode::DpIndirect,
+            &Cpu65816::handleLDA,
+        }, {
+            "LDA",
+            0xA7,
+            Cpu65816::AddressingMode::DpIndirectLong,
             &Cpu65816::handleLDA,
         }, {
             "LDA",
@@ -188,6 +248,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0xA2,
             Cpu65816::AddressingMode::ImmediateIndex,
             &Cpu65816::handleLDXImmediate,
+        }, {
+            "LDX",
+            0xAE,
+            Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleLDX,
         }, {
             "LDX",
             0xA6,
@@ -208,6 +273,21 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0xEA,
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handleNOP,
+        }, {
+            "ORA",
+            0x05,
+            Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleORA,
+        }, {
+            "ORA",
+            0x07,
+            Cpu65816::AddressingMode::DpIndirectLong,
+            &Cpu65816::handleORA,
+        }, {
+            "ORA",
+            0x1D,
+            Cpu65816::AddressingMode::AbsoluteIndexedX,
+            &Cpu65816::handleORA,
         }, {
             "PHA",
             0x48,
@@ -330,6 +410,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleSTA,
         }, {
             "STA",
+            0x99,
+            Cpu65816::AddressingMode::AbsoluteIndexedY,
+            &Cpu65816::handleSTA,
+        }, {
+            "STA",
             0x8F,
             Cpu65816::AddressingMode::AbsoluteLong,
             &Cpu65816::handleSTA,
@@ -338,6 +423,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0x9F,
             Cpu65816::AddressingMode::AbsoluteLongIndexedX,
             &Cpu65816::handleSTA,
+        }, {
+            "STA",
+            0x97,
+            Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            &Cpu65816::handleSTA,
+        }, {
+            "STX",
+            0x86,
+            Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleSTX,
         }, {
             "STX",
             0x8E,
@@ -394,15 +489,30 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handleTCS,
         }, {
+            "TXA",
+            0x8A,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handleTXA,
+        }, {
             "TXS",
             0x9A,
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handleTXS,
         }, {
+            "TXY",
+            0x9B,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handleTXY,
+        }, {
             "TYA",
             0x98,
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handleTYA,
+        }, {
+            "TYX",
+            0xBB,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handleTYX,
         }, {
             "XBA",
             0xEB,
@@ -513,6 +623,17 @@ void Cpu65816::executeSingle()
         break;
     }
 
+    case AddressingMode::AbsoluteIndexedY: {
+        uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+        m_Registers.PC += 2;
+
+        data = (m_Registers.DB << 16) | rawData;
+        data += m_Registers.Y;
+
+        snprintf(strIntruction, sizeof(strIntruction), "%s $%04X,Y [%06X]", opcodeDesc.m_Name, rawData, data);
+        break;
+    }
+
     case AddressingMode::AbsoluteLong: {
         data = m_Membus->readU24((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC += 3;
@@ -561,6 +682,32 @@ void Cpu65816::executeSingle()
         data = rawData + m_Registers.X;
 
         snprintf(strIntruction, sizeof(strIntruction), "%s $%02X,X [%06X] ", opcodeDesc.m_Name, rawData, data);
+        break;
+    }
+
+    case AddressingMode::DpIndirect: {
+        uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+        m_Registers.PC++;
+
+        uint32_t address = ((m_Registers.DB << 16) | rawData);
+        address = (m_Registers.DB << 16) | m_Membus->readU16(address);
+
+        data = address;
+
+        snprintf(strIntruction, sizeof(strIntruction), "%s ($%02X) [%06X] ", opcodeDesc.m_Name, rawData, address);
+        break;
+    }
+
+    case AddressingMode::DpIndirectLong: {
+        uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+        m_Registers.PC++;
+
+        uint32_t address = ((m_Registers.DB << 16) | rawData);
+        address = m_Membus->readU24(address);
+
+        data = address;
+
+        snprintf(strIntruction, sizeof(strIntruction), "%s [$%02X] [%06X] ", opcodeDesc.m_Name, rawData, address);
         break;
     }
 
@@ -640,6 +787,64 @@ void Cpu65816::setNZFlags(uint16_t value, uint16_t negativeMask)
     setZFlag(value);
 }
 
+void Cpu65816::handleADC(uint32_t address)
+{
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
+
+    assert(!getBit(m_Registers.P, kPRegister_D));
+
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        uint32_t data = m_Membus->readU8(address);
+        uint32_t result = (m_Registers.A & 0xFF) + data + getBit(m_Registers.P, kPRegister_C);
+
+        // V flag
+        uint8_t data8 = data;
+        if ((m_Registers.A & 0x80) == (data8 & 0x80) && (m_Registers.A & 0x80) != (result & 0x80)) {
+            m_Registers.P = setBit(m_Registers.P, kPRegister_V);
+        } else {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_V);
+        }
+
+        m_Registers.A = (m_Registers.A & 0xFF00) | (result & 0xFF);
+
+        // Z and N Flag
+        setZFlag(m_Registers.A);
+        setNFlag(m_Registers.A, 0x80);
+
+        // C Flag
+        if (result >= 0x100) {
+            m_Registers.P = setBit(m_Registers.P, kPRegister_C);
+        } else {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
+        }
+    } else {
+        uint32_t data = m_Membus->readU16(address);
+        uint32_t result = m_Registers.A + data + getBit(m_Registers.P, kPRegister_C);
+
+        // V flag
+        uint16_t data16 = data;
+        if (~(m_Registers.A ^ data16) & (data16 ^ static_cast<uint16_t>(result)) & 0x8000) {
+            m_Registers.P = setBit(m_Registers.P, kPRegister_V);
+        } else {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_V);
+        }
+
+        m_Registers.A = result & 0xFFFF;
+
+        // Z and N Flag
+        setZFlag(m_Registers.A);
+        setNFlag(m_Registers.A, 0x8000);
+
+        // C Flag
+        if (result >= 0x10000) {
+            m_Registers.P = setBit(m_Registers.P, kPRegister_C);
+        } else {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
+        }
+    }
+}
+
 void Cpu65816::handleADCImmediate(uint32_t data)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
@@ -713,6 +918,25 @@ void Cpu65816::handleANDImmediate(uint32_t data)
     setNZFlags(m_Registers.A, negativeMask);
 }
 
+void Cpu65816::handleAND(uint32_t data)
+{
+    uint16_t negativeMask;
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
+
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        m_Registers.A &= m_Membus->readU8(data);
+
+        negativeMask = 0x80;
+    } else {
+        m_Registers.A &= m_Membus->readU16(data);
+
+        negativeMask = 0x8000;
+    }
+
+    setNZFlags(m_Registers.A, negativeMask);
+}
+
 void Cpu65816::handleASL_A(uint32_t data)
 {
     uint16_t negativeMask;
@@ -747,6 +971,13 @@ void Cpu65816::handleASL_A(uint32_t data)
     setNZFlags(m_Registers.A, negativeMask);
 }
 
+void Cpu65816::handleBCC(uint32_t data)
+{
+    if (!getBit(m_Registers.P, kPRegister_C)) {
+        m_Registers.PC = data;
+    }
+}
+
 void Cpu65816::handleBEQ(uint32_t data)
 {
     if (getBit(m_Registers.P, kPRegister_Z)) {
@@ -754,9 +985,11 @@ void Cpu65816::handleBEQ(uint32_t data)
     }
 }
 
-void Cpu65816::handleBRA(uint32_t data)
+void Cpu65816::handleBMI(uint32_t data)
 {
-    m_Registers.PC = data;
+    if (getBit(m_Registers.P, kPRegister_N)) {
+        m_Registers.PC = data;
+    }
 }
 
 void Cpu65816::handleBNE(uint32_t data)
@@ -771,6 +1004,11 @@ void Cpu65816::handleBPL(uint32_t data)
     if (!getBit(m_Registers.P, kPRegister_N)) {
         m_Registers.PC = data;
     }
+}
+
+void Cpu65816::handleBRA(uint32_t data)
+{
+    m_Registers.PC = data;
 }
 
 void Cpu65816::handleBVS(uint32_t data)
@@ -788,6 +1026,25 @@ void Cpu65816::handleCLC(uint32_t data)
 void Cpu65816::handleCLI(uint32_t data)
 {
     m_Registers.P = clearBit(m_Registers.P, kPRegister_I);
+}
+
+void Cpu65816::handleCMPImmediate(uint32_t data)
+{
+    uint16_t negativeMask;
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
+    int32_t result;
+
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        result = (m_Registers.A & 0xFF) - data;
+        negativeMask = 0x80;
+    } else {
+        result = m_Registers.A - data;
+        negativeMask = 0x8000;
+    }
+
+    setNZFlags(result, negativeMask);
+    setCFlag(result);
 }
 
 void Cpu65816::handleCMP(uint32_t data)
@@ -826,6 +1083,46 @@ void Cpu65816::handleCPXImmediate(uint32_t data)
 
     setNZFlags(result, negativeMask);
     setCFlag(result);
+}
+
+void Cpu65816::handleCPYImmediate(uint32_t data)
+{
+    uint16_t negativeMask;
+    auto indexSize = getBit(m_Registers.P, kPRegister_X);
+    int32_t result;
+
+    // 0: 16 bits, 1: 8 bits
+    if (indexSize) {
+        result = (m_Registers.Y & 0xFF) - static_cast<uint8_t>(data);
+        negativeMask = 0x80;
+    } else {
+        result  = m_Registers.Y - static_cast<uint16_t>(data);
+        negativeMask = 0x8000;
+    }
+
+    setNZFlags(result, negativeMask);
+    setCFlag(result);
+}
+
+void Cpu65816::handleDEC(uint32_t data)
+{
+    uint16_t negativeMask;
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
+
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        uint8_t value = m_Membus->readU8(data) - 1;
+        m_Membus->writeU8(data, value);
+
+        negativeMask = 0x80;
+        setNZFlags(value, negativeMask);
+    } else {
+        uint16_t value = m_Membus->readU16(data) - 1;
+        m_Membus->writeU16(data, value);
+
+        negativeMask = 0x8000;
+        setNZFlags(value, negativeMask);
+    }
 }
 
 void Cpu65816::handleDEX(uint32_t data)
@@ -886,7 +1183,6 @@ void Cpu65816::handleINC(uint32_t data)
     uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
-
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
         uint8_t value = m_Membus->readU8(data) + 1;
@@ -896,7 +1192,7 @@ void Cpu65816::handleINC(uint32_t data)
         setNZFlags(value, negativeMask);
     } else {
         uint16_t value = m_Membus->readU16(data) + 1;
-        m_Membus->writeU8(data, value);
+        m_Membus->writeU16(data, value);
 
         negativeMask = 0x8000;
         setNZFlags(value, negativeMask);
@@ -1071,6 +1367,25 @@ void Cpu65816::handleNOP(uint32_t data)
 {
 }
 
+void Cpu65816::handleORA(uint32_t data)
+{
+    uint16_t negativeMask;
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
+
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        m_Registers.A |= m_Membus->readU8(data);
+
+        negativeMask = 0x80;
+    } else {
+        m_Registers.A |= m_Membus->readU16(data);
+
+        negativeMask = 0x8000;
+    }
+
+    setNZFlags(m_Registers.A, negativeMask);
+}
+
 void Cpu65816::handlePHA(uint32_t data)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
@@ -1115,10 +1430,10 @@ void Cpu65816::handlePHX(uint32_t data)
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
-        m_Registers.S++;
+        m_Registers.S--;
         m_Membus->writeU8(m_Registers.S, m_Registers.X);
     } else {
-        m_Registers.S += 2;
+        m_Registers.S -= 2;
         m_Membus->writeU16(m_Registers.S, m_Registers.X);
     }
 }
@@ -1129,10 +1444,10 @@ void Cpu65816::handlePHY(uint32_t data)
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
-        m_Registers.S++;
+        m_Registers.S--;
         m_Membus->writeU8(m_Registers.S, m_Registers.Y);
     } else {
-        m_Registers.S += 2;
+        m_Registers.S -= 2;
         m_Membus->writeU16(m_Registers.S, m_Registers.Y);
     }
 }
@@ -1353,16 +1668,38 @@ void Cpu65816::handleSTZ(uint32_t data)
 
 void Cpu65816::handleTAX(uint32_t data)
 {
-    m_Registers.X = m_Registers.A;
+    uint16_t negativeMask;
+    auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
-    setNZFlags(m_Registers.X, 0x8000);
+    // 0: 16 bits, 1: 8 bits
+    if (indexSize) {
+        m_Registers.X &= 0xFF00;
+        m_Registers.X |= m_Registers.A & 0xFF;
+        negativeMask = 0x8000;
+    } else {
+        m_Registers.X = m_Registers.A;
+        negativeMask = 0x8000;
+    }
+
+    setNZFlags(m_Registers.X, negativeMask);
 }
 
 void Cpu65816::handleTAY(uint32_t data)
 {
-    m_Registers.Y = m_Registers.A;
+    uint16_t negativeMask;
+    auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
-    setNZFlags(m_Registers.Y, 0x8000);
+    // 0: 16 bits, 1: 8 bits
+    if (indexSize) {
+        m_Registers.Y &= 0xFF00;
+        m_Registers.Y |= m_Registers.A & 0xFF;
+        negativeMask = 0x8000;
+    } else {
+        m_Registers.Y = m_Registers.A;
+        negativeMask = 0x8000;
+    }
+
+    setNZFlags(m_Registers.Y, negativeMask);
 }
 
 void Cpu65816::handleTCD(uint32_t data)
@@ -1377,16 +1714,85 @@ void Cpu65816::handleTCS(uint32_t data)
     m_Registers.S = m_Registers.A;
 }
 
+void Cpu65816::handleTXA(uint32_t data)
+{
+    uint16_t negativeMask;
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
+
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        m_Registers.A &= 0xFF00;
+        m_Registers.A |= m_Registers.X & 0xFF;
+
+        negativeMask = 0x80;
+    } else {
+        m_Registers.A = m_Registers.X;
+
+        negativeMask = 0x8000;
+    }
+
+    setNZFlags(m_Registers.A, negativeMask);
+}
+
 void Cpu65816::handleTXS(uint32_t data)
 {
     m_Registers.S = m_Registers.X;
 }
 
+void Cpu65816::handleTXY(uint32_t data)
+{
+    uint16_t negativeMask;
+    auto indexSize = getBit(m_Registers.P, kPRegister_X);
+
+    // 0: 16 bits, 1: 8 bits
+    if (indexSize) {
+        m_Registers.Y &= 0xFF00;
+        m_Registers.Y |= m_Registers.X & 0xFF;
+        negativeMask = 0x80;
+    } else {
+        m_Registers.Y = m_Registers.X;
+        negativeMask = 0x8000;
+    }
+
+    setNZFlags(m_Registers.Y, negativeMask);
+}
+
 void Cpu65816::handleTYA(uint32_t data)
 {
-    m_Registers.A = m_Registers.Y;
+    uint16_t negativeMask;
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
-    setNZFlags(m_Registers.A, 0x8000);
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        m_Registers.A &= 0xFF00;
+        m_Registers.A |= m_Registers.Y & 0xFF;
+
+        negativeMask = 0x80;
+    } else {
+        m_Registers.A = m_Registers.Y;
+
+        negativeMask = 0x8000;
+    }
+
+    setNZFlags(m_Registers.A, negativeMask);
+}
+
+void Cpu65816::handleTYX(uint32_t data)
+{
+    uint16_t negativeMask;
+    auto indexSize = getBit(m_Registers.P, kPRegister_X);
+
+    // 0: 16 bits, 1: 8 bits
+    if (indexSize) {
+        m_Registers.X &= 0xFF00;
+        m_Registers.X |= m_Registers.Y & 0xFF;
+        negativeMask = 0x80;
+    } else {
+        m_Registers.X = m_Registers.Y;
+        negativeMask = 0x8000;
+    }
+
+    setNZFlags(m_Registers.X, negativeMask);
 }
 
 void Cpu65816::handleXBA(uint32_t data)

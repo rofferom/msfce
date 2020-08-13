@@ -17,10 +17,14 @@ private:
     void setCFlag(int16_t value);
     void setNZFlags(uint16_t value, uint16_t negativeMask);
 
+    void handleADC(uint32_t data);
     void handleADCImmediate(uint32_t data);
     void handleANDImmediate(uint32_t data);
+    void handleAND(uint32_t data);
     void handleASL_A(uint32_t data);
+    void handleBCC(uint32_t data);
     void handleBEQ(uint32_t data);
+    void handleBMI(uint32_t data);
     void handleBRA(uint32_t data);
     void handleBNE(uint32_t data);
     void handleBPL(uint32_t data);
@@ -28,7 +32,10 @@ private:
     void handleCLC(uint32_t data);
     void handleCLI(uint32_t data);
     void handleCMP(uint32_t data);
+    void handleCMPImmediate(uint32_t data);
     void handleCPXImmediate(uint32_t data);
+    void handleCPYImmediate(uint32_t data);
+    void handleDEC(uint32_t data);
     void handleDEX(uint32_t data);
     void handleDEY(uint32_t data);
     void handleINC_A(uint32_t data);
@@ -45,6 +52,7 @@ private:
     void handleLDYImmediate(uint32_t data);
     void handleLDY(uint32_t data);
     void handleNOP(uint32_t data);
+    void handleORA(uint32_t data);
     void handlePHA(uint32_t data);
     void handlePHB(uint32_t data);
     void handlePHD(uint32_t data);
@@ -74,8 +82,11 @@ private:
     void handleTAY(uint32_t data);
     void handleTCD(uint32_t data);
     void handleTCS(uint32_t data);
+    void handleTXA(uint32_t data);
     void handleTXS(uint32_t data);
+    void handleTXY(uint32_t data);
     void handleTYA(uint32_t data);
+    void handleTYX(uint32_t data);
     void handleXBA(uint32_t data);
     void handleXCE(uint32_t data);
 
@@ -103,11 +114,14 @@ private:
         ImmediateIndex,
         Absolute,
         AbsoluteIndexedX,
+        AbsoluteIndexedY,
         AbsoluteLong,
         AbsoluteIndirectLong,
         AbsoluteLongIndexedX,
         Dp,
         DpIndexedX,
+        DpIndirect,
+        DpIndirectLong,
         DpIndirectLongIndexedY,
         PcRelative,
     };
