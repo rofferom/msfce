@@ -214,6 +214,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handlePHA,
         }, {
+            "PHB",
+            0x8B,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handlePHB,
+        }, {
+            "PHD",
+            0x0B,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handlePHD,
+        }, {
             "PHK",
             0x4B,
             Cpu65816::AddressingMode::Implied,
@@ -223,6 +233,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0x08,
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handlePHP,
+        }, {
+            "PHX",
+            0xDA,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handlePHX,
+        }, {
+            "PHY",
+            0x5A,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handlePHY,
         }, {
             "PLA",
             0x68,
@@ -234,10 +254,20 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handlePLB,
         }, {
+            "PLD",
+            0x2B,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handlePLD,
+        }, {
             "PLP",
             0x28,
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handlePLP,
+        }, {
+            "PLX",
+            0xFA,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handlePLX,
         }, {
             "PLY",
             0x7A,
@@ -1050,6 +1080,18 @@ void Cpu65816::handlePHA(uint32_t data)
     }
 }
 
+void Cpu65816::handlePHB(uint32_t data)
+{
+    m_Registers.S--;
+    m_Membus->writeU8(m_Registers.S, m_Registers.DB);
+}
+
+void Cpu65816::handlePHD(uint32_t data)
+{
+    m_Registers.S -= 2;
+    m_Membus->writeU16(m_Registers.S, m_Registers.D);
+}
+
 void Cpu65816::handlePHK(uint32_t data)
 {
     m_Registers.S--;
@@ -1060,6 +1102,34 @@ void Cpu65816::handlePHP(uint32_t data)
 {
     m_Registers.S--;
     m_Membus->writeU8(m_Registers.S, m_Registers.P);
+}
+
+void Cpu65816::handlePHX(uint32_t data)
+{
+    auto indexSize = getBit(m_Registers.P, kPRegister_X);
+
+    // 0: 16 bits, 1: 8 bits
+    if (indexSize) {
+        m_Registers.S++;
+        m_Membus->writeU8(m_Registers.S, m_Registers.X);
+    } else {
+        m_Registers.S += 2;
+        m_Membus->writeU16(m_Registers.S, m_Registers.X);
+    }
+}
+
+void Cpu65816::handlePHY(uint32_t data)
+{
+    auto indexSize = getBit(m_Registers.P, kPRegister_X);
+
+    // 0: 16 bits, 1: 8 bits
+    if (indexSize) {
+        m_Registers.S++;
+        m_Membus->writeU8(m_Registers.S, m_Registers.Y);
+    } else {
+        m_Registers.S += 2;
+        m_Membus->writeU16(m_Registers.S, m_Registers.Y);
+    }
 }
 
 void Cpu65816::handlePLA(uint32_t data)
@@ -1086,6 +1156,14 @@ void Cpu65816::handlePLB(uint32_t data)
     setNZFlags(m_Registers.DB, 0x80);
 }
 
+void Cpu65816::handlePLD(uint32_t data)
+{
+    m_Registers.D = m_Membus->readU8(m_Registers.S);
+    m_Registers.S++;
+
+    setNZFlags(m_Registers.D, 0x80);
+}
+
 void Cpu65816::handlePLP(uint32_t data)
 {
     m_Registers.P = m_Membus->readU8(m_Registers.S);
@@ -1095,6 +1173,27 @@ void Cpu65816::handlePLP(uint32_t data)
         m_Registers.X &= 0xFF;
         m_Registers.Y &= 0xFF;
     }
+}
+
+void Cpu65816::handlePLX(uint32_t data)
+{
+    uint16_t negativeMask;
+    auto indexSize = getBit(m_Registers.P, kPRegister_X);
+
+    // 0: 16 bits, 1: 8 bits
+    if (indexSize) {
+        m_Registers.X = m_Membus->readU8(m_Registers.S);
+        m_Registers.S++;
+
+        negativeMask = 0x80;
+    } else {
+        m_Registers.X = m_Membus->readU16(m_Registers.S);
+        m_Registers.S += 2;
+
+        negativeMask = 0x8000;
+    }
+
+    setNZFlags(m_Registers.Y, negativeMask);
 }
 
 void Cpu65816::handlePLY(uint32_t data)

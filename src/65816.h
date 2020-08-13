@@ -46,11 +46,17 @@ private:
     void handleLDY(uint32_t data);
     void handleNOP(uint32_t data);
     void handlePHA(uint32_t data);
+    void handlePHB(uint32_t data);
+    void handlePHD(uint32_t data);
     void handlePHK(uint32_t data);
     void handlePHP(uint32_t data);
+    void handlePHX(uint32_t data);
+    void handlePHY(uint32_t data);
     void handlePLA(uint32_t data);
     void handlePLB(uint32_t data);
+    void handlePLD(uint32_t data);
     void handlePLP(uint32_t data);
+    void handlePLX(uint32_t data);
     void handlePLY(uint32_t data);
     void handleREP(uint32_t data);
     void handleROL_A(uint32_t data);
