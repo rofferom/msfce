@@ -1,13 +1,9 @@
 #include <assert.h>
 #include "log.h"
+#include "registers.h"
 #include "apu.h"
 
 #define TAG "apu"
-
-constexpr size_t kRegApuPort0 = 0x2140;
-constexpr size_t kRegApuPort1 = 0x2141;
-constexpr size_t kRegApuPort2 = 0x2142;
-constexpr size_t kRegApuPort3 = 0x2143;
 
 uint8_t Apu::readU8(size_t addr)
 {
@@ -20,10 +16,10 @@ uint8_t Apu::readU8(size_t addr)
         return m_Port1.m_Apu;
 
     case kRegApuPort2:
-        return m_Port2.m_Apu;
+        return m_Port2.m_Cpu;
 
     case kRegApuPort3:
-        return m_Port3.m_Apu;
+        return m_Port3.m_Cpu;
 
     default:
         break;
@@ -88,9 +84,11 @@ void Apu::writeU8(size_t addr, uint8_t value)
         break;
 
     case kRegApuPort2:
+        m_Port2.m_Cpu = value;
         break;
 
     case kRegApuPort3:
+        m_Port3.m_Cpu = value;
         break;
 
     default:
@@ -114,12 +112,16 @@ void Apu::writeU16(size_t addr, uint16_t value)
         break;
 
     case kRegApuPort1:
+        assert(false);
         break;
 
     case kRegApuPort2:
+        m_Port2.m_Cpu = value & 0xFF;
+        m_Port3.m_Cpu = value >> 8;
         break;
 
     case kRegApuPort3:
+        assert(false);
         break;
 
     default:

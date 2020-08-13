@@ -5,6 +5,7 @@
 #include <vector>
 
 class Apu;
+class Ppu;
 
 class Membus {
 /*
@@ -40,6 +41,7 @@ public:
 
     int plugRom(std::unique_ptr<std::vector<uint8_t>> rom);
     int plugApu(const std::shared_ptr<Apu>& spu);
+    int plugPpu(const std::shared_ptr<Ppu>& ppu);
 
 private:
     const uint8_t* getReadPointer(size_t addr);
@@ -62,4 +64,5 @@ private:
     const uint8_t* m_Rom = nullptr;
 
     std::shared_ptr<Apu> m_Apu;
+    std::shared_ptr<Ppu> m_Ppu;
 };

@@ -11,7 +11,11 @@ public:
 
     void executeSingle();
 
+    void setNMI();
+
 private:
+    void handleNMI();
+
     void setNFlag(uint16_t value, uint16_t negativeMask);
     void setZFlag(uint16_t value);
     void setCFlag(int16_t value);
@@ -68,6 +72,7 @@ private:
     void handlePLY(uint32_t data);
     void handleREP(uint32_t data);
     void handleROL_A(uint32_t data);
+    void handleRTI(uint32_t data);
     void handleRTL(uint32_t data);
     void handleRTS(uint32_t data);
     void handleSBC(uint32_t data);
@@ -91,6 +96,11 @@ private:
     void handleXCE(uint32_t data);
 
 private:
+    enum class State {
+        running,
+        interrupt,
+    };
+
     struct Registers {
         uint16_t A = 0;
         uint16_t X = 0;
@@ -140,4 +150,7 @@ private:
 
     OpcodeDesc m_Opcodes[0x100];
     Registers m_Registers;
+
+    State m_State = State::running;
+    bool m_NMI = false;
 };

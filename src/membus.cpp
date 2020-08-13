@@ -1,64 +1,38 @@
 #include <assert.h>
 #include "apu.h"
 #include "log.h"
+#include "ppu.h"
 #include "utils.h"
+#include "registers.h"
 #include "membus.h"
 
 #define TAG "membus"
 
+namespace {
+
 constexpr size_t kBankSize = 0x10000;
 
-// PPU registers
-constexpr size_t kRegPpuStart = 0x2100;
-constexpr size_t kRegPpuEnd = 0x213F;
+bool isPpuAddress(size_t addr, uint8_t bank, uint16_t offset)
+{
+    if (bank != 0x00) {
+        return false;
+    }
 
-constexpr size_t kRegNmitimen = 0x4200;
+    if (kRegPpuStart <= offset && offset <= kRegPpuEnd) {
+        return true;
+    }
 
-// APU registers
-constexpr size_t kRegApuStart = 0x2140;
-constexpr size_t kRegApuEnd = 0x2143;
+    switch (offset) {
+    case kRegNmitimen:
+    case kRegRDNMI:
+        return true;
 
-// WRAM registers
-constexpr size_t kWramBankStart = 0x7E;
-constexpr size_t kWramBankEnd = 0x7F;
+    default:
+        return false;
+    }
+}
 
-constexpr size_t kRegisterWMDATA = 0x2180;
-constexpr size_t kRegisterWMADDL = 0x2181;
-constexpr size_t kRegisterWMADDM = 0x2182;
-constexpr size_t kRegisterWMADDH = 0x2183;
-
-// Joypad registers
-constexpr size_t kRegisterJoyWr = 0x4016;
-constexpr size_t kRegisterJoyWrio = 0x4201;
-
-// Maths registers
-constexpr size_t kRegisterWRMPYA = 0x4202;
-constexpr size_t kRegisterWRMPYB = 0x4203;
-
-constexpr size_t kRegisterWRDIVL = 0x4204;
-constexpr size_t kRegisterWRDIVH = 0x4205;
-constexpr size_t kRegisterWRDIVB = 0x4206;
-
-constexpr size_t kRegisterRDDIVL = 0x4214;
-constexpr size_t kRegisterRDDIVH = 0x4215;
-
-constexpr size_t kRegisterRDMPYL = 0x4216;
-constexpr size_t kRegisterRDMPYH = 0x4217;
-
-// DMA/HDMA registers
-constexpr size_t kRegisterMDMAEN = 0x420B;
-constexpr size_t kRegisterHDMAEN = 0x420C;
-
-constexpr size_t kRegDmaStart = 0x4300;
-constexpr size_t kRegDmaEnd = 0x437F;
-
-
-// Misc Registers
-constexpr size_t kRegisterHTIMEL = 0x4207;
-constexpr size_t kRegisterHTIMEH = 0x4208;
-constexpr size_t kRegisterVTIMEL = 0x4209;
-constexpr size_t kRegisterVTIMEH = 0x420A;
-constexpr size_t kRegisterMemsel = 0x420D;
+} // anonymous namespace
 
 const uint8_t* Membus::getReadPointer(size_t addr)
 {
@@ -102,6 +76,11 @@ uint8_t Membus::readU8(size_t addr)
         return m_Apu->readU8(addr);
     }
 
+    // PPU
+    if (isPpuAddress(addr, bank, offset)) {
+        return m_Ppu->readU8(addr);
+    }
+
     auto ptr = getReadPointer(addr);
     return *ptr;
 }
@@ -116,6 +95,11 @@ uint16_t Membus::readU16(size_t addr)
         return m_Apu->readU16(addr);
     }
 
+    // PPU
+    if (isPpuAddress(addr, bank, offset)) {
+        return m_Ppu->readU16(addr);
+    }
+
     auto ptr = getReadPointer(addr);
     return *ptr | (*(ptr + 1) << 8);
 }
@@ -127,6 +111,12 @@ uint32_t Membus::readU24(size_t addr)
 
     // APU
     if (bank == 0 && (kRegApuStart <= offset && offset <= kRegApuEnd)) {
+        assert(false);
+        return 0;
+    }
+
+    // PPU
+    if (isPpuAddress(addr, bank, offset)) {
         assert(false);
         return 0;
     }
@@ -147,12 +137,6 @@ uint8_t* Membus::getWritePointer(size_t addr)
     } else if (bank <= 0x3F && offset <= 0x1FFF) {
         // Bank 0x00 => 0x3F mirror
         return &m_Wram[offset];
-    }
-
-    // PPU
-    if (bank == 0 && (kRegPpuStart <= offset && offset <= kRegPpuEnd)) {
-        LOGW(TAG , "PPU write (0x%04X) ignored", offset);
-        return nullptr;
     }
 
     // DMA/HDMA
@@ -208,6 +192,21 @@ void Membus::writeU8(size_t addr, uint8_t value)
         return;
     }
 
+    // PPU
+    if (isPpuAddress(addr, bank, offset)) {
+        m_Ppu->writeU8(addr, value);
+        return;
+    }
+
+    if (addr == kRegNmitimen) {
+        LOGI(TAG, "Writting to kRegNmitimen: 0x%02X", value);
+        return;
+    } else if (addr == kRegSETINI) {
+        LOGI(TAG, "Writting to kRegSETINI: 0x%02X", value);
+    } else if (addr == kRegINIDISP) {
+        LOGI(TAG, "Writting to kRegINIDISP: 0x%02X", value);
+    }
+
     auto ptr = getWritePointer(addr);
     if (ptr) {
         *ptr = value;
@@ -224,6 +223,13 @@ void Membus::writeU16(size_t addr, uint16_t value)
         m_Apu->writeU16(addr, value);
         return;
     }
+
+    // PPU
+    if (isPpuAddress(addr, bank, offset)) {
+        m_Ppu->writeU16(addr, value);
+        return;
+    }
+
 
     auto ptr = getWritePointer(addr);
     if (ptr) {
@@ -242,6 +248,13 @@ void Membus::writeU24(size_t addr, uint32_t value)
         assert(false);
         return;
     }
+
+    // PPU
+    if (isPpuAddress(addr, bank, offset)) {
+        assert(false);
+        return;
+    }
+
 
     auto ptr = getWritePointer(addr);
     if (ptr) {
@@ -262,6 +275,13 @@ int Membus::plugRom(std::unique_ptr<std::vector<uint8_t>> rom)
 int Membus::plugApu(const std::shared_ptr<Apu>& spu)
 {
     m_Apu = spu;
+
+    return 0;
+}
+
+int Membus::plugPpu(const std::shared_ptr<Ppu>& ppu)
+{
+    m_Ppu = ppu;
 
     return 0;
 }

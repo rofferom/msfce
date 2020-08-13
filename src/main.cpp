@@ -1,16 +1,23 @@
 #include <stdio.h>
 #include <sys/stat.h>
+#include <chrono>
 #include <memory>
 #include <vector>
 #include "65816.h"
 #include "apu.h"
 #include "log.h"
+#include "ppu.h"
 #include "membus.h"
 
 #define TAG "main"
 
 constexpr uint32_t kLowRomHeader_Title = 0x7FC0;
 constexpr uint32_t kLowRomHeader_TitleSize = 21;
+
+using Clock = std::chrono::high_resolution_clock;
+
+constexpr auto kRenderPeriod = std::chrono::microseconds(16666);
+constexpr auto kVblankDuration = std::chrono::milliseconds(1);
 
 static int loadRom(const char* romPath, std::unique_ptr<std::vector<uint8_t>>* outRom)
 {
@@ -98,10 +105,31 @@ int main(int argc, char* argv[])
     auto apu = std::make_shared<Apu>();
     membus->plugApu(apu);
 
+    auto ppu = std::make_shared<Ppu>();
+    membus->plugPpu(ppu);
+
     auto cpu = std::make_unique<Cpu65816>(membus);
 
     // Run
-    for (int i = 0; i < 100000 || true; i++) {
+    auto nextRender = Clock::now() + kRenderPeriod;
+    auto nextVblank = nextRender - kVblankDuration;
+
+    while (true) {
+        auto now = Clock::now();
+
+        if (now >= nextRender) {
+            // Rendering should be triggered here
+            nextRender = Clock::now() + kRenderPeriod;
+            nextVblank = nextRender - kVblankDuration;
+        } else if (now >= nextVblank) {
+            // Dirty hack to avoid vblank to be retriggered
+            if (ppu->isNMIEnabled()) {
+                cpu->setNMI();
+            }
+
+            nextVblank += kRenderPeriod;
+        }
+
         cpu->executeSingle();
     }
 

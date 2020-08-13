@@ -1,9 +1,10 @@
 #include <assert.h>
 #include <stdint.h>
-#include "65816.h"
 #include "log.h"
 #include "membus.h"
+#include "registers.h"
 #include "utils.h"
+#include "65816.h"
 
 #define TAG "65816"
 
@@ -369,6 +370,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handleROL_A,
         }, {
+            "RTI",
+            0x40,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handleRTI,
+        }, {
             "RTL",
             0x6B,
             Cpu65816::AddressingMode::Implied,
@@ -545,6 +551,15 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
 
 void Cpu65816::executeSingle()
 {
+    // Check if NMI has been raised
+    if (m_NMI) {
+        if (!getBit(m_Registers.P, kPRegister_I)) {
+            handleNMI();
+        }
+
+        m_NMI = false;
+    }
+
     // Debug stuff
     char strIntruction[32];
     uint32_t opcodePC = (m_Registers.PB << 16) | m_Registers.PC;
@@ -749,19 +764,43 @@ void Cpu65816::executeSingle()
         assert(false);
     }
 
-    LOGD(TAG, "0X%06X %-32s A:%04X X:%04X Y:%04X S:%04X D:%04X DB:%02X P:%02X",
-        opcodePC,
-        strIntruction,
-        m_Registers.A,
-        m_Registers.X,
-        m_Registers.Y,
-        m_Registers.S,
-        m_Registers.D,
-        m_Registers.DB,
-        m_Registers.P);
+    if (m_State == State::running ) {
+        LOGI(TAG, "0X%06X %-32s A:%04X X:%04X Y:%04X S:%04X D:%04X DB:%02X P:%02X",
+            opcodePC,
+            strIntruction,
+            m_Registers.A,
+            m_Registers.X,
+            m_Registers.Y,
+            m_Registers.S,
+            m_Registers.D,
+            m_Registers.DB,
+            m_Registers.P);
+    }
 
     assert(opcodeDesc.m_OpcodeHandler);
     (this->*opcodeDesc.m_OpcodeHandler)(data);
+}
+
+void Cpu65816::handleNMI()
+{
+    // Bank is forced at 0
+    uint16_t handlerAddress = m_Membus->readU16(kRegIV_NMI);
+
+    // Save registers
+    m_Registers.S--;
+    m_Membus->writeU8(m_Registers.S, m_Registers.P);
+
+    m_Registers.S--;
+    m_Membus->writeU8(m_Registers.S, m_Registers.PB);
+
+    m_Registers.S -= 2;
+    m_Membus->writeU16(m_Registers.S, m_Registers.PC & 0xFFFF);
+
+    // Do jump
+    m_Registers.PB = 0;
+    m_Registers.PC = handlerAddress;
+
+    m_State = State::interrupt;
 }
 
 void Cpu65816::setNFlag(uint16_t value, uint16_t negativeMask)
@@ -1524,6 +1563,31 @@ void Cpu65816::handleROL_A(uint32_t data)
     }
 }
 
+void Cpu65816::handleRTI(uint32_t data)
+{
+    // Save registers
+    uint16_t PC = m_Membus->readU16(m_Registers.S);
+    m_Registers.S += 2;
+
+    uint16_t PB = m_Membus->readU8(m_Registers.S);
+    m_Registers.S++;
+
+    uint16_t P = m_Membus->readU8(m_Registers.S);
+    m_Registers.S++;
+
+    // Do jump
+    m_Registers.PB = PB;
+    m_Registers.PC = PC;
+    m_Registers.P = P;
+
+    if (getBit(m_Registers.P, kPRegister_X)) {
+        m_Registers.X &= 0xFF;
+        m_Registers.Y &= 0xFF;
+    }
+
+    m_State = State::running;
+}
+
 void Cpu65816::handleRTL(uint32_t data)
 {
     uint16_t PC = m_Membus->readU16(m_Registers.S) + 1;
@@ -1741,4 +1805,9 @@ void Cpu65816::handleXCE(uint32_t data)
     } else {
         m_Registers.P = clearBit(m_Registers.P, kPRegister_E);
     }
+}
+
+void Cpu65816::setNMI()
+{
+    m_NMI = true;
 }
