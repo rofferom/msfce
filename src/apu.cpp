@@ -13,7 +13,7 @@ uint8_t Apu::readU8(size_t addr)
 {
     switch (addr) {
     case kRegApuPort0:
-        LOGI(TAG, "Read 0x%02X at 0x%06X", m_Port0.m_Apu, static_cast<uint32_t>(addr));
+        LOGD(TAG, "Read 0x%02X at 0x%06X", m_Port0.m_Apu, static_cast<uint32_t>(addr));
         return m_Port0.m_Apu;
 
     case kRegApuPort1:
@@ -59,7 +59,7 @@ uint16_t Apu::readU16(size_t addr)
 
 void Apu::writeU8(size_t addr, uint8_t value)
 {
-    LOGI(TAG, "Write8 0x%02X at 0x%06X", value, static_cast<uint32_t>(addr));
+    LOGD(TAG, "Write8 0x%02X at 0x%06X", value, static_cast<uint32_t>(addr));
 
     switch (addr) {
     case kRegApuPort0:
@@ -101,7 +101,7 @@ void Apu::writeU8(size_t addr, uint8_t value)
 
 void Apu::writeU16(size_t addr, uint16_t value)
 {
-    LOGI(TAG, "Write16 0x%04X at 0x%06X", value, static_cast<uint32_t>(addr));
+    LOGD(TAG, "Write16 0x%04X at 0x%06X", value, static_cast<uint32_t>(addr));
 
     switch (addr) {
     case kRegApuPort0:
