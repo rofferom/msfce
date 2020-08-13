@@ -715,6 +715,7 @@ void Cpu65816::handleANDImmediate(uint32_t data)
 
 void Cpu65816::handleASL_A(uint32_t data)
 {
+    uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
     uint32_t C = getBit(m_Registers.P, kPRegister_C);
 
@@ -726,6 +727,7 @@ void Cpu65816::handleASL_A(uint32_t data)
         C = v >> 8;
 
         m_Registers.A = (m_Registers.A & 0xFF00) | (v & 0xFF);
+        negativeMask = 0x80;
     } else {
         uint32_t v = m_Registers.A;
 
@@ -733,6 +735,7 @@ void Cpu65816::handleASL_A(uint32_t data)
         C = v >> 16;
 
         m_Registers.A = v & 0xFFFF;
+        negativeMask = 0x8000;
     }
 
     if (C) {
@@ -740,6 +743,8 @@ void Cpu65816::handleASL_A(uint32_t data)
     } else {
         m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
     }
+
+    setNZFlags(m_Registers.A, negativeMask);
 }
 
 void Cpu65816::handleBEQ(uint32_t data)
