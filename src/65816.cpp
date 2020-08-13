@@ -244,6 +244,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::DpIndirectLongIndexedY,
             &Cpu65816::handleLDA,
         }, {
+            "LDA",
+            0xBF,
+            Cpu65816::AddressingMode::AbsoluteLongIndexedX,
+            &Cpu65816::handleLDA,
+        }, {
             "LDX",
             0xA2,
             Cpu65816::AddressingMode::ImmediateIndex,
@@ -422,6 +427,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "STA",
             0x9F,
             Cpu65816::AddressingMode::AbsoluteLongIndexedX,
+            &Cpu65816::handleSTA,
+        }, {
+            "STA",
+            0x87,
+            Cpu65816::AddressingMode::DpIndirectLong,
             &Cpu65816::handleSTA,
         }, {
             "STA",
