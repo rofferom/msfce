@@ -1584,7 +1584,6 @@ void Cpu65816::handleCPYImmediate(uint32_t data)
 
 void Cpu65816::handleDEC_A(uint32_t data)
 {
-    uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
@@ -1650,7 +1649,6 @@ void Cpu65816::handleDEY(uint32_t data)
 
 void Cpu65816::handleEOR(uint32_t data)
 {
-    uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
@@ -1666,7 +1664,6 @@ void Cpu65816::handleEOR(uint32_t data)
 
 void Cpu65816::handleEORImmediate(uint32_t data)
 {
-    uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
@@ -1682,7 +1679,6 @@ void Cpu65816::handleEORImmediate(uint32_t data)
 
 void Cpu65816::handleINC_A(uint32_t data)
 {
-    uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
@@ -1925,7 +1921,6 @@ void Cpu65816::handleNOP(uint32_t data)
 
 void Cpu65816::handleORA(uint32_t data)
 {
-    uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
@@ -1941,7 +1936,6 @@ void Cpu65816::handleORA(uint32_t data)
 
 void Cpu65816::handleORAImmediate(uint32_t data)
 {
-    uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
@@ -2424,7 +2418,6 @@ void Cpu65816::handleSTZ(uint32_t data)
 
 void Cpu65816::handleTAX(uint32_t data)
 {
-    uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
