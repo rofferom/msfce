@@ -74,6 +74,7 @@ private:
     void handleNOP(uint32_t data);
     void handleORA(uint32_t data);
     void handleORAImmediate(uint32_t data);
+    void handlePER(uint32_t data);
     void handlePHA(uint32_t data);
     void handlePHB(uint32_t data);
     void handlePHD(uint32_t data);
@@ -159,6 +160,7 @@ private:
         DpIndirectLong,
         DpIndirectLongIndexedY,
         PcRelative,
+        PcRelativeLong,
         BlockMove,
     };
 

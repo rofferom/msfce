@@ -538,6 +538,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::AbsoluteIndexedX,
             &Cpu65816::handleORA,
         }, {
+            "PER",
+            0x62,
+            Cpu65816::AddressingMode::PcRelativeLong,
+            &Cpu65816::handlePER,
+        }, {
             "PHA",
             0x48,
             Cpu65816::AddressingMode::Implied,
@@ -1088,6 +1093,17 @@ void Cpu65816::executeSingle()
         m_Registers.PC += 1;
 
         data = m_Registers.PC + static_cast<int8_t>(rawData);
+        data |= m_Registers.PB << 16;
+
+        snprintf(strIntruction, sizeof(strIntruction), "%s $%02X [%06X]", opcodeDesc.m_Name, rawData, data);
+        break;
+    }
+
+    case AddressingMode::PcRelativeLong: {
+        uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+        m_Registers.PC += 2;
+
+        data = m_Registers.PC + rawData;
         data |= m_Registers.PB << 16;
 
         snprintf(strIntruction, sizeof(strIntruction), "%s $%02X [%06X]", opcodeDesc.m_Name, rawData, data);
@@ -2013,6 +2029,12 @@ void Cpu65816::handleORAImmediate(uint32_t data)
         m_Registers.A |= data;
         setNZFlags(m_Registers.A, 0x8000);
     }
+}
+
+void Cpu65816::handlePER(uint32_t data)
+{
+    m_Registers.S -= 2;
+    m_Membus->writeU16(m_Registers.S, data & 0xFFFF);
 }
 
 void Cpu65816::handlePHA(uint32_t data)
