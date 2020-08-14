@@ -468,6 +468,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::Dp,
             &Cpu65816::handleLSR,
         }, {
+            "MVN",
+            0x54,
+            Cpu65816::AddressingMode::BlockMove,
+            &Cpu65816::handleMVN,
+        }, {
             "NOP",
             0xEA,
             Cpu65816::AddressingMode::Implied,
@@ -1050,6 +1055,14 @@ void Cpu65816::executeSingle()
         data = m_Registers.PC + static_cast<int8_t>(rawData);
 
         snprintf(strIntruction, sizeof(strIntruction), "%s $%02X [%06X]", opcodeDesc.m_Name, rawData, data);
+        break;
+    }
+
+    case AddressingMode::BlockMove: {
+        data = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+        m_Registers.PC += 2;
+
+        snprintf(strIntruction, sizeof(strIntruction), "%s $%02X, $%02X", opcodeDesc.m_Name, data & 0xFF, data >> 8);
         break;
     }
 
@@ -1912,6 +1925,23 @@ void Cpu65816::handleLSR(uint32_t data)
         m_Registers.P = setBit(m_Registers.P, kPRegister_C);
     } else {
         m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
+    }
+}
+
+void Cpu65816::handleMVN(uint32_t data)
+{
+    uint8_t srcBank = data & 0xFF;
+    m_Registers.DB = data >> 16;
+
+    while (m_Registers.A != 0xFFFF) {
+        uint32_t srcAddr = (srcBank << 16) | m_Registers.X;
+        uint32_t destAddr = (m_Registers.DB) | m_Registers.Y;
+
+        m_Membus->writeU8(destAddr, m_Membus->readU8(srcAddr));
+
+        m_Registers.A--;
+        m_Registers.X++;
+        m_Registers.Y++;
     }
 }
 

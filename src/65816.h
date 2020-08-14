@@ -70,6 +70,7 @@ private:
     void handleLDY(uint32_t data);
     void handleLSR_A(uint32_t data);
     void handleLSR(uint32_t data);
+    void handleMVN(uint32_t data);
     void handleNOP(uint32_t data);
     void handleORA(uint32_t data);
     void handleORAImmediate(uint32_t data);
@@ -158,6 +159,7 @@ private:
         DpIndirectLong,
         DpIndirectLongIndexedY,
         PcRelative,
+        BlockMove,
     };
 
     typedef void (Cpu65816::*OpcodeHandler)(uint32_t data);
