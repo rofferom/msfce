@@ -193,6 +193,7 @@ uint8_t* Membus::getWritePointer(size_t addr)
     case kRegisterWMADDM:
     case kRegisterWMADDH:
     case kRegisterWMDATA:
+        LOGC(TAG, "Unhandled write address 0x%06X", static_cast<uint32_t>(addr));
         assert(false);
         return nullptr;
 
