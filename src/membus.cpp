@@ -62,6 +62,7 @@ const uint8_t* Membus::getReadPointer(size_t addr)
         }
     }
 
+    LOGC(TAG, "Unhandled read address 0x%06X", static_cast<uint32_t>(addr));
     assert(false);
     return nullptr;
 }
