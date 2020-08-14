@@ -1053,6 +1053,7 @@ void Cpu65816::executeSingle()
         m_Registers.PC += 1;
 
         data = m_Registers.PC + static_cast<int8_t>(rawData);
+        data |= m_Registers.PB << 16;
 
         snprintf(strIntruction, sizeof(strIntruction), "%s $%02X [%06X]", opcodeDesc.m_Name, rawData, data);
         break;
