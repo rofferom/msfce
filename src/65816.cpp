@@ -2339,18 +2339,18 @@ void Cpu65816::handleSBC(uint32_t address)
             m_Registers.P = clearBit(m_Registers.P, kPRegister_V);
         }
 
+        // C Flag
+        if ((m_Registers.A & 0xFF) >= data) {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
+        } else {
+            m_Registers.P = setBit(m_Registers.P, kPRegister_C);
+        }
+
         m_Registers.A = (m_Registers.A & 0xFF00) | (result & 0xFF);
 
         // Z and N Flag
         setZFlag(m_Registers.A & 0xFF);
         setNFlag(m_Registers.A, 0x80);
-
-        // C Flag
-        if (result >= 0x100) {
-            m_Registers.P = setBit(m_Registers.P, kPRegister_C);
-        } else {
-            m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
-        }
     } else {
         uint32_t data = m_Membus->readU16(address);
         uint32_t result = m_Registers.A - data - 1 + getBit(m_Registers.P, kPRegister_C);
@@ -2363,18 +2363,18 @@ void Cpu65816::handleSBC(uint32_t address)
             m_Registers.P = clearBit(m_Registers.P, kPRegister_V);
         }
 
+        // C Flag
+        if (m_Registers.A >= data) {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
+        } else {
+            m_Registers.P = setBit(m_Registers.P, kPRegister_C);
+        }
+
         m_Registers.A = result & 0xFFFF;
 
         // Z and N Flag
         setZFlag(m_Registers.A);
         setNFlag(m_Registers.A, 0x8000);
-
-        // C Flag
-        if (result >= 0x10000) {
-            m_Registers.P = setBit(m_Registers.P, kPRegister_C);
-        } else {
-            m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
-        }
     }
 }
 
