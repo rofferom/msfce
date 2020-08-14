@@ -90,6 +90,8 @@ uint8_t Membus::readU8(size_t addr)
         return 0;
     } else if (bank == 0 && (offset == kRegisterJoy2L || offset == kRegisterJoy2H)) {
         return 0;
+    } else if (bank == 0 && (offset == kRegisterJoyA || offset == kRegisterJoyB)) {
+        return 0;
     }
 
     auto ptr = getReadPointer(addr);
@@ -177,11 +179,11 @@ uint8_t* Membus::getWritePointer(size_t addr)
     case kRegNmitimen:
     case kRegisterMDMAEN:
     case kRegisterHDMAEN:
+    case kRegisterJoyWr:
         LOGW(TAG , "%02X write ignored", static_cast<uint32_t>(addr));
         return nullptr;
 
     case kRegisterMemsel:
-    case kRegisterJoyWr:
     case kRegisterJoyWrio:
     case kRegisterWRMPYA:
     case kRegisterWRMPYB:

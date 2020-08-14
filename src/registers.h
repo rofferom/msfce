@@ -37,6 +37,10 @@ constexpr size_t kRegisterWMADDH = 0x2183;
 
 // Joypad registers
 constexpr size_t kRegisterJoyWr = 0x4016;
+
+constexpr size_t kRegisterJoyA = 0x4016;
+constexpr size_t kRegisterJoyB = 0x4017;
+
 constexpr size_t kRegisterJoyWrio = 0x4201;
 
 constexpr size_t kRegisterJoy1L = 0x4218;
