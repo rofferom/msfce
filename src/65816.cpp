@@ -209,7 +209,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
         }, {
             "EOR",
             0x49,
-            Cpu65816::AddressingMode::Immediate,
+            Cpu65816::AddressingMode::ImmediateA,
             &Cpu65816::handleEORImmediate,
         }, {
             "INC",
