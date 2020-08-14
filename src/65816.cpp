@@ -394,6 +394,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleLDA,
         }, {
             "LDA",
+            0xAF,
+            Cpu65816::AddressingMode::AbsoluteLong,
+            &Cpu65816::handleLDA,
+        }, {
+            "LDA",
             0xBD,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
             &Cpu65816::handleLDA,
@@ -521,6 +526,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "ORA",
             0x0D,
             Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleORA,
+        }, {
+            "ORA",
+            0x1F,
+            Cpu65816::AddressingMode::AbsoluteLongIndexedX,
             &Cpu65816::handleORA,
         }, {
             "ORA",
