@@ -6,8 +6,9 @@
 #include "65816.h"
 #include "apu.h"
 #include "log.h"
-#include "ppu.h"
+#include "maths.h"
 #include "membus.h"
+#include "ppu.h"
 
 #define TAG "main"
 
@@ -107,6 +108,9 @@ int main(int argc, char* argv[])
 
     auto ppu = std::make_shared<Ppu>();
     membus->plugPpu(ppu);
+
+    auto maths = std::make_shared<Maths>();
+    membus->plugMaths(maths);
 
     auto cpu = std::make_unique<Cpu65816>(membus);
 

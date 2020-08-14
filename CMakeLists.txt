@@ -15,6 +15,9 @@ set(MSFE_SOURCES
     src/log.h
     src/log.cpp
 
+    src/maths.h
+    src/maths.cpp
+
     src/membus.h
     src/membus.cpp
 

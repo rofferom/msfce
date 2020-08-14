@@ -1,6 +1,7 @@
 #include <assert.h>
 #include "apu.h"
 #include "log.h"
+#include "maths.h"
 #include "ppu.h"
 #include "utils.h"
 #include "registers.h"
@@ -28,6 +29,29 @@ bool isPpuAddress(size_t addr, uint8_t bank, uint16_t offset)
     case kRegTIMEUP:
     case kRegVTIMEL:
     case kRegVTIMEH:
+        return true;
+
+    default:
+        return false;
+    }
+}
+
+bool isMathsAddress(size_t addr, uint8_t bank, uint16_t offset)
+{
+    if (bank != 0x00) {
+        return false;
+    }
+
+    switch (offset) {
+    case kRegisterWRMPYA:
+    case kRegisterWRMPYB:
+    case kRegisterWRDIVL:
+    case kRegisterWRDIVH:
+    case kRegisterWRDIVB:
+    case kRegisterRDDIVL:
+    case kRegisterRDDIVH:
+    case kRegisterRDMPYL:
+    case kRegisterRDMPYH:
         return true;
 
     default:
@@ -85,6 +109,11 @@ uint8_t Membus::readU8(size_t addr)
         return m_Ppu->readU8(addr);
     }
 
+    // Maths
+    if (isMathsAddress(addr, bank, offset)) {
+        return m_Maths->readU8(addr);
+    }
+
     // Joypad
     if (bank == 0 && (offset == kRegisterJoy1L || offset == kRegisterJoy1H)) {
         return 0;
@@ -113,6 +142,11 @@ uint16_t Membus::readU16(size_t addr)
         return m_Ppu->readU16(addr);
     }
 
+    // Maths
+    if (isMathsAddress(addr, bank, offset)) {
+        return m_Maths->readU16(addr);
+    }
+
     // Joypad
     if (bank == 0 && offset == kRegisterJoy1L) {
         return 0;
@@ -137,6 +171,12 @@ uint32_t Membus::readU24(size_t addr)
 
     // PPU
     if (isPpuAddress(addr, bank, offset)) {
+        assert(false);
+        return 0;
+    }
+
+    // Maths
+    if (isMathsAddress(addr, bank, offset)) {
         assert(false);
         return 0;
     }
@@ -228,6 +268,12 @@ void Membus::writeU8(size_t addr, uint8_t value)
         return;
     }
 
+    // Maths
+    if (isMathsAddress(addr, bank, offset)) {
+        m_Maths->writeU8(addr, value);
+        return;
+    }
+
     if (addr == kRegNmitimen) {
         LOGI(TAG, "Writting to kRegNmitimen: 0x%02X", value);
         return;
@@ -260,6 +306,11 @@ void Membus::writeU16(size_t addr, uint16_t value)
         return;
     }
 
+    // Maths
+    if (isMathsAddress(addr, bank, offset)) {
+        m_Maths->writeU16(addr, value);
+        return;
+    }
 
     auto ptr = getWritePointer(addr);
     if (ptr) {
@@ -285,6 +336,11 @@ void Membus::writeU24(size_t addr, uint32_t value)
         return;
     }
 
+    // Maths
+    if (isMathsAddress(addr, bank, offset)) {
+        assert(false);
+        return;
+    }
 
     auto ptr = getWritePointer(addr);
     if (ptr) {
@@ -305,6 +361,13 @@ int Membus::plugRom(std::unique_ptr<std::vector<uint8_t>> rom)
 int Membus::plugApu(const std::shared_ptr<Apu>& spu)
 {
     m_Apu = spu;
+
+    return 0;
+}
+
+int Membus::plugMaths(const std::shared_ptr<Maths>& maths)
+{
+    m_Maths = maths;
 
     return 0;
 }
