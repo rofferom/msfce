@@ -249,7 +249,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
         }, {
             "JMP",
             0x4C,
-            Cpu65816::AddressingMode::Absolute,
+            Cpu65816::AddressingMode::AbsoluteJMP,
             &Cpu65816::handleJMP,
         }, {
             "JSL",
@@ -259,7 +259,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
         }, {
             "JSR",
             0x20,
-            Cpu65816::AddressingMode::Absolute,
+            Cpu65816::AddressingMode::AbsoluteJMP,
             &Cpu65816::handleJSR,
         }, {
             "LDA",
@@ -722,6 +722,16 @@ void Cpu65816::executeSingle()
         m_Registers.PC += 2;
 
         data = (m_Registers.DB << 16) | rawData;
+
+        snprintf(strIntruction, sizeof(strIntruction), "%s $%04X [%06X]", opcodeDesc.m_Name, rawData, data);
+        break;
+    }
+
+    case AddressingMode::AbsoluteJMP: {
+        uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+        m_Registers.PC += 2;
+
+        data = (m_Registers.PB << 16) | rawData;
 
         snprintf(strIntruction, sizeof(strIntruction), "%s $%04X [%06X]", opcodeDesc.m_Name, rawData, data);
         break;
@@ -1460,7 +1470,8 @@ void Cpu65816::handleINY(uint32_t data)
 
 void Cpu65816::handleJMP(uint32_t data)
 {
-    m_Registers.PC = data;
+    m_Registers.PB = data >> 16;
+    m_Registers.PC = data & 0xFFFF;
 }
 
 void Cpu65816::handleJSR(uint32_t data)
@@ -1474,7 +1485,7 @@ void Cpu65816::handleJSR(uint32_t data)
 void Cpu65816::handleJSL(uint32_t data)
 {
     m_Registers.S -= 1;
-    m_Membus->writeU8(m_Registers.S, m_Registers.PC >> 16);
+    m_Membus->writeU8(m_Registers.S, m_Registers.PB);
 
     m_Registers.S -= 2;
     m_Membus->writeU16(m_Registers.S, (m_Registers.PC & 0xFFFF) - 1);
