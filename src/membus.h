@@ -9,25 +9,6 @@ class Ppu;
 class Maths;
 
 class Membus {
-/*
-public:
-    class ReadHook {
-    public:
-        virtual ~ReadHook() = default;
-
-        virtual uint8_t readU8(size_t addr) = 0;
-        virtual uint16_t readU16(size_t addr) = 0;
-    };
-
-    class WriteHook {
-    public:
-        virtual ~WriteHook() = default;
-
-        virtual void writeU8(size_t addr, uint8_t value) = 0;
-        virtual void writeU16(size_t addr, uint16_t value) = 0;
-    };
-*/
-
 public:
     Membus() = default;
     ~Membus() = default;
