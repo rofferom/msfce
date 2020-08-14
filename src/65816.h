@@ -34,10 +34,12 @@ private:
     void handleBCC(uint32_t data);
     void handleBCS(uint32_t data);
     void handleBEQ(uint32_t data);
+    void handleBIT(uint32_t data);
     void handleBMI(uint32_t data);
     void handleBRA(uint32_t data);
     void handleBNE(uint32_t data);
     void handleBPL(uint32_t data);
+    void handleBVC(uint32_t data);
     void handleBVS(uint32_t data);
     void handleCLC(uint32_t data);
     void handleCLI(uint32_t data);
@@ -67,6 +69,7 @@ private:
     void handleLDYImmediate(uint32_t data);
     void handleLDY(uint32_t data);
     void handleLSR_A(uint32_t data);
+    void handleLSR(uint32_t data);
     void handleNOP(uint32_t data);
     void handleORA(uint32_t data);
     void handleORAImmediate(uint32_t data);
@@ -85,6 +88,8 @@ private:
     void handlePLY(uint32_t data);
     void handleREP(uint32_t data);
     void handleROL_A(uint32_t data);
+    void handleROL(uint32_t data);
+    void handleROR_A(uint32_t data);
     void handleRTI(uint32_t data);
     void handleRTL(uint32_t data);
     void handleRTS(uint32_t data);
@@ -101,6 +106,8 @@ private:
     void handleTAY(uint32_t data);
     void handleTCD(uint32_t data);
     void handleTCS(uint32_t data);
+    void handleTRB(uint32_t data);
+    void handleTSB(uint32_t data);
     void handleTXA(uint32_t data);
     void handleTXS(uint32_t data);
     void handleTXY(uint32_t data);

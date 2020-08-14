@@ -58,6 +58,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleADC,
         }, {
             "ADC",
+            0x75,
+            Cpu65816::AddressingMode::DpIndexedX,
+            &Cpu65816::handleADC,
+        }, {
+            "ADC",
             0x6D,
             Cpu65816::AddressingMode::Absolute,
             &Cpu65816::handleADC,
@@ -65,6 +70,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "ADC",
             0x7F,
             Cpu65816::AddressingMode::AbsoluteLongIndexedX,
+            &Cpu65816::handleADC,
+        }, {
+            "ADC",
+            0x7D,
+            Cpu65816::AddressingMode::AbsoluteIndexedX,
             &Cpu65816::handleADC,
         }, {
             "ADC",
@@ -85,6 +95,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "AND",
             0x2D,
             Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleAND,
+        }, {
+            "AND",
+            0x3D,
+            Cpu65816::AddressingMode::AbsoluteIndexedX,
             &Cpu65816::handleAND,
         }, {
             "AND",
@@ -122,6 +137,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::PcRelative,
             &Cpu65816::handleBCS,
         }, {
+            "BIT",
+            0x24,
+            Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleBIT,
+        }, {
+            "BIT",
+            0x2C,
+            Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleBIT,
+        }, {
             "BMI",
             0x30,
             Cpu65816::AddressingMode::PcRelative,
@@ -142,6 +167,12 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::PcRelative,
             &Cpu65816::handleBRA,
         }, {
+            "BVC",
+            0x50,
+            Cpu65816::AddressingMode::PcRelative,
+            &Cpu65816::handleBVC,
+        }, {
+
             "BVS",
             0x70,
             Cpu65816::AddressingMode::PcRelative,
@@ -168,6 +199,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleCMP,
         }, {
             "CMP",
+            0xD5,
+            Cpu65816::AddressingMode::DpIndexedX,
+            &Cpu65816::handleCMP,
+        }, {
+            "CMP",
             0xCD,
             Cpu65816::AddressingMode::Absolute,
             &Cpu65816::handleCMP,
@@ -191,6 +227,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0xE0,
             Cpu65816::AddressingMode::ImmediateIndex,
             &Cpu65816::handleCPXImmediate,
+        }, {
+            "CPX",
+            0xE4,
+            Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleCPX,
         }, {
             "CPX",
             0xEC,
@@ -403,6 +444,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleLDY,
         }, {
             "LDY",
+            0xB4,
+            Cpu65816::AddressingMode::DpIndexedX,
+            &Cpu65816::handleLDY,
+        }, {
+            "LDY",
             0xAC,
             Cpu65816::AddressingMode::Absolute,
             &Cpu65816::handleLDY,
@@ -416,6 +462,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0x4A,
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handleLSR_A,
+        }, {
+            "LSR",
+            0x46,
+            Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleLSR,
         }, {
             "NOP",
             0xEA,
@@ -435,6 +486,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "ORA",
             0x0D,
             Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleORA,
+        }, {
+            "ORA",
+            0x19,
+            Cpu65816::AddressingMode::AbsoluteIndexedY,
             &Cpu65816::handleORA,
         }, {
             "ORA",
@@ -522,6 +578,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handleROL_A,
         }, {
+            "ROL",
+            0x26,
+            Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleROL,
+        }, {
+            "ROR",
+            0x6A,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handleROR_A,
+        }, {
             "RTI",
             0x40,
             Cpu65816::AddressingMode::Implied,
@@ -548,8 +614,18 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleSBC,
         }, {
             "SBC",
+            0xF5,
+            Cpu65816::AddressingMode::DpIndexedX,
+            &Cpu65816::handleSBC,
+        }, {
+            "SBC",
             0xED,
             Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleSBC,
+        }, {
+            "SBC",
+            0xFD,
+            Cpu65816::AddressingMode::AbsoluteIndexedX,
             &Cpu65816::handleSBC,
         }, {
             "SBC",
@@ -676,6 +752,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0x1B,
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handleTCS,
+        }, {
+            "TRB",
+            0x14,
+            Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleTRB,
+        }, {
+            "TSB",
+            0x04,
+            Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleTSB,
         }, {
             "TXA",
             0x8A,
@@ -998,6 +1084,8 @@ void Cpu65816::logInstruction(uint32_t opcodePC, const char* strIntruction)
     while (m_InstructionsLog.size() > kInstructionsLogSize) {
         m_InstructionsLog.pop_front();
     }
+
+    //LOGC(TAG, "%s", s);
 }
 
 void Cpu65816::printInstructionsLog() const
@@ -1288,6 +1376,48 @@ void Cpu65816::handleBEQ(uint32_t data)
     }
 }
 
+void Cpu65816::handleBIT(uint32_t address)
+{
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
+
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        uint8_t data = m_Membus->readU8(address);
+        uint8_t result = (m_Registers.A & 0xFF) & data;
+
+        setZFlag(result);
+
+        if (data & (1 << 7)) {
+            m_Registers.P = setBit(m_Registers.P, kPRegister_N);
+        } else {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_N);
+        }
+
+        if (data & (1 << 6)) {
+            m_Registers.P = setBit(m_Registers.P, kPRegister_V);
+        } else {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_V);
+        }
+    } else {
+        uint16_t data = m_Membus->readU16(address);
+        uint16_t result = m_Registers.A & data;
+
+        setZFlag(result);
+
+        if (data & (1 << 15)) {
+            m_Registers.P = setBit(m_Registers.P, kPRegister_N);
+        } else {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_N);
+        }
+
+        if (data & (1 << 14)) {
+            m_Registers.P = setBit(m_Registers.P, kPRegister_V);
+        } else {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_V);
+        }
+    }
+}
+
 void Cpu65816::handleBMI(uint32_t data)
 {
     if (getBit(m_Registers.P, kPRegister_N)) {
@@ -1312,6 +1442,13 @@ void Cpu65816::handleBPL(uint32_t data)
 void Cpu65816::handleBRA(uint32_t data)
 {
     m_Registers.PC = data;
+}
+
+void Cpu65816::handleBVC(uint32_t data)
+{
+    if (!getBit(m_Registers.P, kPRegister_V)) {
+        m_Registers.PC = data;
+    }
 }
 
 void Cpu65816::handleBVS(uint32_t data)
@@ -1751,6 +1888,37 @@ void Cpu65816::handleLSR_A(uint32_t data)
     }
 }
 
+void Cpu65816::handleLSR(uint32_t data)
+{
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
+    uint32_t C = getBit(m_Registers.P, kPRegister_C);
+
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        uint16_t v = m_Membus->readU8(data);
+
+        C = v & 1;
+        v >>= 1;
+
+        m_Membus->writeU8(data, v);
+        setNZFlags(m_Registers.A & 0xFF, 0x80);
+    } else {
+        uint32_t v = m_Membus->readU16(data);
+
+        C = v & 1;
+        v >>= 1;
+
+        m_Membus->writeU16(data, v);
+        setNZFlags(m_Registers.A, 0x8000);
+    }
+
+    if (C) {
+        m_Registers.P = setBit(m_Registers.P, kPRegister_C);
+    } else {
+        m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
+    }
+}
+
 void Cpu65816::handleNOP(uint32_t data)
 {
 }
@@ -1946,6 +2114,7 @@ void Cpu65816::handleROL_A(uint32_t data)
         C = v >> 8;
 
         m_Registers.A = (m_Registers.A & 0xFF00) | (v & 0xFF);
+        setNZFlags(m_Registers.A, 0x80);
     } else {
         uint32_t v = m_Registers.A;
 
@@ -1953,9 +2122,75 @@ void Cpu65816::handleROL_A(uint32_t data)
         C = v >> 16;
 
         m_Registers.A = v & 0xFFFF;
+        setNZFlags(m_Registers.A, 0x8000);
     }
 
     if (C) {
+        m_Registers.P = setBit(m_Registers.P, kPRegister_C);
+    } else {
+        m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
+    }
+}
+
+void Cpu65816::handleROL(uint32_t data)
+{
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
+    uint32_t C = getBit(m_Registers.P, kPRegister_C);
+
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        uint16_t v = m_Membus->readU8(data);
+
+        v = (v << 1) | C;
+        C = v >> 8;
+
+        v &= 0xFF;
+        m_Membus->writeU8(data, v);
+        setNZFlags(v, 0x80);
+    } else {
+        uint32_t v = m_Membus->readU8(data);
+
+        v = (v << 1) | C;
+        C = v >> 16;
+
+        v &= 0xFFFF;
+        m_Membus->writeU16(data, v);
+        setNZFlags(v, 0x8000);
+    }
+
+    if (C) {
+        m_Registers.P = setBit(m_Registers.P, kPRegister_C);
+    } else {
+        m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
+    }
+}
+
+void Cpu65816::handleROR_A(uint32_t data)
+{
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
+    uint32_t C = getBit(m_Registers.P, kPRegister_C);
+    uint32_t finalC;
+
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        uint16_t v = m_Registers.A & 0xFF;
+
+        finalC = v & 1;
+        v = (C << 7) | (v >> 1);
+
+        m_Registers.A = (m_Registers.A & 0xFF00) | (v & 0xFF);
+        setNZFlags(m_Registers.A, 0x80);
+    } else {
+        uint32_t v = m_Registers.A;
+
+        finalC = v & 1;
+        v = (C << 15) | (v >> 1);
+
+        m_Registers.A = v & 0xFFFF;
+        setNZFlags(m_Registers.A, 0x8000);
+    }
+
+    if (finalC) {
         m_Registers.P = setBit(m_Registers.P, kPRegister_C);
     } else {
         m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
@@ -2228,6 +2463,70 @@ void Cpu65816::handleTCD(uint32_t data)
 void Cpu65816::handleTCS(uint32_t data)
 {
     m_Registers.S = m_Registers.A;
+}
+
+void Cpu65816::handleTRB(uint32_t address)
+{
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
+
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        uint8_t data = m_Membus->readU8(address);
+
+        // Set Z
+        if ((data & (m_Registers.A & 0xFF)) == 0) {
+            m_Registers.P = setBit(m_Registers.P, kPRegister_Z);
+        } else {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_Z);
+        }
+
+        data &= ~(m_Registers.A & 0xFF);
+        m_Membus->writeU8(address, data);
+    } else {
+        uint16_t data = m_Membus->readU16(address);
+
+        // Set Z
+        if ((data & m_Registers.A) == 0) {
+            m_Registers.P = setBit(m_Registers.P, kPRegister_Z);
+        } else {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_Z);
+        }
+
+        data &= ~m_Registers.A;
+        m_Membus->writeU16(address, data);
+    }
+}
+
+void Cpu65816::handleTSB(uint32_t address)
+{
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
+
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        uint8_t data = m_Membus->readU8(address);
+
+        // Set Z
+        if ((data & (m_Registers.A & 0xFF)) == 0) {
+            m_Registers.P = setBit(m_Registers.P, kPRegister_Z);
+        } else {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_Z);
+        }
+
+        data |= (m_Registers.A & 0xFF);
+        m_Membus->writeU8(address, data);
+    } else {
+        uint16_t data = m_Membus->readU16(address);
+
+        // Set Z
+        if ((data & m_Registers.A) == 0) {
+            m_Registers.P = setBit(m_Registers.P, kPRegister_Z);
+        } else {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_Z);
+        }
+
+        data |= m_Registers.A;
+        m_Membus->writeU16(address, data);
+    }
 }
 
 void Cpu65816::handleTXA(uint32_t data)
