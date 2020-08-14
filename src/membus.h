@@ -5,6 +5,7 @@
 #include <vector>
 
 class Apu;
+class Dma;
 class Ppu;
 class Maths;
 
@@ -21,10 +22,11 @@ public:
     void writeU16(size_t addr, uint16_t value);
     void writeU24(size_t addr, uint32_t value);
 
-    int plugRom(std::unique_ptr<std::vector<uint8_t>> rom);
     int plugApu(const std::shared_ptr<Apu>& spu);
+    int plugDma(const std::shared_ptr<Dma>& dma);
     int plugMaths(const std::shared_ptr<Maths>& maths);
     int plugPpu(const std::shared_ptr<Ppu>& ppu);
+    int plugRom(std::unique_ptr<std::vector<uint8_t>> rom);
 
 private:
     const uint8_t* getReadPointer(size_t addr);
@@ -47,6 +49,7 @@ private:
     const uint8_t* m_Rom = nullptr;
 
     std::shared_ptr<Apu> m_Apu;
+    std::shared_ptr<Dma> m_Dma;
     std::shared_ptr<Maths> m_Maths;
     std::shared_ptr<Ppu> m_Ppu;
 };

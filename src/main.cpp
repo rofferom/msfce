@@ -5,6 +5,7 @@
 #include <vector>
 #include "65816.h"
 #include "apu.h"
+#include "dma.h"
 #include "log.h"
 #include "maths.h"
 #include "membus.h"
@@ -111,6 +112,9 @@ int main(int argc, char* argv[])
 
     auto maths = std::make_shared<Maths>();
     membus->plugMaths(maths);
+
+    auto dma = std::make_shared<Dma>(membus);
+    membus->plugDma(dma);
 
     auto cpu = std::make_unique<Cpu65816>(membus);
 

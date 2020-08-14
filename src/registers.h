@@ -130,6 +130,23 @@ constexpr size_t kRegisterHDMAEN = 0x420C;
 constexpr size_t kRegDmaStart = 0x4300;
 constexpr size_t kRegDmaEnd = 0x437F;
 
+constexpr size_t kRegDmaP = 0x0;
+
+constexpr size_t kRegDmaBBAD = 0x1;
+
+constexpr size_t kRegDmaA1TL = 0x2;
+constexpr size_t kRegDmaA1TH = 0x3;
+constexpr size_t kRegDmaA1B = 0x4;
+
+constexpr size_t kRegDmaDASL = 0x5;
+constexpr size_t kRegDmaDASH = 0x6;
+constexpr size_t kRegDmaDASB = 0x7;
+
+constexpr size_t kRegDmaA2AL = 0x8;
+constexpr size_t kRegDmaA2AH = 0x9;
+
+constexpr size_t kRegDmaNTRL = 0xA;
+
 // Misc Registers
 constexpr size_t kRegisterHTIMEL = 0x4207;
 constexpr size_t kRegisterHTIMEH = 0x4208;

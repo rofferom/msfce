@@ -1,5 +1,6 @@
 #include <assert.h>
 #include "apu.h"
+#include "dma.h"
 #include "log.h"
 #include "maths.h"
 #include "ppu.h"
@@ -69,6 +70,26 @@ bool isMathsAddress(size_t addr, uint8_t bank, uint16_t offset)
     }
 }
 
+bool isDmaAddress(size_t addr, uint8_t bank, uint16_t offset)
+{
+    if (bank != 0x00) {
+        return false;
+    }
+
+    if (kRegDmaStart <= offset && offset <= kRegDmaEnd) {
+        return true;
+    }
+
+    switch (offset) {
+    case kRegisterMDMAEN:
+    case kRegisterHDMAEN:
+        return true;
+
+    default:
+        return false;
+    }
+}
+
 } // anonymous namespace
 
 const uint8_t* Membus::getReadPointer(size_t addr)
@@ -79,9 +100,11 @@ const uint8_t* Membus::getReadPointer(size_t addr)
     // WRAM
     if (kWramBankStart <= bank && bank <= kWramBankEnd) {
         // Direct access
+        //LOGI(TAG, "Read from 0x%06X", (uint32_t) ((bank - kWramBankStart) * kBankSize + offset));
         return &m_Wram[(bank - kWramBankStart) * kBankSize + offset];
     } else if (bank <= 0x3F && offset <= 0x1FFF) {
         // Bank 0x00 => 0x3F mirror
+        //LOGI(TAG, "Read from 0x%06X", offset);
         return &m_Wram[offset];
     }
 
@@ -124,6 +147,11 @@ uint8_t Membus::readU8(size_t addr)
         return m_Maths->readU8(addr);
     }
 
+    // DMA
+    if (isDmaAddress(addr, bank, offset)) {
+        return m_Dma->readU8(addr);
+    }
+
     // Joypad
     if (bank == 0 && (offset == kRegisterJoy1L || offset == kRegisterJoy1H)) {
         return 0;
@@ -157,6 +185,11 @@ uint16_t Membus::readU16(size_t addr)
         return m_Maths->readU16(addr);
     }
 
+    // DMA
+    if (isDmaAddress(addr, bank, offset)) {
+        return m_Dma->readU16(addr);
+    }
+
     // Joypad
     if (bank == 0 && offset == kRegisterJoy1L) {
         return 0;
@@ -187,6 +220,12 @@ uint32_t Membus::readU24(size_t addr)
 
     // Maths
     if (isMathsAddress(addr, bank, offset)) {
+        assert(false);
+        return 0;
+    }
+
+    // DMA
+    if (isDmaAddress(addr, bank, offset)) {
         assert(false);
         return 0;
     }
@@ -284,6 +323,12 @@ void Membus::writeU8(size_t addr, uint8_t value)
         return;
     }
 
+    // Dma
+    if (isDmaAddress(addr, bank, offset)) {
+        m_Dma->writeU8(addr, value);
+        return;
+    }
+
     if (addr == kRegNmitimen) {
         LOGI(TAG, "Writting to kRegNmitimen: 0x%02X", value);
         return;
@@ -322,6 +367,12 @@ void Membus::writeU16(size_t addr, uint16_t value)
         return;
     }
 
+    // Dma
+    if (isDmaAddress(addr, bank, offset)) {
+        m_Dma->writeU16(addr, value);
+        return;
+    }
+
     auto ptr = getWritePointer(addr);
     if (ptr) {
         *ptr = value & 0xFF;;
@@ -352,6 +403,12 @@ void Membus::writeU24(size_t addr, uint32_t value)
         return;
     }
 
+    // Dma
+    if (isDmaAddress(addr, bank, offset)) {
+        assert(false);
+        return;
+    }
+
     auto ptr = getWritePointer(addr);
     if (ptr) {
         *ptr = value & 0xFF;;
@@ -360,17 +417,16 @@ void Membus::writeU24(size_t addr, uint32_t value)
     }
 }
 
-int Membus::plugRom(std::unique_ptr<std::vector<uint8_t>> rom)
+int Membus::plugApu(const std::shared_ptr<Apu>& spu)
 {
-    m_RomPtr = std::move(rom);
-    m_Rom = m_RomPtr->data();
+    m_Apu = spu;
 
     return 0;
 }
 
-int Membus::plugApu(const std::shared_ptr<Apu>& spu)
+int Membus::plugDma(const std::shared_ptr<Dma>& dma)
 {
-    m_Apu = spu;
+    m_Dma = dma;
 
     return 0;
 }
@@ -385,6 +441,14 @@ int Membus::plugMaths(const std::shared_ptr<Maths>& maths)
 int Membus::plugPpu(const std::shared_ptr<Ppu>& ppu)
 {
     m_Ppu = ppu;
+
+    return 0;
+}
+
+int Membus::plugRom(std::unique_ptr<std::vector<uint8_t>> rom)
+{
+    m_RomPtr = std::move(rom);
+    m_Rom = m_RomPtr->data();
 
     return 0;
 }

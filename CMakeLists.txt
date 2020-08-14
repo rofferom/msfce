@@ -12,6 +12,9 @@ set(MSFE_SOURCES
     src/apu.h
     src/apu.cpp
 
+    src/dma.h
+    src/dma.cpp
+
     src/log.h
     src/log.cpp
 
