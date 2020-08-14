@@ -10,6 +10,8 @@
 
 namespace {
 
+constexpr size_t kInstructionsLogSize = 10;
+
 constexpr uint32_t kPRegister_C = 0;
 constexpr uint32_t kPRegister_Z = 1;
 constexpr uint32_t kPRegister_I = 2;
@@ -654,7 +656,10 @@ void Cpu65816::executeSingle()
     const auto& opcodeDesc = m_Opcodes[opcode];
 
     if (!opcodeDesc.m_Name) {
-        LOGC(TAG, "Unknown opcode %02X (Address %06X)", opcode, opcodePC);
+        LOGC(TAG, "Unknown instruction detected");
+        LOGC(TAG, "Last %zu executed instructions", kInstructionsLogSize);
+        printInstructionsLog();
+        LOGC(TAG, "Unknown opcode 0x%02X (Address %06X)", opcode, opcodePC);
         assert(false);
     }
 
@@ -849,21 +854,39 @@ void Cpu65816::executeSingle()
         assert(false);
     }
 
-    if (m_State == State::running ) {
-        LOGI(TAG, "0X%06X %-32s A:%04X X:%04X Y:%04X S:%04X D:%04X DB:%02X P:%02X",
-            opcodePC,
-            strIntruction,
-            m_Registers.A,
-            m_Registers.X,
-            m_Registers.Y,
-            m_Registers.S,
-            m_Registers.D,
-            m_Registers.DB,
-            m_Registers.P);
-    }
+    logInstruction(opcodePC, strIntruction);
 
     assert(opcodeDesc.m_OpcodeHandler);
     (this->*opcodeDesc.m_OpcodeHandler)(data);
+}
+
+void Cpu65816::logInstruction(uint32_t opcodePC, const char* strIntruction)
+{
+    char s[256];
+
+    snprintf(s, sizeof(s), "%06X %-32s A:%04X X:%04X Y:%04X S:%04X D:%04X DB:%02X P:%02X",
+        opcodePC,
+        strIntruction,
+        m_Registers.A,
+        m_Registers.X,
+        m_Registers.Y,
+        m_Registers.S,
+        m_Registers.D,
+        m_Registers.DB,
+        m_Registers.P);
+
+    m_InstructionsLog.push_back(s);
+
+    while (m_InstructionsLog.size() > kInstructionsLogSize) {
+        m_InstructionsLog.pop_front();
+    }
+}
+
+void Cpu65816::printInstructionsLog() const
+{
+    for (const auto& s: m_InstructionsLog) {
+        LOGE(TAG, "\t%s", s.c_str());
+    }
 }
 
 void Cpu65816::handleNMI()

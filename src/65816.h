@@ -1,5 +1,6 @@
 #pragma once
 
+#include <list>
 #include <memory>
 
 class Membus;
@@ -14,6 +15,9 @@ public:
     void setNMI();
 
 private:
+    void logInstruction(uint32_t opcodePC, const char* strIntruction);
+    void printInstructionsLog() const;
+
     void handleNMI();
 
     void setNFlag(uint16_t value, uint16_t negativeMask);
@@ -160,4 +164,6 @@ private:
 
     State m_State = State::running;
     bool m_NMI = false;
+
+    std::list<std::string> m_InstructionsLog;
 };
