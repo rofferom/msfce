@@ -103,6 +103,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleAND,
         }, {
             "AND",
+            0x39,
+            Cpu65816::AddressingMode::AbsoluteIndexedY,
+            &Cpu65816::handleAND,
+        }, {
+            "AND",
             0x3F,
             Cpu65816::AddressingMode::AbsoluteLongIndexedX,
             &Cpu65816::handleAND,
@@ -204,6 +209,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleCMP,
         }, {
             "CMP",
+            0xD7,
+            Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            &Cpu65816::handleCMP,
+        }, {
+            "CMP",
             0xCD,
             Cpu65816::AddressingMode::Absolute,
             &Cpu65816::handleCMP,
@@ -259,6 +269,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleDEC,
         }, {
             "DEC",
+            0xD6,
+            Cpu65816::AddressingMode::DpIndexedX,
+            &Cpu65816::handleDEC,
+        }, {
+            "DEC",
             0xCE,
             Cpu65816::AddressingMode::Absolute,
             &Cpu65816::handleDEC,
@@ -284,8 +299,18 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleEOR,
         }, {
             "EOR",
+            0x55,
+            Cpu65816::AddressingMode::DpIndexedX,
+            &Cpu65816::handleEOR,
+        }, {
+            "EOR",
             0x4D,
             Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleEOR,
+        }, {
+            "EOR",
+            0x5D,
+            Cpu65816::AddressingMode::AbsoluteIndexedX,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
@@ -306,6 +331,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "INC",
             0xE6,
             Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleINC,
+        }, {
+            "INC",
+            0xF6,
+            Cpu65816::AddressingMode::DpIndexedX,
             &Cpu65816::handleINC,
         }, {
             "INC",
@@ -711,6 +741,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "STY",
             0x84,
             Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleSTY,
+        }, {
+            "STY",
+            0x94,
+            Cpu65816::AddressingMode::DpIndexedX,
             &Cpu65816::handleSTY,
         }, {
             "STY",
