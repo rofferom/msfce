@@ -8,6 +8,8 @@ public:
     Ppu() = default;
     ~Ppu() = default;
 
+    void dump() const;
+
     uint8_t readU8(size_t addr);
     uint16_t readU16(size_t addr);
 
@@ -17,9 +19,18 @@ public:
     bool isNMIEnabled() const;
 
 private:
+    void incrementVramAddress();
+
+private:
     bool m_ForcedBlanking = false;
     uint8_t m_Brightness = 0;
 
     // VBlank interrupt
     bool m_NMIEnabled = false;
+
+    // VRAM
+    bool m_VramIncrementHigh = false;
+    uint8_t m_VramIncrementStep = 0;
+    uint8_t m_Vram[64 * 1024];
+    uint16_t m_VramAddress = 0;
 };

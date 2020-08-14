@@ -29,6 +29,16 @@ bool isPpuAddress(size_t addr, uint8_t bank, uint16_t offset)
     case kRegTIMEUP:
     case kRegVTIMEL:
     case kRegVTIMEH:
+    case kRegVMAIN:
+    case kRegVMADDL:
+    case kRegVMADDH:
+    case kRegVMDATAL:
+    case kRegVMDATAH:
+    case kRegRDVRAML:
+    case kRegRDVRAMH:
+    case kRegOAMADDL:
+    case kRegOAMADDH:
+    case kRegOAMDATA:
         return true;
 
     default:
