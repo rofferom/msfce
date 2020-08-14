@@ -30,6 +30,7 @@ private:
     void handleANDImmediate(uint32_t data);
     void handleAND(uint32_t data);
     void handleASL_A(uint32_t data);
+    void handleASL(uint32_t data);
     void handleBCC(uint32_t data);
     void handleBCS(uint32_t data);
     void handleBEQ(uint32_t data);
@@ -68,6 +69,7 @@ private:
     void handleLSR_A(uint32_t data);
     void handleNOP(uint32_t data);
     void handleORA(uint32_t data);
+    void handleORAImmediate(uint32_t data);
     void handlePHA(uint32_t data);
     void handlePHB(uint32_t data);
     void handlePHD(uint32_t data);
@@ -135,6 +137,7 @@ private:
         ImmediateA,
         ImmediateIndex,
         Absolute,
+        AbsoluteJMP,
         AbsoluteIndexedX,
         AbsoluteIndexedY,
         AbsoluteLong,
@@ -142,7 +145,9 @@ private:
         AbsoluteLongIndexedX,
         Dp,
         DpIndexedX,
+        DpIndexedY,
         DpIndirect,
+        DpIndirectIndexedY,
         DpIndirectLong,
         DpIndirectLongIndexedY,
         PcRelative,
