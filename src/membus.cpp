@@ -25,6 +25,9 @@ bool isPpuAddress(size_t addr, uint8_t bank, uint16_t offset)
     switch (offset) {
     case kRegNmitimen:
     case kRegRDNMI:
+    case kRegTIMEUP:
+    case kRegVTIMEL:
+    case kRegVTIMEH:
         return true;
 
     default:

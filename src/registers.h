@@ -12,7 +12,10 @@ constexpr size_t kRegPpuEnd = 0x213F;
 constexpr size_t kRegINIDISP = 0x2100;
 constexpr size_t kRegSETINI = 0x2133;
 constexpr size_t kRegNmitimen = 0x4200;
+constexpr size_t kRegVTIMEL = 0x4209;
+constexpr size_t kRegVTIMEH = 0x420A;
 constexpr size_t kRegRDNMI = 0x4210;
+constexpr size_t kRegTIMEUP = 0x4211;
 
 // APU registers
 constexpr size_t kRegApuStart = 0x2140;

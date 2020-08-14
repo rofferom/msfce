@@ -9,6 +9,7 @@ uint8_t Ppu::readU8(size_t addr)
 {
     switch (addr) {
     case kRegRDNMI:
+    case kRegTIMEUP:
         // Ack interrupt
         return 0;
     }
@@ -40,11 +41,11 @@ void Ppu::writeU8(size_t addr, uint8_t value)
     }
 
     case kRegNmitimen: {
-
         // H/V IRQ
         if (value & (0b11 << 4)) {
             LOGC(TAG, "Trying to enable unsupported H/V IRQ");
-            assert(false);
+            //assert(false);
+            break;
         }
 
         // NMI
@@ -62,6 +63,11 @@ void Ppu::writeU8(size_t addr, uint8_t value)
 
         break;
     }
+
+    case kRegVTIMEL:
+    case kRegVTIMEH:
+        // H/V IRQ can't be enabled in the current implementation (assert on activation)
+        break;
 
     default:
         LOGW(TAG, "Ignore WriteU8 %04X at %06X", value, static_cast<uint32_t>(addr));
@@ -81,6 +87,10 @@ void Ppu::writeU16(size_t addr, uint16_t value)
         assert(false);
         break;
     }
+
+    case kRegVTIMEL:
+        // H/V IRQ can't be enabled in the current implementation (assert on activation)
+        break;
 
     default:
         LOGW(TAG, "Ignore WriteU16 %04X at %06X", value, static_cast<uint32_t>(addr));
