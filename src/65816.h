@@ -86,6 +86,7 @@ private:
     void handleRTI(uint32_t data);
     void handleRTL(uint32_t data);
     void handleRTS(uint32_t data);
+    void handleSBCImmediate(uint32_t data);
     void handleSBC(uint32_t data);
     void handleSEC(uint32_t data);
     void handleSEI(uint32_t data);
