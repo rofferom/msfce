@@ -712,8 +712,8 @@ bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int scre
         subtileY = tileY;
     }
 
-    subtileX /= tileWidth * kPpuBaseTileWidth;
-    subtileY /= tileHeight * kPpuBaseTileHeight;
+    subtileX /= kPpuBaseTileWidth;
+    subtileY /= kPpuBaseTileHeight;
 
     // Compute the final tile location
     // The second row of tiles is located 0x10 tiles after
