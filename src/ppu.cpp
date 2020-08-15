@@ -9,12 +9,258 @@
 
 namespace {
 
+constexpr int kPpuTileInfoSize = 2;
+constexpr int kPpuTilemapWidth = 32;
+constexpr int kPpuTilemapHeight = 32;
+constexpr int kPpuTilemapSize = kPpuTilemapWidth * kPpuTilemapHeight * kPpuTileInfoSize;
+
+constexpr int kPpuBaseTileWidth = 8;
+constexpr int kPpuBaseTileHeight = 8;
+
 constexpr uint16_t convert1kWorkStep(uint16_t v) {
     return v << 11;
 }
 
 constexpr uint16_t convert4kWorkStep(uint16_t v) {
     return v << 13;
+}
+
+/*
+ * Unit of returned value is a tile size (8x8 or 16x16).
+ * This function converts the value got in BGxSC registers.
+ */
+void getTilemapDimension(uint16_t tilemapSize, int* width, int* height)
+{
+    switch (tilemapSize) {
+    case 0:
+        *width = 32;
+        *height = 32;
+        break;
+
+    case 1:
+        *width = 64;
+        *height = 32;
+        break;
+
+    case 2:
+        *width = 32;
+        *height = 64;
+        break;
+
+    case 3:
+        *width = 64;
+        *height = 64;
+        break;
+
+    default:
+        *width = 0;
+        *height = 0;
+        assert(false);
+        break;
+    }
+}
+
+/*
+ * Unit of returned value is a pixel.
+ * tile_size comes from BGMODE register.
+*/
+void getTileDimension(int tileSize, int* width, int* height)
+{
+    switch (tileSize) {
+    case 0:
+        *width = 1;
+        *height = 1;
+        break;
+
+    case 1:
+        *width = 2;
+        *height = 2;
+        break;
+
+    default:
+        assert(false);
+        *width = 0;
+        *height = 0;
+        break;
+    }
+}
+
+/*
+ * The bpp of a background depends on the current mode
+*/
+int getTileBppFromMode(int mode, size_t bgIdx)
+{
+    if (mode == 0) {
+        static const int colorCount[] = {
+            2,
+            2,
+            2,
+            2,
+        };
+
+        static_assert(SIZEOF_ARRAY(colorCount) == 4);
+        assert(bgIdx < SIZEOF_ARRAY(colorCount));
+        return colorCount[bgIdx];
+    } else if (mode == 1) {
+        static const int colorCount[] = {
+            4,
+            4,
+            2,
+        };
+
+        static_assert(SIZEOF_ARRAY(colorCount) == 3);
+        assert(bgIdx < SIZEOF_ARRAY(colorCount));
+        return colorCount[bgIdx];
+    } else {
+        assert(false);
+        return 0;
+    }
+}
+
+/*
+ * Get the correct subtilemap from a coordinate.
+ * Depending of BGxSC configuration, we have to use one or more
+ * tilemaps.
+ *
+ * Here are a set of mapping functions to get the tilemap to
+* use depending of the absolute tile coordinates.
+*/
+
+uint32_t tilemapMapper32x32(uint16_t tilemapBase, int x, int y)
+{
+    return tilemapBase;
+}
+
+uint32_t tilemapMapper32x64(uint16_t tilemapBase, int x, int y)
+{
+    int idx;
+
+    if (y < 32) {
+        idx = 0;
+    } else {
+        idx = 1;
+    }
+
+    return tilemapBase + idx * kPpuTilemapSize;
+}
+
+uint32_t tilemapMapper64x32(uint16_t tilemapBase, int x, int y)
+{
+    int idx;
+
+    if (x < 32) {
+        idx = 0;
+    } else {
+        idx = 1;
+    }
+
+    return tilemapBase + idx * kPpuTilemapSize;
+}
+
+uint32_t tilemapMapper64x64(uint16_t tilemapBase, int x, int y)
+{
+    int idx;
+
+    if (x < 32 && y < 32) {
+        idx = 0;
+    } else if (x >= 32 && y < 32) {
+        idx = 1;
+    } else if (x < 32 && y >= 32) {
+        idx = 2;
+    } else if (x >= 32 && y >= 32) {
+        idx = 3;
+    } else {
+        assert(false);
+        idx = 0;
+    }
+
+    return tilemapBase + idx * kPpuTilemapSize;
+}
+
+typedef uint32_t (*TilemapMapper)(uint16_t tilemapBase, int x, int y);
+
+//  tilemapSize is the tilemap size read in BGxSC registers
+TilemapMapper getTilemapMapper(uint16_t tilemapSize)
+{
+    static const TilemapMapper map[] = {
+        tilemapMapper32x32,
+        tilemapMapper64x32,
+        tilemapMapper32x64,
+        tilemapMapper64x64,
+    };
+
+    static_assert(SIZEOF_ARRAY(map) == 4);
+    assert(tilemapSize <= SIZEOF_ARRAY(map));
+
+    return map[tilemapSize];
+}
+
+// Set of functions to read the color of a pixel within a tile
+uint32_t tileReadColor2bpp(const uint8_t* tileData, size_t tile_size, int row, int column)
+{
+    constexpr int kTileBpp = 2;
+    uint32_t color;
+
+    // 0-1 bits are stored in a 8 words chunk
+    int rowOffset = row * kTileBpp;
+    const uint8_t* rowData = tileData + rowOffset;
+
+    color = (rowData[0] >> column) & 1;
+    color |= ((rowData[1] >> column) & 1) << 1;
+
+    return color;
+}
+
+uint32_t tileReadColor4bpp(const uint8_t* tileData, size_t tileSize, int row, int column)
+{
+    uint32_t color;
+
+    // 0-1 bits are stored in a 8 words chunk, in the first plane
+    const uint8_t* rowData = tileData + row * 2;
+    color = (rowData[0] >> column) & 1;
+    color |= ((rowData[1] >> column) & 1) << 1;
+
+    // 2-3 bits are stored in the second plane
+    rowData += tileSize / 2;
+    color |= ((rowData[0] >> column) & 1) << 2;
+    color |= ((rowData[1] >> column) & 1) << 3;
+
+    return color;
+}
+
+typedef uint32_t (*ColorReadCb)(const uint8_t* tileData, size_t tileSize, int row, int column);
+
+ColorReadCb getColorReadCb(int tileBpp)
+{
+    static const ColorReadCb map[] = {
+        nullptr,
+        nullptr,
+        tileReadColor2bpp, // 2
+        nullptr,
+        tileReadColor4bpp, // 4
+    };
+
+    static_assert(SIZEOF_ARRAY(map) == 5);
+    assert(static_cast<size_t>(tileBpp) <= SIZEOF_ARRAY(map));
+    assert(map[tileBpp]);
+
+    return map[tileBpp];
+}
+
+uint8_t scaleColor(uint32_t c)
+{
+    // Convert the packed RGB15 color to RGB32
+    return c * 255 / 0b11111;
+}
+
+Color rawColorToRgb(uint32_t raw_color)
+{
+    // Convert the packed RGB15 color to RGB32
+    uint8_t red = scaleColor(raw_color & 0b11111);
+    uint8_t green = scaleColor((raw_color >> 5) & 0b11111);
+    uint8_t blue = scaleColor((raw_color >> 10) & 0b11111);
+
+    return {red, green, blue};
 }
 
 } // anonymous namespace
@@ -177,8 +423,8 @@ void Ppu::writeU8(size_t addr, uint8_t value)
         int bgIdx = addr - kRegBG1SC;
         Background& bg = m_Backgrounds[bgIdx];
 
-        bg.m_TilemapBase = value >> 2;
-        bg.m_TilemapSize = convert1kWorkStep(value & 0b11);
+        bg.m_TilemapBase = convert1kWorkStep(value >> 2);
+        bg.m_TilemapSize = value & 0b11;
         break;
     }
 
@@ -329,4 +575,149 @@ void Ppu::incrementVramAddress()
 
 void Ppu::render(const DrawPointCb& drawPointCb)
 {
+    if (m_Bgmode != 1) {
+        return;
+    }
+
+    for (int y = 0; y < kPpuDisplayHeight; y++) {
+        for (int x = 0; x < kPpuDisplayWidth; x++) {
+            int bgIdx = 0;
+            Color c;
+            int priority;
+
+            bool valid = getPixelFromBg(bgIdx, &m_Backgrounds[bgIdx], x, y, &c, &priority);
+            if (valid) {
+                drawPointCb(x, y, c);
+            } else {
+                drawPointCb(x, y, {0, 0, 0});
+            }
+        }
+    }
+}
+
+uint32_t Ppu::getColorFromCgram(int bgIdx, int tileBpp, int palette, int color)
+{
+    if (m_Bgmode == 0) {
+        // In mode 0, all bg have a dedicated 0x20 bytes palette
+        return m_Cgram[bgIdx * 0x20 + palette * 4 + color];
+    } else if (m_Bgmode == 1) {
+        return m_Cgram[palette * (1 << tileBpp) + color];
+    } else {
+        assert(false);
+        return 0;
+    }
+}
+
+bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int screen_y, Color* c, int* out_priority)
+{
+    // Compute some dimensions that will be ready for future use
+    int tilemapWidth;
+    int tilemapHeight;
+    getTilemapDimension(bg->m_TilemapSize, &tilemapWidth, &tilemapHeight);;
+    LOGD(TAG, "Tilemap is %dx%d", tilemapWidth, tilemapHeight);
+
+    int tileWidth;
+    int tileHeight;
+    getTileDimension(bg->m_TileSize, &tileWidth, &tileHeight);
+
+    int tileBpp = getTileBppFromMode(m_Bgmode, bgIdx);
+    LOGD(TAG, "Tiles are (%dx8)x(%dx8) (%dbpp)", tileWidth, tileHeight, tileBpp);
+
+    // Compute the tile size in bytes. Tiles are always 8x8.
+    // 16x16 tiles are just a composition of multiple 8x8 tiles.
+    int tileSize = tileBpp * 8;
+
+    // Define some callbacks to get some data depending of the current PPU configuration
+    auto tilemapMapper = getTilemapMapper(bg->m_TilemapSize);
+    auto colorReadCb = getColorReadCb(tileBpp);
+
+    auto paletteReadCb = [this, bgIdx, tileBpp](int palette, int color) {
+        return getColorFromCgram(bgIdx, tileBpp, palette, color);
+    };
+
+    // Compute background coordinates in pixels at first
+    int bgX = (bg->m_HorizontalOffset + screen_x) % (tilemapWidth * kPpuBaseTileWidth);
+    int bgY = (bg->m_VerticalOffset + screen_y) % (tilemapHeight * kPpuBaseTileHeight);
+
+    // Extract
+    // 1. The pixel coordinates in the tile
+    // 2. The tile coordinates inside the tilemap
+    int tileX = bgX % (tileWidth * kPpuBaseTileWidth);
+    int tileY = bgY % (tileHeight * kPpuBaseTileHeight);
+
+    bgX /= tileWidth * kPpuBaseTileWidth;
+    bgY /= tileHeight * kPpuBaseTileHeight;
+
+    // Make a projection inside the submap
+    // The working tilemap is a 32x32 one
+    uint32_t tilemapBase = tilemapMapper(bg->m_TilemapBase, bgX, bgY);
+
+    // Get tileinfo from tilemap
+    int tilemapX = bgX % kPpuTilemapWidth;
+    int tilemapY = bgY % kPpuTilemapHeight;
+
+    int tileinfoAddr = tilemapBase + (tilemapY * kPpuTilemapWidth + tilemapX) * kPpuTileInfoSize;
+    uint16_t tileInfo = m_Vram[tileinfoAddr] | (m_Vram[tileinfoAddr + 1] << 8);
+
+    // Parse tileinfo
+    int tilePropVerticalFlip = tileInfo >> 15;
+    int tilePropHorizontalFlip = (tileInfo >> 14) & 1;
+    int tilePropPriority = (tileInfo >> 13) & 1;
+    int tilePropPalette = (tileInfo >> 10) & 0b111;
+
+    int tileIndex = tileInfo & 0b1111111111;
+    int tileBaseAddr = bg->m_TileBase + tileSize * tileIndex;
+
+    // Use the flip status to point to the correct subtile
+    // Then compute the subtile coordinate to be able to compute
+    // the subtile location
+    int subtileX;
+    if (tilePropHorizontalFlip) {
+        subtileX = (tileWidth * kPpuBaseTileWidth) - tileX - 1;
+    } else {
+        subtileX = tileX;
+    }
+
+    int subtileY;
+    if (tilePropVerticalFlip) {
+        subtileY = (tileHeight * kPpuBaseTileWidth) - tileY - 1;
+    } else {
+        subtileY = tileY;
+    }
+
+    subtileX /= tileWidth * kPpuBaseTileWidth;
+    subtileY /= tileHeight * kPpuBaseTileHeight;
+
+    // Compute the final tile location
+    // The second row of tiles is located 0x10 tiles after
+    int tileAddr = tileBaseAddr + subtileX * tileSize + subtileY * 0x10 * tileSize;
+    tileAddr &= 0xFFFF;
+
+    const uint8_t* tileData = m_Vram + tileAddr;
+
+    // Update coordinates before draw to apply some tile modifiers
+    if (tilePropVerticalFlip) {
+        tileY = (kPpuBaseTileHeight - 1) - (tileY % kPpuBaseTileHeight);
+    } else {
+        tileY %= kPpuBaseTileHeight;
+    }
+
+    // Pixel horizontal order is reversed in the tile. Bit 7 is the first pixel
+    if (!tilePropHorizontalFlip) {
+        tileX = (kPpuBaseTileWidth - 1) - (tileX % kPpuBaseTileWidth);
+    } else {
+        tileX %= kPpuBaseTileWidth;
+    }
+
+    // Read tile color and get the color from the palette
+    int color = colorReadCb(tileData, tileSize, tileY, tileX);
+    if (color == 0) {
+        return false;
+    }
+
+    uint32_t rawColor = paletteReadCb(tilePropPalette, color);
+    *c = rawColorToRgb(rawColor);
+    *out_priority = tilePropPriority;
+
+    return true;
 }

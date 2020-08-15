@@ -31,9 +31,6 @@ public:
     void render(const DrawPointCb& drawPointCb);
 
 private:
-    void incrementVramAddress();
-
-private:
     struct Background {
         uint16_t m_TilemapBase = 0;
         uint16_t m_TilemapSize = 0;
@@ -44,7 +41,11 @@ private:
         uint16_t m_VerticalOffset = 0;
     };
 
-    static const int kBackgroundCount = 4;
+private:
+    void incrementVramAddress();
+
+    uint32_t getColorFromCgram(int bgIdx, int bpp, int palette, int colorIdx);
+    bool getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int screen_y, Color* c, int* priority);
 
 private:
     bool m_ForcedBlanking = false;
@@ -67,6 +68,7 @@ private:
     uint8_t m_CgramLsb = 0;
 
     // Backgrounds
+    static const int kBackgroundCount = 4;
     Background m_Backgrounds[kBackgroundCount];
     uint8_t m_OldBgByte = 0;
 

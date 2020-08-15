@@ -6,8 +6,8 @@
 constexpr size_t kRegIV_NMI = 0xFFEA;
 
 // PPU registers
-constexpr size_t kPpuDisplayWidth = 256;
-constexpr size_t kPpuDisplayHeight = 224;
+constexpr int kPpuDisplayWidth = 256;
+constexpr int kPpuDisplayHeight = 224;
 
 constexpr size_t kRegPpuStart = 0x2100;
 constexpr size_t kRegPpuEnd = 0x213F;
