@@ -341,11 +341,16 @@ uint8_t Ppu::readU8(size_t addr)
         return 0;
     }
 
+    LOGW(TAG, "Ignore ReadU8 at %06X", static_cast<uint32_t>(addr));
+    assert(false);
     return 0;
 }
 
 uint16_t Ppu::readU16(size_t addr)
 {
+    LOGW(TAG, "Ignore ReadU16 at %06X", static_cast<uint32_t>(addr));
+    assert(false);
+
     return 0;
 }
 
