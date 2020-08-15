@@ -15,6 +15,12 @@ void Ppu::dump() const
     assert(f);
     fwrite(m_Vram, 1, sizeof(m_Vram), f);
     fclose(f);
+
+    // CGRAM
+    f = fopen("dump_cgram.bin", "wb");
+    assert(f);
+    fwrite(m_Cgram, 1, sizeof(m_Cgram), f);
+    fclose(f);
 }
 
 uint8_t Ppu::readU8(size_t addr)
@@ -75,6 +81,7 @@ void Ppu::writeU8(size_t addr, uint8_t value)
         break;
     }
 
+    // VRAM registers
     case kRegVMAIN:
         LOGD(TAG, "VMAIN <= 0x%02X", value);
         m_VramIncrementHigh = value >> 7;
@@ -113,6 +120,25 @@ void Ppu::writeU8(size_t addr, uint8_t value)
         break;
     }
 
+    // CGRAM registers
+    case kRegCGADD:
+        m_CgdataAddress = value;
+        m_CgramLsbSet = false;
+        m_CgramLsb = 0;
+        break;
+
+    case kRegCGDATA:
+        if (m_CgramLsbSet) {
+            m_Cgram[m_CgdataAddress] = ((value & 0x7F) << 8) | m_CgramLsb;
+
+            m_CgdataAddress++;
+            m_CgramLsbSet = false;
+        } else {
+            m_CgramLsb = value;
+            m_CgramLsbSet = true;
+        }
+        break;
+
     case kRegVTIMEL:
     case kRegVTIMEH:
         // To be implemented
@@ -136,9 +162,6 @@ void Ppu::writeU8(size_t addr, uint8_t value)
     case kRegTMW:
     case kRegTSW:
     case kRegM7SEL:
-    case kRegCGADD:
-    case kRegCGDATA:
-    case kRegRDCGRAM:
     case kRegCGWSEL:
     case kRegCGADSUB:
     case kRegTM:
@@ -158,6 +181,7 @@ void Ppu::writeU8(size_t addr, uint8_t value)
     case kRegBG5VOFS:
         break;
 
+    case kRegRDCGRAM:
     default:
         LOGW(TAG, "Ignore WriteU8 %02X at %06X", value, static_cast<uint32_t>(addr));
         assert(false);

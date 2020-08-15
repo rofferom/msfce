@@ -33,4 +33,11 @@ private:
     uint8_t m_VramIncrementStep = 0;
     uint8_t m_Vram[64 * 1024];
     uint16_t m_VramAddress = 0;
+
+    // CGRAM (palette)
+    uint16_t m_Cgram[256];
+    uint8_t m_CgdataAddress = 0;
+
+    bool m_CgramLsbSet = false;
+    uint8_t m_CgramLsb = 0;
 };
