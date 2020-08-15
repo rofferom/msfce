@@ -441,42 +441,42 @@ void Ppu::writeU8(size_t addr, uint8_t value)
     }
 
     case kRegBG1HOFS:
-        m_Backgrounds[0].m_HorizontalOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[0].m_HorizontalOffset >> 8) & 7);
+        m_Backgrounds[0].m_HOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[0].m_HOffset >> 8) & 7);
         m_OldBgByte = value;
         break;
 
     case kRegBG1VOFS:
-        m_Backgrounds[0].m_VerticalOffset = (value << 8) | m_OldBgByte;
+        m_Backgrounds[0].m_VOffset = (value << 8) | m_OldBgByte;
         m_OldBgByte = value;
         break;
 
     case kRegBG2HOFS:
-        m_Backgrounds[1].m_HorizontalOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[1].m_HorizontalOffset >> 8) & 7);
+        m_Backgrounds[1].m_HOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[1].m_HOffset >> 8) & 7);
         m_OldBgByte = value;
         break;
 
     case kRegBG2VOFS:
-        m_Backgrounds[1].m_VerticalOffset = (value << 8) | m_OldBgByte;
+        m_Backgrounds[1].m_VOffset = (value << 8) | m_OldBgByte;
         m_OldBgByte = value;
         break;
 
     case kRegBG3HOFS:
-        m_Backgrounds[2].m_HorizontalOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[2].m_HorizontalOffset >> 8) & 7);
+        m_Backgrounds[2].m_HOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[2].m_HOffset >> 8) & 7);
         m_OldBgByte = value;
         break;
 
     case kRegBG3VOFS:
-        m_Backgrounds[2].m_VerticalOffset = (value << 8) | m_OldBgByte;
+        m_Backgrounds[2].m_VOffset = (value << 8) | m_OldBgByte;
         m_OldBgByte = value;
         break;
 
     case kRegBG4HOFS:
-        m_Backgrounds[3].m_HorizontalOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[3].m_HorizontalOffset >> 8) & 7);
+        m_Backgrounds[3].m_HOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[3].m_HOffset >> 8) & 7);
         m_OldBgByte = value;
         break;
 
     case kRegBG4VOFS:
-        m_Backgrounds[3].m_VerticalOffset = (value << 8) | m_OldBgByte;
+        m_Backgrounds[3].m_VOffset = (value << 8) | m_OldBgByte;
         m_OldBgByte = value;
         break;
 
@@ -636,8 +636,8 @@ bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int scre
     };
 
     // Compute background coordinates in pixels at first
-    int bgX = (bg->m_HorizontalOffset + screen_x) % (tilemapWidth * kPpuBaseTileWidth);
-    int bgY = (bg->m_VerticalOffset + screen_y) % (tilemapHeight * kPpuBaseTileHeight);
+    int bgX = (bg->m_HOffset + screen_x) % (tilemapWidth * kPpuBaseTileWidth);
+    int bgY = (bg->m_VOffset + screen_y) % (tilemapHeight * kPpuBaseTileHeight);
 
     // Extract
     // 1. The pixel coordinates in the tile

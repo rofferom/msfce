@@ -37,8 +37,8 @@ private:
         uint16_t m_TileBase = 0;
         uint16_t m_TileSize = 0;
 
-        uint16_t m_HorizontalOffset = 0;
-        uint16_t m_VerticalOffset = 0;
+        uint16_t m_HOffset = 0;
+        uint16_t m_VOffset = 0;
     };
 
 private:
