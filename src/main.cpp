@@ -77,7 +77,7 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    logSetLevel(LOG_DEBUG);
+    //logSetLevel(LOG_DEBUG);
 
     LOGI(TAG, "Welcome to Monkey Super Famicom Emulator");
 

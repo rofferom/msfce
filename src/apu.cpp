@@ -9,7 +9,6 @@ uint8_t Apu::readU8(size_t addr)
 {
     switch (addr) {
     case kRegApuPort0:
-        LOGD(TAG, "Read 0x%02X at 0x%06X", m_Port0.m_Apu, static_cast<uint32_t>(addr));
         return m_Port0.m_Apu;
 
     case kRegApuPort1:
@@ -34,7 +33,6 @@ uint16_t Apu::readU16(size_t addr)
 {
     switch (addr) {
     case kRegApuPort0:
-        //LOGI(TAG, "Read16 0x%04X", static_cast<uint32_t>(addr));
         return m_Port0.m_Apu | (m_Port1.m_Apu << 8);
 
     case kRegApuPort1:
@@ -55,8 +53,6 @@ uint16_t Apu::readU16(size_t addr)
 
 void Apu::writeU8(size_t addr, uint8_t value)
 {
-    LOGD(TAG, "Write8 0x%02X at 0x%06X", value, static_cast<uint32_t>(addr));
-
     switch (addr) {
     case kRegApuPort0:
         if (m_State == State::init && value == 0) {
@@ -66,7 +62,7 @@ void Apu::writeU8(size_t addr, uint8_t value)
             m_State = State::started;
         } else if (m_State == State::started) {
             if (value - m_Port0.m_Cpu > 1 && !m_Port1.m_Cpu) {
-                LOGI(TAG, "Transfer end");
+                LOGD(TAG, "Transfer end");
                 m_State = State::init;
             }
 
@@ -99,8 +95,6 @@ void Apu::writeU8(size_t addr, uint8_t value)
 
 void Apu::writeU16(size_t addr, uint16_t value)
 {
-    LOGD(TAG, "Write16 0x%04X at 0x%06X", value, static_cast<uint32_t>(addr));
-
     switch (addr) {
     case kRegApuPort0:
         if (m_State == State::started) {

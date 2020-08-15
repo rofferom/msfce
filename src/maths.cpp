@@ -60,7 +60,7 @@ void Maths::writeU8(size_t addr, uint8_t value)
         m_RemainderProduct = m_Multiplicand * m_Multiplier;
         m_Dividend = m_Multiplier;
 
-        LOGI(TAG, "Multiply: 0x%04X * 0x%02X => 0x%04X",
+        LOGD(TAG, "Multiply: 0x%04X * 0x%02X => 0x%04X",
              m_Multiplicand, m_Multiplier, m_RemainderProduct);
         break;
 
@@ -85,7 +85,7 @@ void Maths::writeU8(size_t addr, uint8_t value)
             m_RemainderProduct = m_Dividend;
         }
 
-        LOGI(TAG, "Divide: 0x%04X/0x%02X => Q:0x%04X, R:0x%04X",
+        LOGD(TAG, "Divide: 0x%04X/0x%02X => Q:0x%04X, R:0x%04X",
              m_Dividend, m_Divisor, m_Quotient, m_RemainderProduct);
         break;
 

@@ -41,8 +41,8 @@ void Dma::writeU8(size_t addr, uint8_t value)
         runDma(value);
         return;
     } else if (addr == kRegisterHDMAEN) {
-        // Start DMA
-        LOGI(TAG, "Start HDMA: %02X", value);
+        // Start HDMA
+        LOGD(TAG, "Start HDMA: %02X", value);
         return;
     }
 
@@ -53,7 +53,7 @@ void Dma::writeU8(size_t addr, uint8_t value)
     Channel& channel = m_Channels[channelIdx];
     int reg = addr & 0xF;
 
-    LOGI(TAG, "Configuring Channel %d, Register 0x%X (%02X)", channelIdx, reg, value);
+    LOGD(TAG, "Configuring Channel %d, Register 0x%X (%02X)", channelIdx, reg, value);
 
     switch (reg) {
     case kRegDmaP:

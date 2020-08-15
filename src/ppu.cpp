@@ -41,13 +41,13 @@ void Ppu::writeU8(size_t addr, uint8_t value)
         bool forcedBlanking = value & (1 << 7);
         if (m_ForcedBlanking != forcedBlanking) {
             m_ForcedBlanking = forcedBlanking;
-            LOGI(TAG, "ForcedBlanking is now %s", m_ForcedBlanking ? "enabled" : "disabled");
+            LOGD(TAG, "ForcedBlanking is now %s", m_ForcedBlanking ? "enabled" : "disabled");
         }
 
         uint8_t brightness = value & 0b111;
         if (m_Brightness != brightness) {
             m_Brightness = brightness;
-            LOGI(TAG, "Brightness is now %d", m_Brightness);
+            LOGD(TAG, "Brightness is now %d", m_Brightness);
         }
         break;
     }
@@ -55,8 +55,7 @@ void Ppu::writeU8(size_t addr, uint8_t value)
     case kRegNmitimen: {
         // H/V IRQ
         if (value & (0b11 << 4)) {
-            LOGC(TAG, "Trying to enable unsupported H/V IRQ");
-            //assert(false);
+            // To be implemented
             break;
         }
 
@@ -64,13 +63,13 @@ void Ppu::writeU8(size_t addr, uint8_t value)
         bool enableNMI = value & (1 << 7);
         if (m_NMIEnabled != enableNMI) {
             m_NMIEnabled = enableNMI;
-            LOGI(TAG, "NMI is now %s", m_NMIEnabled ? "enabled" : "disabled");
+            LOGD(TAG, "NMI is now %s", m_NMIEnabled ? "enabled" : "disabled");
         }
 
         // Joypad
         bool joypadAutoread = value & 1;
         if (joypadAutoread) {
-            LOGI(TAG, "Joypad autoread is now %s", joypadAutoread ? "enabled" : "disabled");
+            LOGD(TAG, "Joypad autoread is now %s", joypadAutoread ? "enabled" : "disabled");
         }
 
         break;
@@ -116,7 +115,7 @@ void Ppu::writeU8(size_t addr, uint8_t value)
 
     case kRegVTIMEL:
     case kRegVTIMEH:
-        // H/V IRQ can't be enabled in the current implementation (assert on activation)
+        // To be implemented
         break;
 
     // To be implemented
