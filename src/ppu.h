@@ -22,6 +22,19 @@ private:
     void incrementVramAddress();
 
 private:
+    struct Background {
+        uint16_t m_TilemapBase = 0;
+        uint16_t m_TilemapSize = 0;
+        uint16_t m_TileBase = 0;
+        uint16_t m_TileSize = 0;
+
+        uint16_t m_HorizontalOffset = 0;
+        uint16_t m_VerticalOffset = 0;
+    };
+
+    static const int kBackgroundCount = 4;
+
+private:
     bool m_ForcedBlanking = false;
     uint8_t m_Brightness = 0;
 
@@ -40,4 +53,11 @@ private:
 
     bool m_CgramLsbSet = false;
     uint8_t m_CgramLsb = 0;
+
+    // Backgrounds
+    Background m_Backgrounds[kBackgroundCount];
+    uint8_t m_OldBgByte = 0;
+
+    int m_Bgmode = 0;
+    bool m_Bg3Priority = 0;
 };

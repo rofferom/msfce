@@ -2,9 +2,22 @@
 #include <assert.h>
 #include "log.h"
 #include "registers.h"
+#include "utils.h"
 #include "ppu.h"
 
 #define TAG "ppu"
+
+namespace {
+
+constexpr uint16_t convert1kWorkStep(uint16_t v) {
+    return v << 11;
+}
+
+constexpr uint16_t convert4kWorkStep(uint16_t v) {
+    return v << 13;
+}
+
+} // anonymous namespace
 
 void Ppu::dump() const
 {
@@ -139,6 +152,88 @@ void Ppu::writeU8(size_t addr, uint8_t value)
         }
         break;
 
+    // Background
+    case kRegBGMODE: {
+        int bgmode = value & 0b111;
+
+        if (m_Bgmode != bgmode) {
+            LOGI(TAG, "New BG mode: %d", bgmode);
+            m_Bgmode = bgmode;
+        }
+
+        m_Bg3Priority = (value >> 3) & 1;
+
+        for (size_t i = 0; i < SIZEOF_ARRAY(m_Backgrounds); i++) {
+            m_Backgrounds[i].m_TileSize = (value >> (4 + i)) & 1;
+        }
+
+        break;
+    }
+
+    case kRegBG1SC:
+    case kRegBG2SC:
+    case kRegBG3SC:
+    case kRegBG4SC: {
+        int bgIdx = addr - kRegBG1SC;
+        Background& bg = m_Backgrounds[bgIdx];
+
+        bg.m_TilemapBase = value >> 2;
+        bg.m_TilemapSize = convert1kWorkStep(value & 0b11);
+        break;
+    }
+
+    case kRegBG12NBA: {
+        m_Backgrounds[0].m_TileBase = convert4kWorkStep(value & 0b1111);
+        m_Backgrounds[1].m_TileBase = convert4kWorkStep(value >> 4);
+        break;
+    }
+
+    case kRegBG34NBA: {
+        m_Backgrounds[2].m_TileBase = convert4kWorkStep(value & 0b1111);
+        m_Backgrounds[3].m_TileBase = convert4kWorkStep(value >> 4);
+        break;
+    }
+
+    case kRegBG1HOFS:
+        m_Backgrounds[0].m_HorizontalOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[0].m_HorizontalOffset >> 8) & 7);
+        m_OldBgByte = value;
+        break;
+
+    case kRegBG1VOFS:
+        m_Backgrounds[0].m_VerticalOffset = (value << 8) | m_OldBgByte;
+        m_OldBgByte = value;
+        break;
+
+    case kRegBG2HOFS:
+        m_Backgrounds[1].m_HorizontalOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[1].m_HorizontalOffset >> 8) & 7);
+        m_OldBgByte = value;
+        break;
+
+    case kRegBG2VOFS:
+        m_Backgrounds[1].m_VerticalOffset = (value << 8) | m_OldBgByte;
+        m_OldBgByte = value;
+        break;
+
+    case kRegBG3HOFS:
+        m_Backgrounds[2].m_HorizontalOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[2].m_HorizontalOffset >> 8) & 7);
+        m_OldBgByte = value;
+        break;
+
+    case kRegBG3VOFS:
+        m_Backgrounds[2].m_VerticalOffset = (value << 8) | m_OldBgByte;
+        m_OldBgByte = value;
+        break;
+
+    case kRegBG4HOFS:
+        m_Backgrounds[3].m_HorizontalOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[3].m_HorizontalOffset >> 8) & 7);
+        m_OldBgByte = value;
+        break;
+
+    case kRegBG4VOFS:
+        m_Backgrounds[3].m_VerticalOffset = (value << 8) | m_OldBgByte;
+        m_OldBgByte = value;
+        break;
+
     case kRegVTIMEL:
     case kRegVTIMEH:
         // To be implemented
@@ -151,12 +246,6 @@ void Ppu::writeU8(size_t addr, uint8_t value)
     case kRegOAMDATA:
     case kRegSETINI:
     case kRegMOSAIC:
-    case kRegBG1SC:
-    case kRegBG2SC:
-    case kRegBG3SC:
-    case kRegBG4SC:
-    case kRegBG12NBA:
-    case kRegBG34NBA:
     case kRegWBGLOG:
     case kRegWOBJLOG:
     case kRegTMW:
@@ -169,16 +258,7 @@ void Ppu::writeU8(size_t addr, uint8_t value)
     case kRegW12SEL:
     case kRegW34SEL:
     case kRegWOBJSEL:
-    case kRegBGMODE:
     case kRegCOLDATA:
-    case kRegBG1HOFS:
-    case kRegBG1VOFS:
-    case kRegBG2HOFS:
-    case kRegBG2VOFS:
-    case kRegBG3HOFS:
-    case kRegBG3VOFS:
-    case kRegBG4HOFS:
-    case kRegBG5VOFS:
         break;
 
     case kRegRDCGRAM:

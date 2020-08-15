@@ -41,7 +41,7 @@ constexpr size_t kRegBG2VOFS = 0x2110;
 constexpr size_t kRegBG3HOFS = 0x2111;
 constexpr size_t kRegBG3VOFS = 0x2112;
 constexpr size_t kRegBG4HOFS = 0x2113;
-constexpr size_t kRegBG5VOFS = 0x2114;
+constexpr size_t kRegBG4VOFS = 0x2114;
 
 constexpr size_t kRegMOSAIC = 0x2106;
 
