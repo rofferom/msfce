@@ -41,6 +41,11 @@ private:
         uint16_t m_VOffset = 0;
     };
 
+    struct BgPriority {
+        int m_BgIdx;
+        int m_TilePriority;
+    };
+
 private:
     void incrementVramAddress();
 
@@ -74,4 +79,7 @@ private:
 
     int m_Bgmode = 0;
     bool m_Bg3Priority = 0;
+
+    // Background priority charts
+    static const Ppu::BgPriority s_BgPriorityMode1_BG3_On[];
 };

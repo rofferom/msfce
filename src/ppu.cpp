@@ -265,6 +265,17 @@ Color rawColorToRgb(uint32_t raw_color)
 
 } // anonymous namespace
 
+// Background priority charts
+const Ppu::BgPriority Ppu::s_BgPriorityMode1_BG3_On[] = {
+    {2, 1},
+    {0, 1},
+    {1, 1},
+    {0, 0},
+    {1, 0},
+    {2, 0},
+    {-1, -1},
+};
+
 void Ppu::dump() const
 {
     FILE* f;
@@ -575,20 +586,36 @@ void Ppu::incrementVramAddress()
 
 void Ppu::render(const DrawPointCb& drawPointCb)
 {
-    if (m_Bgmode != 1) {
+    if (m_Bgmode != 1 || !m_Bg3Priority) {
         return;
     }
 
+    const Ppu::BgPriority* bgPriority = s_BgPriorityMode1_BG3_On;
+
     for (int y = 0; y < kPpuDisplayHeight; y++) {
         for (int x = 0; x < kPpuDisplayWidth; x++) {
-            int bgIdx = 0;
-            Color c;
-            int priority;
+            bool drawn = false;
 
-            bool valid = getPixelFromBg(bgIdx, &m_Backgrounds[bgIdx], x, y, &c, &priority);
-            if (valid) {
+            for (size_t prioIdx = 0; bgPriority[prioIdx].m_BgIdx != -1; prioIdx++) {
+                int bgIdx = bgPriority[prioIdx].m_BgIdx;
+                Color c;
+                int pixelPriority;
+
+                bool valid = getPixelFromBg(bgIdx, &m_Backgrounds[bgIdx], x, y, &c, &pixelPriority);
+                if (!valid) {
+                    continue;
+                }
+
+                if (pixelPriority != bgPriority[prioIdx].m_TilePriority) {
+                    continue;
+                }
+
                 drawPointCb(x, y, c);
-            } else {
+                drawn = true;
+                break;
+            }
+
+            if (!drawn) {
                 drawPointCb(x, y, {0, 0, 0});
             }
         }
