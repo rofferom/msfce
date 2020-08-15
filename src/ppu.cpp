@@ -326,3 +326,7 @@ void Ppu::incrementVramAddress()
         break;
     }
 }
+
+void Ppu::render(const DrawPointCb& drawPointCb)
+{
+}

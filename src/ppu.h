@@ -2,8 +2,18 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <functional>
+
+struct Color {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+};
 
 class Ppu {
+public:
+    using DrawPointCb = std::function<void(int x, int y, const Color& c)>;
+
 public:
     Ppu() = default;
     ~Ppu() = default;
@@ -17,6 +27,8 @@ public:
     void writeU16(size_t addr, uint16_t value);
 
     bool isNMIEnabled() const;
+
+    void render(const DrawPointCb& drawPointCb);
 
 private:
     void incrementVramAddress();

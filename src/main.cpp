@@ -1,8 +1,10 @@
+#include <assert.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <chrono>
 #include <memory>
 #include <vector>
+#include <SDL.h>
 #include "65816.h"
 #include "apu.h"
 #include "dma.h"
@@ -10,6 +12,7 @@
 #include "maths.h"
 #include "membus.h"
 #include "ppu.h"
+#include "registers.h"
 
 #define TAG "main"
 
@@ -81,6 +84,30 @@ int main(int argc, char* argv[])
 
     LOGI(TAG, "Welcome to Monkey Super Famicom Emulator");
 
+    // Init SDL
+    SDL_Window* window;
+    SDL_Renderer* renderer;
+
+    SDL_Init(SDL_INIT_VIDEO);
+
+    window = SDL_CreateWindow(
+        "Monkey Super Famicom Emulator",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        kPpuDisplayWidth, kPpuDisplayHeight,
+        0);
+    assert(window);
+
+    renderer = SDL_CreateRenderer(window, -1, 0);
+    assert(renderer);
+
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderClear(renderer);
+
+    auto drawPointCb = [renderer](int x, int y, const Color& c) {
+        SDL_SetRenderDrawColor(renderer, c.r, c.g, c.b, 255);
+        SDL_RenderDrawPoint(renderer, x, y);
+    };
+
     // Load ROM
     const char* romPath = argv[1];
 
@@ -123,10 +150,20 @@ int main(int argc, char* argv[])
     auto nextVblank = nextRender - kVblankDuration;
 
     while (true) {
+        // Poll SDL event
+        SDL_Event event;
+        SDL_PollEvent(&event);
+        if (event.type == SDL_QUIT) {
+            break;
+        }
+
+        // Emulation loop
         auto now = Clock::now();
 
         if (now >= nextRender) {
-            // Rendering should be triggered here
+            ppu->render(drawPointCb);
+            SDL_RenderPresent(renderer);
+
             nextRender = Clock::now() + kRenderPeriod;
             nextVblank = nextRender - kVblankDuration;
         } else if (now >= nextVblank) {
@@ -140,6 +177,8 @@ int main(int argc, char* argv[])
 
         cpu->executeSingle();
     }
+
+    SDL_Quit();
 
     return 0;
 }
