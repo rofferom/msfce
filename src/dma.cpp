@@ -191,11 +191,12 @@ void Dma::runSingleDmaChannel(Channel* channel)
         break;
     }
 
-    for (; channel->m_DMAByteCounter; channel->m_DMAByteCounter--) {
+    while (channel->m_DMAByteCounter) {
         switch (channel->m_Mode) {
         case 0:
             m_Membus->writeU8(destAddress, m_Membus->readU8(srcAddress));
             incrementABusAddress(channel, aBusAddress);
+            channel->m_DMAByteCounter--;
             break;
 
         case 1:
@@ -206,6 +207,8 @@ void Dma::runSingleDmaChannel(Channel* channel)
             m_Membus->writeU8(destAddress, m_Membus->readU8(srcAddress));
             incrementABusAddress(channel, aBusAddress);
             *bBusAddress = bBaseBusAddress;
+
+            channel->m_DMAByteCounter -=2;
             break;
 
         default:
