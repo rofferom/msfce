@@ -185,6 +185,8 @@ void Dma::runSingleDmaChannel(Channel* channel)
         break;
 
     default:
+        aBusAddress = nullptr;
+        bBusAddress = nullptr;
         assert(false);
         break;
     }
