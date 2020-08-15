@@ -452,3 +452,11 @@ int Membus::plugRom(std::unique_ptr<std::vector<uint8_t>> rom)
 
     return 0;
 }
+
+void Membus::dump()
+{
+    FILE* f = fopen("dump_wram.bin", "wb");
+    assert(f);
+    fwrite(m_Wram, 1, sizeof(m_Wram), f);
+    fclose(f);
+}

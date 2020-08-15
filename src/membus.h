@@ -28,6 +28,8 @@ public:
     int plugPpu(const std::shared_ptr<Ppu>& ppu);
     int plugRom(std::unique_ptr<std::vector<uint8_t>> rom);
 
+    void dump();
+
 private:
     const uint8_t* getReadPointer(size_t addr);
     uint8_t* getWritePointer(size_t addr);
