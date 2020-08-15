@@ -17,12 +17,21 @@ constexpr int kPpuTilemapSize = kPpuTilemapWidth * kPpuTilemapHeight * kPpuTileI
 constexpr int kPpuBaseTileWidth = 8;
 constexpr int kPpuBaseTileHeight = 8;
 
+constexpr int kPpuObjCount = 128;
+constexpr int kPpuObjBpp = 4;
+constexpr int kPpuObjTileSize = 8 * kPpuObjBpp; // 8x8 4bpp
+constexpr int kPpuObjPaletteOffset = 128;
+
 constexpr uint16_t convert1kWorkStep(uint16_t v) {
     return v << 11;
 }
 
 constexpr uint16_t convert4kWorkStep(uint16_t v) {
     return v << 13;
+}
+
+constexpr uint16_t convert8kWorkStep(uint16_t v) {
+    return v << 14;
 }
 
 /*
@@ -263,6 +272,30 @@ Color rawColorToRgb(uint32_t raw_color)
     return {red, green, blue};
 }
 
+// Return the size (in 8x8 tiles) of a sprite from its attributes
+void getSpriteSize(uint8_t obselSize, uint8_t objSize, int* width, int* height)
+{
+    if (obselSize == 0) {
+        if (objSize == 0) {
+            *width = 1;
+            *height = 1;
+        } else {
+            *width = 2;
+            *height = 2;
+        }
+    } else if (objSize == 3) {
+        if (objSize == 0) {
+            *width = 2;
+            *height = 2;
+        } else {
+            *width = 4;
+            *height = 4;
+        }
+    } else {
+        assert(false);
+    }
+}
+
 } // anonymous namespace
 
 // Background priority charts
@@ -290,6 +323,12 @@ void Ppu::dump() const
     f = fopen("dump_cgram.bin", "wb");
     assert(f);
     fwrite(m_Cgram, 1, sizeof(m_Cgram), f);
+    fclose(f);
+
+    // OAM
+    f = fopen("dump_oam.bin", "wb");
+    assert(f);
+    fwrite(m_Oam, 1, sizeof(m_Oam), f);
     fclose(f);
 }
 
@@ -409,6 +448,49 @@ void Ppu::writeU8(size_t addr, uint8_t value)
         }
         break;
 
+    // OAM registers
+    case kRegOBJSEL:
+        m_ObjSize = (value >> 5) & 0b11;
+
+        m_ObjGapSize = convert4kWorkStep((value >> 3) & 0b11);
+        m_ObjBase = convert8kWorkStep(value & 0b111);
+        break;
+
+    case kRegOAMADDL:
+        m_OamAddress = (m_OamAddress & 0x100) | value;
+        m_OamFlip = 0;
+        break;
+
+    case kRegOAMADDH:
+        m_OamAddress = ((value & 1) << 8) | (m_OamAddress & 0xFF);
+        m_OamPriority = value >> 7;
+        m_OamFlip = 0;
+        break;
+
+    case kRegOAMDATA: {
+        if (!m_OamFlip) {
+            m_OamWriteRegister = (m_OamWriteRegister & 0xFF00) | value;
+        }
+
+        if (m_OamAddress & 0x100) {
+            int address = ((m_OamAddress & 0x10F) << 1) + (m_OamFlip & 1);
+            m_Oam[address] = value;
+        } else if (m_OamFlip) {
+            m_OamWriteRegister = (value << 8) | (m_OamWriteRegister & 0xFF);
+
+            int address = m_OamAddress << 1;
+            m_Oam[address] = m_OamWriteRegister & 0xFF;
+            m_Oam[address + 1] = m_OamWriteRegister >> 8;
+        }
+
+        m_OamFlip ^= 1;
+        if (!m_OamFlip) {
+            m_OamAddress++;
+            m_OamAddress &= 0x1FF;
+        }
+        break;
+    }
+
     // Background
     case kRegBGMODE: {
         int bgmode = value & 0b111;
@@ -497,10 +579,6 @@ void Ppu::writeU8(size_t addr, uint8_t value)
         break;
 
     // To be implemented
-    case kRegOBJSEL:
-    case kRegOAMADDL:
-    case kRegOAMADDH:
-    case kRegOAMDATA:
     case kRegSETINI:
     case kRegMOSAIC:
     case kRegWBGLOG:
@@ -592,6 +670,8 @@ void Ppu::render(const DrawPointCb& drawPointCb)
 
     const Ppu::BgPriority* bgPriority = s_BgPriorityMode1_BG3_On;
 
+    loadObjs();
+
     for (int y = 0; y < kPpuDisplayHeight; y++) {
         for (int x = 0; x < kPpuDisplayWidth; x++) {
             bool drawn = false;
@@ -622,6 +702,60 @@ void Ppu::render(const DrawPointCb& drawPointCb)
     }
 }
 
+void Ppu::loadObjs()
+{
+    for (int i = 0; i < kObjCount; i++) {
+        ObjProperty& prop = m_Objs[i];
+
+        // Attributes are 4 bytes long
+        const uint8_t* objBase = m_Oam + i * 4;
+
+        // Other parts of the attributes are located after the first 512 bytes.
+        // Each byte has 2 bits for 4 sprites. Bytes are ordered like this:
+        // | 3 2 1 0 | 7 6 5 4 | 11 10 9 8 | ... |
+        uint8_t extra = m_Oam[512 + i / 4];
+        extra >>= 2 * (i % 4);
+        extra &= 0b11;
+
+        prop.m_X = objBase[0];
+
+        // Decode sprite coordinates
+        if (extra & 1) {
+            // The extra byte is a sign number
+            // Craft a negative int16 and decode it
+            prop.m_X |= 0xFF00;
+        }
+
+        prop.m_Y = objBase[1];
+
+        // Decode sprite size
+        prop.m_Size = (extra >> 1) & 1;
+
+        // Decode attributes (third byte)
+        prop.m_VerticalFlip = (objBase[3] >> 7) & 1;
+        prop.m_HorizontalFlip = (objBase[3] >> 6) & 1;
+        prop.m_Priority = (objBase[3] >> 4) & 0b11;
+        prop.m_Palette = (objBase[3] >> 1) & 0b111;
+
+        // Decode tile index (upper bit is within attribute byte)
+        prop.m_TileIndex = ((objBase[3] & 1) << 8) | objBase[2];
+    }
+}
+
+void Ppu::printObjsCoordinates()
+{
+    int spriteWidth;
+    int spriteHeight;
+
+    for (int i = 0; i < kObjCount; i++) {
+        getSpriteSize(m_ObjSize, m_Objs[i].m_Size, &spriteWidth, &spriteHeight);
+        LOGI(TAG, "%d - Pos: %dx%d Size: %dx%d Char: %d",
+             i, m_Objs[i].m_X, m_Objs[i].m_Y,
+             spriteWidth * kPpuBaseTileWidth, spriteHeight * kPpuBaseTileHeight,
+             m_Objs[i].m_TileIndex);
+    }
+}
+
 uint32_t Ppu::getColorFromCgram(int bgIdx, int tileBpp, int palette, int color)
 {
     if (m_Bgmode == 0) {
@@ -633,6 +767,11 @@ uint32_t Ppu::getColorFromCgram(int bgIdx, int tileBpp, int palette, int color)
         assert(false);
         return 0;
     }
+}
+
+uint32_t Ppu::getObjColorFromCgram(int palette, int color)
+{
+    return m_Cgram[kPpuObjPaletteOffset + palette * (1 << kPpuObjBpp) + color];
 }
 
 bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int screen_y, Color* c, int* out_priority)
@@ -745,6 +884,102 @@ bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int scre
     uint32_t rawColor = paletteReadCb(tilePropPalette, color);
     *c = rawColorToRgb(rawColor);
     *out_priority = tilePropPriority;
+
+    return true;
+}
+
+bool Ppu::getPixelFromObj(int screenX, int screenY, Color* c, int* outPriority)
+{
+    const ObjProperty* obj = nullptr;
+    int spriteWidth;
+    int spriteHeight;
+
+    // Find the sprite to display
+    for (int i = kObjCount - 1 ; i >= 0; i--) {
+        getSpriteSize(m_ObjSize, m_Objs[i].m_Size, &spriteWidth, &spriteHeight);
+
+        // Test if the pixel is within the current sprite
+        if (screenX < m_Objs[i].m_X) {
+            continue;
+        } else if (screenX >= m_Objs[i].m_X + spriteWidth * kPpuBaseTileWidth) {
+            continue;
+        } else if (screenY < m_Objs[i].m_Y) {
+            continue;
+        } else if (screenY >= m_Objs[i].m_Y + spriteHeight * kPpuBaseTileHeight) {
+            continue;
+        }
+
+        obj = &m_Objs[i];
+        break;
+    }
+
+    if (!obj) {
+        return false;
+    }
+
+    // Sprint found, lets read the requested pixel
+    // Define some callbacks to get some data depending of the current PPU configuration
+    auto colorReadCb = getColorReadCb(kPpuObjBpp);
+
+    // Extract the pixel coordinates in the tile
+    int tileX = screenX - obj->m_X;
+    int tileY = screenY - obj->m_Y;
+
+    // Use the flip status to point to the correct subtile
+    // Then compute the subtile coordinate to be able to compute
+    // the subtile location
+    int subtileX;
+    if (obj->m_HorizontalFlip) {
+        subtileX = (spriteWidth * kPpuBaseTileWidth) - tileX - 1;
+    } else {
+        subtileX = tileX;
+    }
+
+    int subtileY;
+    if (obj->m_VerticalFlip) {
+        subtileY = (spriteHeight * kPpuBaseTileHeight) - tileY - 1;
+    } else {
+        subtileY = tileY;
+    }
+
+    subtileX /= kPpuBaseTileWidth;
+    subtileY /= kPpuBaseTileHeight;
+
+    // Compute the final tile location
+    // The second row of tiles is located 0x10 tiles after
+    int tileBaseAddr = m_ObjBase + obj->m_TileIndex * kPpuObjTileSize;
+    if (obj->m_TileIndex >= 0x100) {
+        tileBaseAddr += m_ObjGapSize;
+    }
+
+    int tileAddr = tileBaseAddr + subtileX * kPpuObjTileSize + subtileY * 0x10 * kPpuObjTileSize;
+    tileAddr &= 0xFFFF;
+
+    const uint8_t* tileData = m_Vram + tileAddr;
+
+    // Update coordinates before draw to apply some tile modifiers
+    if (obj->m_VerticalFlip) {
+        tileY = (kPpuBaseTileHeight - 1) - (tileY % kPpuBaseTileHeight);
+    } else {
+        tileY %= kPpuBaseTileHeight;
+    }
+
+    // Pixel horizontal order is reversed in the tile. Bit 7 is the first pixel
+    if (!obj->m_HorizontalFlip) {
+        tileX = (kPpuBaseTileWidth - 1) - (tileX % kPpuBaseTileWidth);
+    } else {
+        tileX %= kPpuBaseTileWidth;
+    }
+
+    // Read tile color and get the color from the palette
+    int color = colorReadCb(tileData, kPpuObjTileSize, tileY, tileX);
+    if (color == 0) {
+        return false;
+    }
+
+    uint32_t rawColor = getObjColorFromCgram(obj->m_Palette, color);
+    *c = rawColorToRgb(rawColor);
+    *outPriority = obj->m_Priority;
 
     return true;
 }

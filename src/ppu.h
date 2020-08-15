@@ -46,11 +46,27 @@ private:
         int m_TilePriority;
     };
 
+    struct ObjProperty {
+        int16_t m_X = 0;
+        int16_t m_Y = 0;
+        int m_Size = 0;
+        bool m_VerticalFlip = 0;
+        bool m_HorizontalFlip = 0;
+        int m_Priority = 0;
+        int m_Palette = 0;
+        int m_TileIndex = 0;
+    };
+
 private:
     void incrementVramAddress();
 
+    void loadObjs();
+    void printObjsCoordinates();
+
     uint32_t getColorFromCgram(int bgIdx, int bpp, int palette, int colorIdx);
+    uint32_t getObjColorFromCgram(int palette, int color);
     bool getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int screen_y, Color* c, int* priority);
+    bool getPixelFromObj(int screen_x, int screen_y, Color* c, int* priority);
 
 private:
     bool m_ForcedBlanking = false;
@@ -71,6 +87,21 @@ private:
 
     bool m_CgramLsbSet = false;
     uint8_t m_CgramLsb = 0;
+
+    // OAM (sprites)
+    uint8_t m_Oam[2 * 256 + 32];
+    uint16_t m_OamAddress = 0;
+    int m_OamPriority = 0;
+
+    int m_OamFlip = 0;
+    uint16_t m_OamWriteRegister = 0;
+
+    uint16_t m_ObjSize = 0;
+    uint16_t m_ObjGapSize = 0;
+    uint16_t m_ObjBase = 0;
+
+    static const int kObjCount = 128;
+    ObjProperty m_Objs[kObjCount];
 
     // Backgrounds
     static const int kBackgroundCount = 4;
