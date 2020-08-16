@@ -256,13 +256,13 @@ ColorReadCb getColorReadCb(int tileBpp)
     return map[tileBpp];
 }
 
-uint8_t scaleColor(uint32_t c)
+constexpr uint8_t scaleColor(uint32_t c)
 {
     // Convert the packed RGB15 color to RGB32
     return c * 255 / 0b11111;
 }
 
-Color rawColorToRgb(uint32_t raw_color)
+constexpr Color rawColorToRgb(uint32_t raw_color)
 {
     // Convert the packed RGB15 color to RGB32
     uint8_t red = scaleColor(raw_color & 0b11111);
@@ -802,10 +802,6 @@ bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int scre
     auto tilemapMapper = getTilemapMapper(bg->m_TilemapSize);
     auto colorReadCb = getColorReadCb(tileBpp);
 
-    auto paletteReadCb = [this, bgIdx, tileBpp](int palette, int color) {
-        return getColorFromCgram(bgIdx, tileBpp, palette, color);
-    };
-
     // Compute background coordinates in pixels at first
     int bgX = (bg->m_HOffset + screen_x) % (tilemapWidth * kPpuBaseTileWidth);
     int bgY = (bg->m_VOffset + screen_y) % (tilemapHeight * kPpuBaseTileHeight);
@@ -886,7 +882,7 @@ bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int scre
         return false;
     }
 
-    uint32_t rawColor = paletteReadCb(tilePropPalette, color);
+    uint32_t rawColor = getColorFromCgram(bgIdx, tileBpp, tilePropPalette, color);
     *c = rawColorToRgb(rawColor);
     *out_priority = tilePropPriority;
 
