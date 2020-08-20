@@ -93,8 +93,43 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleAND,
         }, {
             "AND",
+            0x32,
+            Cpu65816::AddressingMode::DpIndirect,
+            &Cpu65816::handleAND,
+        }, {
+            "AND",
+            0x27,
+            Cpu65816::AddressingMode::DpIndirectLong,
+            &Cpu65816::handleAND,
+        }, {
+            "AND",
+            0x35,
+            Cpu65816::AddressingMode::DpIndexedX,
+            &Cpu65816::handleAND,
+        }, {
+            "AND",
+            0x21,
+            Cpu65816::AddressingMode::DpIndirectIndexedX,
+            &Cpu65816::handleAND,
+        }, {
+            "AND",
+            0x31,
+            Cpu65816::AddressingMode::DpIndirectIndexedY,
+            &Cpu65816::handleAND,
+        }, {
+            "AND",
+            0x37,
+            Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            &Cpu65816::handleAND,
+        }, {
+            "AND",
             0x2D,
             Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleAND,
+        }, {
+            "AND",
+            0x2F,
+            Cpu65816::AddressingMode::AbsoluteLong,
             &Cpu65816::handleAND,
         }, {
             "AND",
@@ -112,6 +147,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::AbsoluteLongIndexedX,
             &Cpu65816::handleAND,
         }, {
+            "AND",
+            0x23,
+            Cpu65816::AddressingMode::StackRelative,
+            &Cpu65816::handleAND,
+        }, {
+            "AND",
+            0x33,
+            Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
+            &Cpu65816::handleAND,
+        }, {
             "ASL",
             0x0A,
             Cpu65816::AddressingMode::Implied,
@@ -123,8 +168,18 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleASL,
         }, {
             "ASL",
+            0x16,
+            Cpu65816::AddressingMode::DpIndexedX,
+            &Cpu65816::handleASL,
+        }, {
+            "ASL",
             0x0E,
             Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleASL,
+        }, {
+            "ASL",
+            0x1E,
+            Cpu65816::AddressingMode::AbsoluteIndexedX,
             &Cpu65816::handleASL,
         }, {
             "BEQ",
@@ -143,13 +198,28 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleBCS,
         }, {
             "BIT",
+            0x89,
+            Cpu65816::AddressingMode::ImmediateA,
+            &Cpu65816::handleBITImmediate,
+        }, {
+            "BIT",
             0x24,
             Cpu65816::AddressingMode::Dp,
             &Cpu65816::handleBIT,
         }, {
             "BIT",
+            0x34,
+            Cpu65816::AddressingMode::DpIndexedX,
+            &Cpu65816::handleBIT,
+        }, {
+            "BIT",
             0x2C,
             Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleBIT,
+        }, {
+            "BIT",
+            0x3C,
+            Cpu65816::AddressingMode::AbsoluteIndexedX,
             &Cpu65816::handleBIT,
         }, {
             "BMI",
@@ -177,7 +247,6 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::PcRelative,
             &Cpu65816::handleBVC,
         }, {
-
             "BVS",
             0x70,
             Cpu65816::AddressingMode::PcRelative,
@@ -209,6 +278,26 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleCMP,
         }, {
             "CMP",
+            0xD2,
+            Cpu65816::AddressingMode::DpIndirect,
+            &Cpu65816::handleCMP,
+        }, {
+            "CMP",
+            0xC7,
+            Cpu65816::AddressingMode::DpIndirectLong,
+            &Cpu65816::handleCMP,
+        }, {
+            "CMP",
+            0xC1,
+            Cpu65816::AddressingMode::DpIndirectIndexedX,
+            &Cpu65816::handleCMP,
+        }, {
+            "CMP",
+            0xD1,
+            Cpu65816::AddressingMode::DpIndirectIndexedY,
+            &Cpu65816::handleCMP,
+        }, {
+            "CMP",
             0xD5,
             Cpu65816::AddressingMode::DpIndexedX,
             &Cpu65816::handleCMP,
@@ -224,6 +313,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleCMP,
         }, {
             "CMP",
+            0xCF,
+            Cpu65816::AddressingMode::AbsoluteLong,
+            &Cpu65816::handleCMP,
+        }, {
+            "CMP",
             0xDD,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
             &Cpu65816::handleCMP,
@@ -236,6 +330,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "CMP",
             0xDF,
             Cpu65816::AddressingMode::AbsoluteLongIndexedX,
+            &Cpu65816::handleCMP,
+        }, {
+            "CMP",
+            0xC3,
+            Cpu65816::AddressingMode::StackRelative,
+            &Cpu65816::handleCMP,
+        }, {
+            "CMP",
+            0xD3,
+            Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
             &Cpu65816::handleCMP,
         }, {
             "CPX",
@@ -257,6 +361,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0xC0,
             Cpu65816::AddressingMode::ImmediateIndex,
             &Cpu65816::handleCPYImmediate,
+        }, {
+            "CPY",
+            0xC4,
+            Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleCPY,
         }, {
             "CPY",
             0xCC,
@@ -304,6 +413,31 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleEOR,
         }, {
             "EOR",
+            0x52,
+            Cpu65816::AddressingMode::DpIndirect,
+            &Cpu65816::handleEOR,
+        }, {
+            "EOR",
+            0x41,
+            Cpu65816::AddressingMode::DpIndirectIndexedX,
+            &Cpu65816::handleEOR,
+        }, {
+            "EOR",
+            0x51,
+            Cpu65816::AddressingMode::DpIndirectIndexedY,
+            &Cpu65816::handleEOR,
+        }, {
+            "EOR",
+            0x47,
+            Cpu65816::AddressingMode::DpIndirectLong,
+            &Cpu65816::handleEOR,
+        }, {
+            "EOR",
+            0x57,
+            Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            &Cpu65816::handleEOR,
+        }, {
+            "EOR",
             0x55,
             Cpu65816::AddressingMode::DpIndexedX,
             &Cpu65816::handleEOR,
@@ -314,6 +448,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleEOR,
         }, {
             "EOR",
+            0x4F,
+            Cpu65816::AddressingMode::AbsoluteLong,
+            &Cpu65816::handleEOR,
+        }, {
+            "EOR",
+            0x5F,
+            Cpu65816::AddressingMode::AbsoluteLongIndexedX,
+            &Cpu65816::handleEOR,
+        }, {
+            "EOR",
             0x5D,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
             &Cpu65816::handleEOR,
@@ -321,6 +465,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "EOR",
             0x59,
             Cpu65816::AddressingMode::AbsoluteIndexedY,
+            &Cpu65816::handleEOR,
+        }, {
+            "EOR",
+            0x43,
+            Cpu65816::AddressingMode::StackRelative,
+            &Cpu65816::handleEOR,
+        }, {
+            "EOR",
+            0x53,
+            Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
@@ -366,6 +520,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "JMP",
             0x5C,
             Cpu65816::AddressingMode::AbsoluteLong,
+            &Cpu65816::handleJMP,
+        }, {
+            "JMP",
+            0x6C,
+            Cpu65816::AddressingMode::AbsoluteIndirect,
             &Cpu65816::handleJMP,
         }, {
             "JMP",
@@ -439,6 +598,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleLDA,
         }, {
             "LDA",
+            0xA1,
+            Cpu65816::AddressingMode::DpIndirectIndexedX,
+            &Cpu65816::handleLDA,
+        }, {
+            "LDA",
             0xB1,
             Cpu65816::AddressingMode::DpIndirectIndexedY,
             &Cpu65816::handleLDA,
@@ -446,6 +610,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "LDA",
             0xBF,
             Cpu65816::AddressingMode::AbsoluteLongIndexedX,
+            &Cpu65816::handleLDA,
+        }, {
+            "LDA",
+            0xA3,
+            Cpu65816::AddressingMode::StackRelative,
+            &Cpu65816::handleLDA,
+        }, {
+            "LDA",
+            0xB3,
+            Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
             &Cpu65816::handleLDA,
         }, {
             "LDX",
@@ -508,6 +682,21 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::Dp,
             &Cpu65816::handleLSR,
         }, {
+            "LSR",
+            0x4E,
+            Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleLSR,
+        }, {
+            "LSR",
+            0x56,
+            Cpu65816::AddressingMode::DpIndexedX,
+            &Cpu65816::handleLSR,
+        }, {
+            "LSR",
+            0x5E,
+            Cpu65816::AddressingMode::AbsoluteIndexedX,
+            &Cpu65816::handleLSR,
+        }, {
             "MVN",
             0x54,
             Cpu65816::AddressingMode::BlockMove,
@@ -529,8 +718,38 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleORA,
         }, {
             "ORA",
+            0x15,
+            Cpu65816::AddressingMode::DpIndexedX,
+            &Cpu65816::handleORA,
+        }, {
+            "ORA",
+            0x12,
+            Cpu65816::AddressingMode::DpIndirect,
+            &Cpu65816::handleORA,
+        }, {
+            "ORA",
+            0x01,
+            Cpu65816::AddressingMode::DpIndirectIndexedX,
+            &Cpu65816::handleORA,
+        }, {
+            "ORA",
+            0x11,
+            Cpu65816::AddressingMode::DpIndirectIndexedY,
+            &Cpu65816::handleORA,
+        }, {
+            "ORA",
+            0x17,
+            Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            &Cpu65816::handleORA,
+        }, {
+            "ORA",
             0x0D,
             Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleORA,
+        }, {
+            "ORA",
+            0x0F,
+            Cpu65816::AddressingMode::AbsoluteLong,
             &Cpu65816::handleORA,
         }, {
             "ORA",
@@ -551,6 +770,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "ORA",
             0x1D,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            &Cpu65816::handleORA,
+        }, {
+            "ORA",
+            0x03,
+            Cpu65816::AddressingMode::StackRelative,
+            &Cpu65816::handleORA,
+        }, {
+            "ORA",
+            0x13,
+            Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
             &Cpu65816::handleORA,
         }, {
             "PER",
@@ -638,10 +867,45 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::Dp,
             &Cpu65816::handleROL,
         }, {
+            "ROL",
+            0x36,
+            Cpu65816::AddressingMode::DpIndexedX,
+            &Cpu65816::handleROL,
+        }, {
+            "ROL",
+            0x2E,
+            Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleROL,
+        }, {
+            "ROL",
+            0x3E,
+            Cpu65816::AddressingMode::AbsoluteIndexedX,
+            &Cpu65816::handleROL,
+        }, {
             "ROR",
             0x6A,
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handleROR_A,
+        }, {
+            "ROR",
+            0x6E,
+            Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleROR,
+        }, {
+            "ROR",
+            0x7E,
+            Cpu65816::AddressingMode::AbsoluteIndexedX,
+            &Cpu65816::handleROR,
+        }, {
+            "ROR",
+            0x66,
+            Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleROR,
+        }, {
+            "ROR",
+            0x76,
+            Cpu65816::AddressingMode::DpIndexedX,
+            &Cpu65816::handleROR,
         }, {
             "RTI",
             0x40,
@@ -719,6 +983,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleSTA,
         }, {
             "STA",
+            0x81,
+            Cpu65816::AddressingMode::DpIndirectIndexedX,
+            &Cpu65816::handleSTA,
+        }, {
+            "STA",
+            0x91,
+            Cpu65816::AddressingMode::DpIndirectIndexedY,
+            &Cpu65816::handleSTA,
+        }, {
+            "STA",
             0x9D,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
             &Cpu65816::handleSTA,
@@ -739,6 +1013,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleSTA,
         }, {
             "STA",
+            0x92,
+            Cpu65816::AddressingMode::DpIndirect,
+            &Cpu65816::handleSTA,
+        }, {
+            "STA",
             0x87,
             Cpu65816::AddressingMode::DpIndirectLong,
             &Cpu65816::handleSTA,
@@ -746,6 +1025,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "STA",
             0x97,
             Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            &Cpu65816::handleSTA,
+        }, {
+            "STA",
+            0x83,
+            Cpu65816::AddressingMode::StackRelative,
             &Cpu65816::handleSTA,
         }, {
             "STX",
@@ -818,9 +1102,19 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::Dp,
             &Cpu65816::handleTRB,
         }, {
+            "TRB",
+            0x1C,
+            Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleTRB,
+        }, {
             "TSB",
             0x04,
             Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleTSB,
+        }, {
+            "TSB",
+            0x0C,
+            Cpu65816::AddressingMode::Absolute,
             &Cpu65816::handleTSB,
         }, {
             "TXA",
@@ -998,6 +1292,19 @@ void Cpu65816::executeSingle()
         break;
     }
 
+    case AddressingMode::AbsoluteIndirect: {
+        uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+        m_Registers.PC += 2;
+
+        uint32_t address = (m_Registers.DB << 16) | rawData;
+        address = (m_Registers.DB << 16) | m_Membus->readU16(address);
+
+        data = address;
+
+        snprintf(strIntruction, sizeof(strIntruction), "%s [$%04X] [%06X]", opcodeDesc.m_Name, rawData, data);
+        break;
+    }
+
     case AddressingMode::AbsoluteIndirectLong: {
         uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC += 2;
@@ -1064,6 +1371,19 @@ void Cpu65816::executeSingle()
         break;
     }
 
+    case AddressingMode::DpIndirectIndexedX: {
+        uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+        m_Registers.PC++;
+
+        uint32_t address = ((m_Registers.DB << 16) | rawData);
+        address = ((m_Registers.DB << 16) | m_Membus->readU16(address)) + m_Registers.X;
+
+        data = address;
+
+        snprintf(strIntruction, sizeof(strIntruction), "%s ($%02X),X [%06X] ", opcodeDesc.m_Name, rawData, address);
+        break;
+    }
+
     case AddressingMode::DpIndirectIndexedY: {
         uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC++;
@@ -1122,6 +1442,29 @@ void Cpu65816::executeSingle()
         data |= m_Registers.PB << 16;
 
         snprintf(strIntruction, sizeof(strIntruction), "%s $%02X [%06X]", opcodeDesc.m_Name, rawData, data);
+        break;
+    }
+
+    case AddressingMode::StackRelative: {
+        uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+        m_Registers.PC += 1;
+
+        data = m_Registers.S + static_cast<int8_t>(rawData);
+
+        snprintf(strIntruction, sizeof(strIntruction), "%s $%02X,S [%06X]", opcodeDesc.m_Name, rawData, data);
+        break;
+    }
+
+    case AddressingMode::StackRelativeIndirectIndexedY: {
+        uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+        m_Registers.PC += 1;
+
+        uint32_t address = m_Registers.S + static_cast<int8_t>(rawData);
+        address = m_Membus->readU16(address) + m_Registers.Y;
+
+        data = address;
+
+        snprintf(strIntruction, sizeof(strIntruction), "%s ($%02X,S),Y [%06X]", opcodeDesc.m_Name, rawData, data);
         break;
     }
 
@@ -1454,6 +1797,23 @@ void Cpu65816::handleBEQ(uint32_t data)
 {
     if (getBit(m_Registers.P, kPRegister_Z)) {
         m_Registers.PC = data;
+    }
+}
+
+void Cpu65816::handleBITImmediate(uint32_t data)
+{
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
+
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        uint8_t result = (m_Registers.A & 0xFF) & data;
+
+        setZFlag(result);
+
+    } else {
+        uint16_t result = m_Registers.A & data;
+
+        setZFlag(result);
     }
 }
 
@@ -2291,6 +2651,38 @@ void Cpu65816::handleROR_A(uint32_t data)
 
         m_Registers.A = v & 0xFFFF;
         setNZFlags(m_Registers.A, 0x8000);
+    }
+
+    if (finalC) {
+        m_Registers.P = setBit(m_Registers.P, kPRegister_C);
+    } else {
+        m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
+    }
+}
+
+void Cpu65816::handleROR(uint32_t data)
+{
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
+    uint32_t C = getBit(m_Registers.P, kPRegister_C);
+    uint32_t finalC;
+
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        uint16_t v = m_Membus->readU8(data);
+
+        finalC = v & 1;
+        v = (C << 7) | (v >> 1);
+
+        m_Membus->writeU8(data, v);
+        setNZFlags(v, 0x80);
+    } else {
+        uint32_t v = m_Membus->readU16(data);
+
+        finalC = v & 1;
+        v = (C << 15) | (v >> 1);
+
+        m_Membus->writeU16(data, v);
+        setNZFlags(v, 0x8000);
     }
 
     if (finalC) {

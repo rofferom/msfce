@@ -34,6 +34,7 @@ private:
     void handleBCC(uint32_t data);
     void handleBCS(uint32_t data);
     void handleBEQ(uint32_t data);
+    void handleBITImmediate(uint32_t data);
     void handleBIT(uint32_t data);
     void handleBMI(uint32_t data);
     void handleBRA(uint32_t data);
@@ -93,6 +94,7 @@ private:
     void handleROL_A(uint32_t data);
     void handleROL(uint32_t data);
     void handleROR_A(uint32_t data);
+    void handleROR(uint32_t data);
     void handleRTI(uint32_t data);
     void handleRTL(uint32_t data);
     void handleRTS(uint32_t data);
@@ -151,17 +153,21 @@ private:
         AbsoluteIndexedX,
         AbsoluteIndexedY,
         AbsoluteLong,
+        AbsoluteIndirect,
         AbsoluteIndirectLong,
         AbsoluteLongIndexedX,
         Dp,
         DpIndexedX,
         DpIndexedY,
         DpIndirect,
+        DpIndirectIndexedX,
         DpIndirectIndexedY,
         DpIndirectLong,
         DpIndirectLongIndexedY,
         PcRelative,
         PcRelativeLong,
+        StackRelative,
+        StackRelativeIndirectIndexedY,
         BlockMove,
     };
 
