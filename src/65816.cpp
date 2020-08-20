@@ -782,6 +782,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
             &Cpu65816::handleORA,
         }, {
+            "PEA",
+            0xF4,
+            Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handlePEA,
+        }, {
+            "PEI",
+            0xD4,
+            Cpu65816::AddressingMode::DpIndirect,
+            &Cpu65816::handlePEA,
+        }, {
             "PER",
             0x62,
             Cpu65816::AddressingMode::PcRelativeLong,
@@ -2413,6 +2423,18 @@ void Cpu65816::handleORAImmediate(uint32_t data)
         m_Registers.A |= data;
         setNZFlags(m_Registers.A, 0x8000);
     }
+}
+
+void Cpu65816::handlePEA(uint32_t data)
+{
+    m_Membus->writeU16(m_Registers.S - 1, data & 0xFFFF);
+    m_Registers.S -= 2;
+}
+
+void Cpu65816::handlePEI(uint32_t data)
+{
+    m_Membus->writeU16(m_Registers.S - 1, data & 0xFFFF);
+    m_Registers.S -= 2;
 }
 
 void Cpu65816::handlePER(uint32_t data)
