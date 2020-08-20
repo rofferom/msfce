@@ -495,7 +495,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
         }, {
             "LDY",
             0xBC,
-            Cpu65816::AddressingMode::AbsoluteIndexedY,
+            Cpu65816::AddressingMode::AbsoluteIndexedX,
             &Cpu65816::handleLDY,
         }, {
             "LSR",
@@ -1215,7 +1215,7 @@ void Cpu65816::setZFlag(uint16_t value)
     }
 }
 
-void Cpu65816::setCFlag(int16_t value)
+void Cpu65816::setCFlag(int32_t value)
 {
     if (value >= 0) {
         m_Registers.P = setBit(m_Registers.P, kPRegister_C);
@@ -1408,27 +1408,28 @@ void Cpu65816::handleASL(uint32_t data)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
     uint32_t C = getBit(m_Registers.P, kPRegister_C);
+    uint32_t finalC;
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint16_t v = m_Membus->readU8(data);
+        uint8_t v = m_Membus->readU8(data);
 
+        finalC = v >> 7;
         v <<= 1;
-        C = v >> 8;
 
         m_Membus->writeU8(data, v);
         setNZFlags(v, 0x80);
     } else {
-        uint32_t v = m_Membus->readU16(data);
+        uint16_t v = m_Membus->readU16(data);
 
+        finalC = v >> 15;
         v <<= 1;
-        C = v >> 16;
 
         m_Membus->writeU16(data, v);
-        setNZFlags(m_Registers.A, 0x8000);
+        setNZFlags(v, 0x8000);
     }
 
-    if (C) {
+    if (finalC) {
         m_Registers.P = setBit(m_Registers.P, kPRegister_C);
     } else {
         m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
@@ -1982,7 +1983,7 @@ void Cpu65816::handleLSR(uint32_t data)
         v >>= 1;
 
         m_Membus->writeU8(data, v);
-        setNZFlags(m_Registers.A & 0xFF, 0x80);
+        setNZFlags(v, 0x80);
     } else {
         uint32_t v = m_Membus->readU16(data);
 
@@ -1990,7 +1991,7 @@ void Cpu65816::handleLSR(uint32_t data)
         v >>= 1;
 
         m_Membus->writeU16(data, v);
-        setNZFlags(m_Registers.A, 0x8000);
+        setNZFlags(v, 0x8000);
     }
 
     if (C) {
@@ -2250,7 +2251,7 @@ void Cpu65816::handleROL(uint32_t data)
         m_Membus->writeU8(data, v);
         setNZFlags(v, 0x80);
     } else {
-        uint32_t v = m_Membus->readU8(data);
+        uint32_t v = m_Membus->readU16(data);
 
         v = (v << 1) | C;
         C = v >> 16;

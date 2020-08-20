@@ -22,7 +22,7 @@ private:
 
     void setNFlag(uint16_t value, uint16_t negativeMask);
     void setZFlag(uint16_t value);
-    void setCFlag(int16_t value);
+    void setCFlag(int32_t value);
     void setNZFlags(uint16_t value, uint16_t negativeMask);
 
     void handleADC(uint32_t data);
