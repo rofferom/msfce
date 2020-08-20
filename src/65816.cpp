@@ -193,6 +193,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handleCLI,
         }, {
+            "CLV",
+            0xB8,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handleCLV,
+        }, {
             "CMP",
             0xC9,
             Cpu65816::AddressingMode::ImmediateA,
@@ -1541,6 +1546,11 @@ void Cpu65816::handleCLC(uint32_t data)
 void Cpu65816::handleCLI(uint32_t data)
 {
     m_Registers.P = clearBit(m_Registers.P, kPRegister_I);
+}
+
+void Cpu65816::handleCLV(uint32_t data)
+{
+    m_Registers.P = clearBit(m_Registers.P, kPRegister_V);
 }
 
 void Cpu65816::handleCMPImmediate(uint32_t data)

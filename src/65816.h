@@ -43,6 +43,7 @@ private:
     void handleBVS(uint32_t data);
     void handleCLC(uint32_t data);
     void handleCLI(uint32_t data);
+    void handleCLV(uint32_t data);
     void handleCMP(uint32_t data);
     void handleCMPImmediate(uint32_t data);
     void handleCPX(uint32_t data);
