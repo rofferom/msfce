@@ -1522,6 +1522,9 @@ void Cpu65816::handleNMI()
 {
     // Bank is forced at 0
     uint16_t handlerAddress = m_Membus->readU16(kRegIV_NMI);
+    if (!handlerAddress) {
+        return;
+    }
 
     // Save registers
     m_Registers.S--;
