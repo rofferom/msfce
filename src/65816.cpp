@@ -282,6 +282,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::PcRelative,
             &Cpu65816::handleBRA,
         }, {
+            "BRL",
+            0x82,
+            Cpu65816::AddressingMode::PcRelativeLong,
+            &Cpu65816::handleBRL,
+        }, {
             "BVC",
             0x50,
             Cpu65816::AddressingMode::PcRelative,
@@ -1946,6 +1951,12 @@ void Cpu65816::handleBPL(uint32_t data)
 void Cpu65816::handleBRA(uint32_t data)
 {
     m_Registers.PC = data;
+}
+
+void Cpu65816::handleBRL(uint32_t data)
+{
+    m_Registers.PB = data >> 16;
+    m_Registers.PC = data & 0xFFFF;
 }
 
 void Cpu65816::handleBVC(uint32_t data)

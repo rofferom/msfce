@@ -38,6 +38,7 @@ private:
     void handleBIT(uint32_t data);
     void handleBMI(uint32_t data);
     void handleBRA(uint32_t data);
+    void handleBRL(uint32_t data);
     void handleBNE(uint32_t data);
     void handleBPL(uint32_t data);
     void handleBVC(uint32_t data);
