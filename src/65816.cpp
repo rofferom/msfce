@@ -1042,9 +1042,19 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::StackRelative,
             &Cpu65816::handleSTA,
         }, {
+            "STA",
+            0x93,
+            Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
+            &Cpu65816::handleSTA,
+        }, {
             "STX",
             0x86,
             Cpu65816::AddressingMode::Dp,
+            &Cpu65816::handleSTX,
+        }, {
+            "STX",
+            0x96,
+            Cpu65816::AddressingMode::DpIndexedY,
             &Cpu65816::handleSTX,
         }, {
             "STX",
