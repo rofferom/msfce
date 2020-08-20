@@ -58,6 +58,31 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleADC,
         }, {
             "ADC",
+            0x72,
+            Cpu65816::AddressingMode::DpIndirect,
+            &Cpu65816::handleADC,
+        }, {
+            "ADC",
+            0x67,
+            Cpu65816::AddressingMode::DpIndirectLong,
+            &Cpu65816::handleADC,
+        }, {
+            "ADC",
+            0x61,
+            Cpu65816::AddressingMode::DpIndirectIndexedX,
+            &Cpu65816::handleADC,
+        }, {
+            "ADC",
+            0x71,
+            Cpu65816::AddressingMode::DpIndirectIndexedY,
+            &Cpu65816::handleADC,
+        }, {
+            "ADC",
+            0x77,
+            Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            &Cpu65816::handleADC,
+        }, {
+            "ADC",
             0x75,
             Cpu65816::AddressingMode::DpIndexedX,
             &Cpu65816::handleADC,
@@ -65,6 +90,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "ADC",
             0x6D,
             Cpu65816::AddressingMode::Absolute,
+            &Cpu65816::handleADC,
+        }, {
+            "ADC",
+            0x6F,
+            Cpu65816::AddressingMode::AbsoluteLong,
             &Cpu65816::handleADC,
         }, {
             "ADC",
@@ -80,6 +110,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "ADC",
             0x79,
             Cpu65816::AddressingMode::AbsoluteIndexedY,
+            &Cpu65816::handleADC,
+        }, {
+            "ADC",
+            0x63,
+            Cpu65816::AddressingMode::StackRelative,
+            &Cpu65816::handleADC,
+        }, {
+            "ADC",
+            0x73,
+            Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
             &Cpu65816::handleADC,
         }, {
             "AND",
