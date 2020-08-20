@@ -681,6 +681,7 @@ void Ppu::render(const DrawPointCb& drawPointCb)
         for (int x = 0; x < kPpuDisplayWidth; x++) {
             bool drawn = false;
 
+#if 1
             for (size_t prioIdx = 0; bgPriority[prioIdx].m_BgIdx != -1; prioIdx++) {
                 int bgIdx = bgPriority[prioIdx].m_BgIdx;
                 Color c;
@@ -703,6 +704,17 @@ void Ppu::render(const DrawPointCb& drawPointCb)
             if (!drawn) {
                 drawPointCb(x, y, {0, 0, 0});
             }
+#else
+            Color c;
+            int pixelPriority;
+
+            bool valid = getPixelFromObj(x, y, &c, &pixelPriority);
+            if (valid) {
+                drawPointCb(x, y, c);
+            } else {
+                drawPointCb(x, y, {0, 0, 0});
+            }
+#endif
         }
     }
 }
