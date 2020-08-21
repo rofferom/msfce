@@ -3327,15 +3327,29 @@ void Cpu65816::handleXBA(uint32_t data)
 {
     m_Registers.A = ((m_Registers.A & 0xFF) << 8) | (m_Registers.A >> 8);
 
-    setNZFlags(m_Registers.A, 0x8000);
+    setNZFlags(m_Registers.A & 0xFF, 0x80);
 }
 
 void Cpu65816::handleXCE(uint32_t data)
 {
-    if (getBit(m_Registers.P, kPRegister_C)) {
+    uint32_t initialC = getBit(m_Registers.P, kPRegister_C);
+    uint32_t initialE = getBit(m_Registers.P, kPRegister_E);
+
+    if (initialC) {
         m_Registers.P = setBit(m_Registers.P, kPRegister_E);
+        m_Registers.P = setBit(m_Registers.P, kPRegister_M);
+
+        m_Registers.P = setBit(m_Registers.P, kPRegister_X);
+        m_Registers.X &= 0xFF;
+        m_Registers.Y &= 0xFF;
     } else {
         m_Registers.P = clearBit(m_Registers.P, kPRegister_E);
+    }
+
+    if (initialE) {
+        m_Registers.P = setBit(m_Registers.P, kPRegister_C);
+    } else {
+        m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
     }
 }
 
