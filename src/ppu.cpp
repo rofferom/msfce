@@ -301,14 +301,16 @@ void getSpriteSize(uint8_t obselSize, uint8_t objSize, int* width, int* height)
 } // anonymous namespace
 
 // Background priority charts
-const Ppu::BgPriority Ppu::s_BgPriorityMode1_BG3_On[] = {
-    {2, 1},
-    {0, 1},
-    {1, 1},
-    {0, 0},
-    {1, 0},
-    {2, 0},
-    {-1, -1},
+const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_On[] = {
+    {Layer::background, 2,   1},
+    {Layer::sprite,    -1,   3},
+    {Layer::background, 0,   1},
+    {Layer::background, 1,   1},
+    {Layer::background, 0,   0},
+    {Layer::background, 1,   0},
+    {Layer::background, 2,   0},
+
+    {Layer::none, 0, 0},
 };
 
 void Ppu::dump() const
@@ -675,7 +677,7 @@ void Ppu::render(const DrawPointCb& drawPointCb)
         return;
     }
 
-    const Ppu::BgPriority* bgPriority = s_BgPriorityMode1_BG3_On;
+    const Ppu::LayerPriority* layerPriority = s_LayerPriorityMode1_BG3_On;
 
     loadObjs();
 
@@ -683,40 +685,46 @@ void Ppu::render(const DrawPointCb& drawPointCb)
         for (int x = 0; x < kPpuDisplayWidth; x++) {
             bool drawn = false;
 
-#if 1
-            for (size_t prioIdx = 0; bgPriority[prioIdx].m_BgIdx != -1; prioIdx++) {
-                int bgIdx = bgPriority[prioIdx].m_BgIdx;
-                Color c;
-                int pixelPriority;
+            for (size_t prioIdx = 0; layerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
+                const auto& layer = layerPriority[prioIdx];
 
-                bool valid = getPixelFromBg(bgIdx, &m_Backgrounds[bgIdx], x, y, &c, &pixelPriority);
-                if (!valid) {
-                    continue;
+                if (layer.m_Layer == Layer::background) {
+                    int bgIdx = layer.m_BgIdx;
+                    Color c;
+                    int pixelPriority;
+
+                    bool valid = getPixelFromBg(bgIdx, &m_Backgrounds[bgIdx], x, y, &c, &pixelPriority);
+                    if (!valid) {
+                        continue;
+                    }
+
+                    if (pixelPriority != layerPriority[prioIdx].m_Priority) {
+                        continue;
+                    }
+
+                    drawPointCb(x, y, c);
+                    drawn = true;
+                    break;
+                } else if (layer.m_Layer == Layer::sprite) {
+                    Color c;
+                    int pixelPriority;
+
+                    bool valid = getPixelFromObj(x, y, &c, &pixelPriority);
+                    if (!valid) {
+                        continue;
+                    }
+
+                    drawPointCb(x, y, c);
+                    drawn = true;
+                    break;
+                } else {
+                    assert(false);
                 }
-
-                if (pixelPriority != bgPriority[prioIdx].m_TilePriority) {
-                    continue;
-                }
-
-                drawPointCb(x, y, c);
-                drawn = true;
-                break;
             }
 
             if (!drawn) {
                 drawPointCb(x, y, {0, 0, 0});
             }
-#else
-            Color c;
-            int pixelPriority;
-
-            bool valid = getPixelFromObj(x, y, &c, &pixelPriority);
-            if (valid) {
-                drawPointCb(x, y, c);
-            } else {
-                drawPointCb(x, y, {0, 0, 0});
-            }
-#endif
         }
     }
 }

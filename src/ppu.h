@@ -41,9 +41,16 @@ private:
         uint16_t m_VOffset = 0;
     };
 
-    struct BgPriority {
+    enum class Layer {
+        none,
+        background,
+        sprite,
+    };
+
+    struct LayerPriority {
+        Layer m_Layer;
         int m_BgIdx;
-        int m_TilePriority;
+        int m_Priority;
     };
 
     struct ObjProperty {
@@ -111,6 +118,6 @@ private:
     int m_Bgmode = 0;
     bool m_Bg3Priority = 0;
 
-    // Background priority charts
-    static const Ppu::BgPriority s_BgPriorityMode1_BG3_On[];
+    // Layers priority charts
+    static const Ppu::LayerPriority s_LayerPriorityMode1_BG3_On[];
 };
