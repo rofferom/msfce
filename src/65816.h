@@ -116,8 +116,11 @@ private:
     void handleTAY(uint32_t data);
     void handleTCD(uint32_t data);
     void handleTCS(uint32_t data);
+    void handleTDC(uint32_t data);
     void handleTRB(uint32_t data);
     void handleTSB(uint32_t data);
+    void handleTSC(uint32_t data);
+    void handleTSX(uint32_t data);
     void handleTXA(uint32_t data);
     void handleTXS(uint32_t data);
     void handleTXY(uint32_t data);

@@ -1227,6 +1227,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handleTCS,
         }, {
+            "TDC",
+            0x7B,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handleTDC,
+        }, {
             "TRB",
             0x14,
             Cpu65816::AddressingMode::Dp,
@@ -1246,6 +1251,16 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0x0C,
             Cpu65816::AddressingMode::Absolute,
             &Cpu65816::handleTSB,
+        }, {
+            "TSC",
+            0x3B,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handleTSC,
+        }, {
+            "TSX",
+            0xBA,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handleTSX,
         }, {
             "TXA",
             0x8A,
@@ -3140,6 +3155,13 @@ void Cpu65816::handleTCS(uint32_t data)
     m_Registers.S = m_Registers.A;
 }
 
+void Cpu65816::handleTDC(uint32_t data)
+{
+    m_Registers.A = m_Registers.D;
+
+    setNZFlags(m_Registers.A, 0x8000);
+}
+
 void Cpu65816::handleTRB(uint32_t address)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
@@ -3201,6 +3223,38 @@ void Cpu65816::handleTSB(uint32_t address)
 
         data |= m_Registers.A;
         m_Membus->writeU16(address, data);
+    }
+}
+
+void Cpu65816::handleTSC(uint32_t data)
+{
+    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
+
+    // 0: 16 bits, 1: 8 bits
+    if (accumulatorSize) {
+        m_Registers.A &= 0xFF00;
+        m_Registers.A |= m_Registers.S & 0xFF;
+
+        setNZFlags(m_Registers.A & 0xFF, 0x80);
+    } else {
+        m_Registers.A = m_Registers.S;
+
+        setNZFlags(m_Registers.A, 0x8000);
+    }
+}
+
+void Cpu65816::handleTSX(uint32_t data)
+{
+    auto indexSize = getBit(m_Registers.P, kPRegister_X);
+
+    // 0: 16 bits, 1: 8 bits
+    if (indexSize) {
+        m_Registers.X &= 0xFF00;
+        m_Registers.X |= m_Registers.S & 0xFF;
+        setNZFlags(m_Registers.X & 0xFF, 0x80);
+    } else {
+        m_Registers.X = m_Registers.S;
+        setNZFlags(m_Registers.X, 0x8000);
     }
 }
 
