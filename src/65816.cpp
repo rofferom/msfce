@@ -2866,7 +2866,7 @@ void Cpu65816::handleRTS(uint32_t data)
     m_Registers.S += 2;
 }
 
-void Cpu65816::handleSBCImmediate(uint32_t data)
+void Cpu65816::handleSBCImmediate(uint32_t rawData)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
@@ -2874,51 +2874,55 @@ void Cpu65816::handleSBCImmediate(uint32_t data)
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint32_t result = (m_Registers.A & 0xFF) - data - 1 + getBit(m_Registers.P, kPRegister_C);
+        uint8_t data = rawData;
+        data = ~data;
+
+        int result = (m_Registers.A & 0xFF) + data + getBit(m_Registers.P, kPRegister_C);
 
         // V flag
-        uint8_t data8 = data;
-        if ((m_Registers.A & 0x80) == (data8 & 0x80) && (m_Registers.A & 0x80) != (result & 0x80)) {
+        if (~((m_Registers.A & 0xFF) ^ data) & ((m_Registers.A & 0xFF) ^ result) & 0x80) {
             m_Registers.P = setBit(m_Registers.P, kPRegister_V);
         } else {
             m_Registers.P = clearBit(m_Registers.P, kPRegister_V);
         }
+
+        // C Flag
+        if (result > 0xFF) {
+            m_Registers.P = setBit(m_Registers.P, kPRegister_C);
+        } else {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
+        }
+
+        // Z and N Flag
+        setZFlag(result & 0xFF);
+        setNFlag(result, 0x80);
 
         m_Registers.A = (m_Registers.A & 0xFF00) | (result & 0xFF);
-
-        // Z and N Flag
-        setZFlag(m_Registers.A & 0xFF);
-        setNFlag(m_Registers.A, 0x80);
-
-        // C Flag
-        if (result >= 0x100) {
-            m_Registers.P = setBit(m_Registers.P, kPRegister_C);
-        } else {
-            m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
-        }
     } else {
-        uint32_t result = m_Registers.A - data - 1 + getBit(m_Registers.P, kPRegister_C);
+        uint16_t data = rawData;
+        data = ~data;
+
+        int result = m_Registers.A + data + getBit(m_Registers.P, kPRegister_C);
 
         // V flag
-        uint16_t data16 = data;
-        if (~(m_Registers.A ^ data16) & (data16 ^ static_cast<uint16_t>(result)) & 0x8000) {
+        if (~(m_Registers.A ^ data) & (m_Registers.A ^ result) & 0x8000) {
             m_Registers.P = setBit(m_Registers.P, kPRegister_V);
         } else {
             m_Registers.P = clearBit(m_Registers.P, kPRegister_V);
         }
 
-        m_Registers.A = result & 0xFFFF;
-
-        // Z and N Flag
-        setZFlag(m_Registers.A);
-        setNFlag(m_Registers.A, 0x8000);
-
         // C Flag
-        if (result >= 0x10000) {
+        if (result > 0xFFFF) {
             m_Registers.P = setBit(m_Registers.P, kPRegister_C);
         } else {
             m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
         }
+
+        // Z and N Flag
+        setZFlag(result & 0xFFFF);
+        setNFlag(result, 0x8000);
+
+        m_Registers.A = result & 0xFFFF;
     }
 }
 
@@ -2930,53 +2934,55 @@ void Cpu65816::handleSBC(uint32_t address)
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint32_t data = m_Membus->readU8(address);
-        uint32_t result = (m_Registers.A & 0xFF) - data - 1 + getBit(m_Registers.P, kPRegister_C);
+        uint8_t data = m_Membus->readU8(address);
+        data = ~data;
+
+        int result = (m_Registers.A & 0xFF) + data + getBit(m_Registers.P, kPRegister_C);
 
         // V flag
-        uint8_t data8 = data;
-        if ((m_Registers.A & 0x80) == (data8 & 0x80) && (m_Registers.A & 0x80) != (result & 0x80)) {
+        if (~((m_Registers.A & 0xFF) ^ data) & ((m_Registers.A & 0xFF) ^ result) & 0x80) {
             m_Registers.P = setBit(m_Registers.P, kPRegister_V);
         } else {
             m_Registers.P = clearBit(m_Registers.P, kPRegister_V);
         }
 
         // C Flag
-        if ((m_Registers.A & 0xFF) >= data) {
-            m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
-        } else {
+        if (result > 0xFF) {
             m_Registers.P = setBit(m_Registers.P, kPRegister_C);
+        } else {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
         }
+
+        // Z and N Flag
+        setZFlag(result & 0xFF);
+        setNFlag(result, 0x80);
 
         m_Registers.A = (m_Registers.A & 0xFF00) | (result & 0xFF);
-
-        // Z and N Flag
-        setZFlag(m_Registers.A & 0xFF);
-        setNFlag(m_Registers.A, 0x80);
     } else {
-        uint32_t data = m_Membus->readU16(address);
-        uint32_t result = m_Registers.A - data - 1 + getBit(m_Registers.P, kPRegister_C);
+        uint16_t data = m_Membus->readU16(address);
+        data = ~data;
+
+        int result = m_Registers.A + data + getBit(m_Registers.P, kPRegister_C);
 
         // V flag
-        uint16_t data16 = data;
-        if (~(m_Registers.A ^ data16) & (data16 ^ static_cast<uint16_t>(result)) & 0x8000) {
+        if (~(m_Registers.A ^ data) & (m_Registers.A ^ result) & 0x8000) {
             m_Registers.P = setBit(m_Registers.P, kPRegister_V);
         } else {
             m_Registers.P = clearBit(m_Registers.P, kPRegister_V);
         }
 
         // C Flag
-        if (m_Registers.A >= data) {
-            m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
-        } else {
+        if (result > 0xFFFF) {
             m_Registers.P = setBit(m_Registers.P, kPRegister_C);
+        } else {
+            m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
         }
 
-        m_Registers.A = result & 0xFFFF;
-
         // Z and N Flag
-        setZFlag(m_Registers.A);
-        setNFlag(m_Registers.A, 0x8000);
+        setZFlag(result & 0xFFFF);
+        setNFlag(result, 0x8000);
+
+        m_Registers.A = result & 0xFFFF;
     }
 }
 
