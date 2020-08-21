@@ -988,6 +988,31 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleSBC,
         }, {
             "SBC",
+            0xF2,
+            Cpu65816::AddressingMode::DpIndirect,
+            &Cpu65816::handleSBC,
+        }, {
+            "SBC",
+            0xE7,
+            Cpu65816::AddressingMode::DpIndirectLong,
+            &Cpu65816::handleSBC,
+        }, {
+            "SBC",
+            0xF7,
+            Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            &Cpu65816::handleSBC,
+        }, {
+            "SBC",
+            0xE1,
+            Cpu65816::AddressingMode::DpIndirectIndexedX,
+            &Cpu65816::handleSBC,
+        }, {
+            "SBC",
+            0xF1,
+            Cpu65816::AddressingMode::DpIndirectIndexedY,
+            &Cpu65816::handleSBC,
+        }, {
+            "SBC",
             0xF5,
             Cpu65816::AddressingMode::DpIndexedX,
             &Cpu65816::handleSBC,
@@ -1005,6 +1030,26 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "SBC",
             0xF9,
             Cpu65816::AddressingMode::AbsoluteIndexedY,
+            &Cpu65816::handleSBC,
+        }, {
+            "SBC",
+            0xEF,
+            Cpu65816::AddressingMode::AbsoluteLong,
+            &Cpu65816::handleSBC,
+        }, {
+            "SBC",
+            0xFF,
+            Cpu65816::AddressingMode::AbsoluteLongIndexedX,
+            &Cpu65816::handleSBC,
+        }, {
+            "SBC",
+            0xE3,
+            Cpu65816::AddressingMode::StackRelative,
+            &Cpu65816::handleSBC,
+        }, {
+            "SBC",
+            0xF3,
+            Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
             &Cpu65816::handleSBC,
         }, {
             "SEC",
