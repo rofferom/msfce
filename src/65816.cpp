@@ -1490,7 +1490,7 @@ void Cpu65816::executeSingle()
         uint32_t rawData =  m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC++;
 
-        data = rawData;
+        data = m_Registers.D + rawData;
 
         snprintf(strIntruction, sizeof(strIntruction), "%s $%02X [%06X] ", opcodeDesc.m_Name, rawData, data);
         break;
@@ -1500,7 +1500,7 @@ void Cpu65816::executeSingle()
         uint32_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC++;
 
-        data = rawData + m_Registers.X;
+        data = m_Registers.D + rawData + m_Registers.X;
 
         snprintf(strIntruction, sizeof(strIntruction), "%s $%02X,X [%06X] ", opcodeDesc.m_Name, rawData, data);
         break;
@@ -1510,7 +1510,7 @@ void Cpu65816::executeSingle()
         uint32_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC++;
 
-        data = rawData + m_Registers.Y;
+        data = m_Registers.D + rawData + m_Registers.Y;
 
         snprintf(strIntruction, sizeof(strIntruction), "%s $%02X,Y [%06X] ", opcodeDesc.m_Name, rawData, data);
         break;
@@ -1520,7 +1520,7 @@ void Cpu65816::executeSingle()
         uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC++;
 
-        uint32_t address = ((m_Registers.DB << 16) | rawData);
+        uint32_t address = ((m_Registers.DB << 16) | (m_Registers.D + rawData));
         address = (m_Registers.DB << 16) | m_Membus->readU16(address);
 
         data = address;
@@ -1533,7 +1533,7 @@ void Cpu65816::executeSingle()
         uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC++;
 
-        uint32_t address = ((m_Registers.DB << 16) | rawData);
+        uint32_t address = ((m_Registers.DB << 16) | (m_Registers.D + rawData));
         address = ((m_Registers.DB << 16) | m_Membus->readU16(address)) + m_Registers.X;
 
         data = address;
@@ -1546,7 +1546,7 @@ void Cpu65816::executeSingle()
         uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC++;
 
-        uint32_t address = ((m_Registers.DB << 16) | rawData);
+        uint32_t address = ((m_Registers.DB << 16) | (m_Registers.D + rawData));
         address = ((m_Registers.DB << 16) | m_Membus->readU16(address)) + m_Registers.Y;
 
         data = address;
@@ -1559,7 +1559,7 @@ void Cpu65816::executeSingle()
         uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC++;
 
-        uint32_t address = ((m_Registers.DB << 16) | rawData);
+        uint32_t address = ((m_Registers.DB << 16) | (m_Registers.D + rawData));
         address = m_Membus->readU24(address);
 
         data = address;
@@ -1572,7 +1572,7 @@ void Cpu65816::executeSingle()
         uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC++;
 
-        uint32_t address = ((m_Registers.DB << 16) | rawData);
+        uint32_t address = ((m_Registers.DB << 16) | (m_Registers.D + rawData));
         address = m_Membus->readU24(address) + m_Registers.Y;
 
         data = address;
