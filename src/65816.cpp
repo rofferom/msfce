@@ -1412,12 +1412,11 @@ void Cpu65816::executeSingle()
         m_Registers.PC += 2;
 
         uint32_t address = (m_Registers.PB << 16) | rawData;
-        address = (m_Registers.PB << 16) | m_Membus->readU16(address);
-        address += m_Registers.X;
+        address = (m_Registers.PB << 16) | m_Membus->readU16(address + m_Registers.X);
 
         data = address;
 
-        snprintf(strIntruction, sizeof(strIntruction), "%s [$%04X] [%06X]", opcodeDesc.m_Name, rawData, data);
+        snprintf(strIntruction, sizeof(strIntruction), "%s ($%04X,X) [%06X]", opcodeDesc.m_Name, rawData, data);
         break;
     }
 
