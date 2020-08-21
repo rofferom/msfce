@@ -7,7 +7,7 @@
 
 uint8_t Maths::readU8(size_t addr)
 {
-    switch (addr) {
+    switch (addr & 0xFFFF) {
     case kRegisterRDDIVL:
         return m_Quotient & 0xFF;
 
@@ -31,7 +31,7 @@ uint8_t Maths::readU8(size_t addr)
 
 uint16_t Maths::readU16(size_t addr)
 {
-    switch (addr) {
+    switch (addr & 0xFFFF) {
     case kRegisterRDDIVL:
         return m_Quotient;
 
@@ -49,7 +49,7 @@ uint16_t Maths::readU16(size_t addr)
 
 void Maths::writeU8(size_t addr, uint8_t value)
 {
-    switch (addr) {
+    switch (addr & 0xFFFF) {
     case kRegisterWRMPYA:
         m_Multiplicand &= 0xFF00;
         m_Multiplicand |= value;
@@ -98,7 +98,7 @@ void Maths::writeU8(size_t addr, uint8_t value)
 
 void Maths::writeU16(size_t addr, uint16_t value)
 {
-    switch (addr) {
+    switch (addr & 0xFFFF) {
     default:
         LOGW(TAG, "Unsupported writeU16 %04X (value=%04X)", static_cast<uint32_t>(addr), value);
         assert(false);

@@ -49,7 +49,7 @@ bool isPpuAddress(size_t addr, uint8_t bank, uint16_t offset)
 
 bool isMathsAddress(size_t addr, uint8_t bank, uint16_t offset)
 {
-    if (bank != 0x00) {
+    if (bank > 0x3F) {
         return false;
     }
 
