@@ -153,6 +153,7 @@ private:
         ImmediateIndex,
         Absolute,
         AbsoluteJMP,
+        AbsoluteJMPIndirectIndexedX,
         AbsoluteIndexedX,
         AbsoluteIndexedY,
         AbsoluteLong,

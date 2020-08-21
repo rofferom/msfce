@@ -573,6 +573,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             &Cpu65816::handleJMP,
         }, {
             "JMP",
+            0x7C,
+            Cpu65816::AddressingMode::AbsoluteJMPIndirectIndexedX,
+            &Cpu65816::handleJMP,
+        }, {
+            "JMP",
             0xDC,
             Cpu65816::AddressingMode::AbsoluteIndirectLong,
             &Cpu65816::handleJMP,
@@ -590,6 +595,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "JSR",
             0x20,
             Cpu65816::AddressingMode::AbsoluteJMP,
+            &Cpu65816::handleJSR,
+        }, {
+            "JSR",
+            0xFC,
+            Cpu65816::AddressingMode::AbsoluteJMPIndirectIndexedX,
             &Cpu65816::handleJSR,
         }, {
             "LDA",
@@ -1369,6 +1379,20 @@ void Cpu65816::executeSingle()
         data = (m_Registers.PB << 16) | rawData;
 
         snprintf(strIntruction, sizeof(strIntruction), "%s $%04X [%06X]", opcodeDesc.m_Name, rawData, data);
+        break;
+    }
+
+    case AddressingMode::AbsoluteJMPIndirectIndexedX: {
+        uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+        m_Registers.PC += 2;
+
+        uint32_t address = (m_Registers.PB << 16) | rawData;
+        address = (m_Registers.PB << 16) | m_Membus->readU16(address);
+        address += m_Registers.X;
+
+        data = address;
+
+        snprintf(strIntruction, sizeof(strIntruction), "%s [$%04X] [%06X]", opcodeDesc.m_Name, rawData, data);
         break;
     }
 
