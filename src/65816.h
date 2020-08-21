@@ -44,6 +44,7 @@ private:
     void handleBVC(uint32_t data);
     void handleBVS(uint32_t data);
     void handleCLC(uint32_t data);
+    void handleCLD(uint32_t data);
     void handleCLI(uint32_t data);
     void handleCLV(uint32_t data);
     void handleCMP(uint32_t data);
@@ -104,6 +105,7 @@ private:
     void handleSBCImmediate(uint32_t data);
     void handleSBC(uint32_t data);
     void handleSEC(uint32_t data);
+    void handleSED(uint32_t data);
     void handleSEI(uint32_t data);
     void handleSEP(uint32_t data);
     void handleSTA(uint32_t data);

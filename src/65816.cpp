@@ -302,6 +302,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handleCLC,
         }, {
+            "CLD",
+            0xD8,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handleCLD,
+        }, {
             "CLI",
             0x58,
             Cpu65816::AddressingMode::Implied,
@@ -1066,6 +1071,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0x38,
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handleSEC,
+        }, {
+            "SED",
+            0xF8,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handleSED,
         }, {
             "SEI",
             0x78,
@@ -2047,6 +2057,11 @@ void Cpu65816::handleCLC(uint32_t data)
     m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
 }
 
+void Cpu65816::handleCLD(uint32_t data)
+{
+    m_Registers.P = clearBit(m_Registers.P, kPRegister_D);
+}
+
 void Cpu65816::handleCLI(uint32_t data)
 {
     m_Registers.P = clearBit(m_Registers.P, kPRegister_I);
@@ -3013,6 +3028,11 @@ void Cpu65816::handleSBC(uint32_t address)
 void Cpu65816::handleSEC(uint32_t data)
 {
     m_Registers.P = setBit(m_Registers.P, kPRegister_C);
+}
+
+void Cpu65816::handleSED(uint32_t data)
+{
+    m_Registers.P = setBit(m_Registers.P, kPRegister_D);
 }
 
 void Cpu65816::handleSEI(uint32_t data)
