@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <functional>
 
+#include "registers.h"
+
 struct Color {
     uint8_t r;
     uint8_t g;
@@ -31,6 +33,12 @@ public:
     void render(const DrawPointCb& drawPointCb);
 
 private:
+    typedef uint32_t (*TilemapMapper)(uint16_t tilemapBase, int x, int y);
+
+    static const int kObjCount = 128;
+    static const int kBackgroundCount = 4;
+
+private:
     struct Background {
         uint16_t m_TilemapBase = 0;
         uint16_t m_TilemapSize = 0;
@@ -54,6 +62,7 @@ private:
     };
 
     struct ObjProperty {
+        // Loaded from OAM
         int16_t m_X = 0;
         int16_t m_Y = 0;
         int m_Size = 0;
@@ -62,9 +71,21 @@ private:
         int m_Priority = 0;
         int m_Palette = 0;
         int m_TileIndex = 0;
+
+        // Extra data
+        // Size in tiles
+        int m_Width;
+        int m_Height;
+
+        // Size in pixel
+        int m_WidthPixel;
+        int m_HeightPixel;
+
+        int m_xEnd;
+
+        bool m_OnScreen;
     };
 
-    typedef uint32_t (*TilemapMapper)(uint16_t tilemapBase, int x, int y);
 
     struct RendererBgInfo {
         int bgIdx;
@@ -130,6 +151,11 @@ private:
         const uint8_t* tileDataPlane1; // 2 next bits
     };
 
+    struct RenderObjInfo {
+        ObjProperty* m_Obj[kObjCount];
+        int m_ObjCount;
+    };
+
 private:
     TilemapMapper getTilemapMapper(uint16_t tilemapSize) const;
 
@@ -137,6 +163,7 @@ private:
     void updateSubtileData(const Background* bg, RendererBgInfo* renderBg);
 
     bool getBackgroundCurrentPixel(RendererBgInfo* renderBg, int priority, Color* color);
+    bool getSpriteCurrentPixel(int x, int y, int priority, Color* color);
     void moveToNextPixel(RendererBgInfo* renderBg);
     void renderLine(int y, const Ppu::LayerPriority* layerPriority, const DrawPointCb& drawPointCb);
     void incrementVramAddress();
@@ -181,11 +208,9 @@ private:
     uint16_t m_ObjGapSize = 0;
     uint16_t m_ObjBase = 0;
 
-    static const int kObjCount = 128;
     ObjProperty m_Objs[kObjCount];
 
     // Backgrounds
-    static const int kBackgroundCount = 4;
     Background m_Backgrounds[kBackgroundCount];
     uint8_t m_OldBgByte = 0;
 
@@ -197,4 +222,5 @@ private:
 
     // Rendering
     RendererBgInfo m_RenderBgInfo[kBackgroundCount];
+    RenderObjInfo m_RenderObjInfo[kPpuDisplayHeight];
 };

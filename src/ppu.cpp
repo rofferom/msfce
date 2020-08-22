@@ -299,7 +299,7 @@ void getSpriteSize(uint8_t obselSize, uint8_t objSize, int* width, int* height)
 // Background priority charts
 const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_On[] = {
     {Layer::background, 2,   1},
-    //{Layer::sprite,    -1,   3},
+    {Layer::sprite,    -1,   3},
     {Layer::background, 0,   1},
     {Layer::background, 1,   1},
     {Layer::background, 0,   0},
@@ -780,6 +780,95 @@ bool Ppu::getBackgroundCurrentPixel(RendererBgInfo* renderBg, int priority, Colo
     return true;
 }
 
+bool Ppu::getSpriteCurrentPixel(int x, int y, int priority, Color* c)
+{
+    if (!m_RenderObjInfo[y].m_ObjCount) {
+        return false;
+    }
+
+    // Search sprite
+    ObjProperty* prop = nullptr;
+
+    for (int i = m_RenderObjInfo[y].m_ObjCount - 1; i >= 0; i--) {
+        auto searchProp = m_RenderObjInfo[y].m_Obj[i];
+        assert(searchProp);
+
+        if (searchProp->m_X <= x && x < searchProp->m_xEnd) {
+            prop = searchProp;
+            break;
+        }
+    }
+
+    if (!prop) {
+        return false;
+    }
+
+    // Sprite found, lets read the requested pixel
+    // Define some callbacks to get some data depending of the current PPU configuration
+    auto colorReadCb = getColorReadCb(kPpuObjBpp);
+
+    // Extract the pixel coordinates in the tile
+    int tileX = x - prop->m_X;
+    int tileY = y - prop->m_Y;
+
+    // Use the flip status to point to the correct subtile
+    // Then compute the subtile coordinate to be able to compute
+    // the subtile location
+    int subtileX;
+    if (prop->m_HorizontalFlip) {
+        subtileX = prop->m_WidthPixel - tileX - 1;
+    } else {
+        subtileX = tileX;
+    }
+
+    int subtileY;
+    if (prop->m_VerticalFlip) {
+        subtileY = prop->m_HeightPixel - tileY - 1;
+    } else {
+        subtileY = tileY;
+    }
+
+    subtileX /= kPpuBaseTileWidth;
+    subtileY /= kPpuBaseTileHeight;
+
+    // Compute the final tile location
+    // The second row of tiles is located 0x10 tiles after
+    int tileBaseAddr = m_ObjBase + prop->m_TileIndex * kPpuObjTileSize;
+    if (prop->m_TileIndex >= 0x100) {
+        tileBaseAddr += m_ObjGapSize;
+    }
+
+    int tileAddr = tileBaseAddr + subtileX * kPpuObjTileSize + subtileY * 0x10 * kPpuObjTileSize;
+    tileAddr &= 0xFFFF;
+
+    const uint8_t* tileData = m_Vram + tileAddr;
+
+    // Update coordinates before draw to apply some tile modifiers
+    if (prop->m_VerticalFlip) {
+        tileY = (kPpuBaseTileHeight - 1) - (tileY % kPpuBaseTileHeight);
+    } else {
+        tileY %= kPpuBaseTileHeight;
+    }
+
+    // Pixel horizontal order is reversed in the tile. Bit 7 is the first pixel
+    if (!prop->m_HorizontalFlip) {
+        tileX = (kPpuBaseTileWidth - 1) - (tileX % kPpuBaseTileWidth);
+    } else {
+        tileX %= kPpuBaseTileWidth;
+    }
+
+    // Read tile color and get the color from the palette
+    int color = colorReadCb(tileData, kPpuObjTileSize, tileY, tileX);
+    if (color == 0) {
+        return false;
+    }
+
+    uint32_t rawColor = getObjColorFromCgram(prop->m_Palette, color);
+    *c = rawColorToRgb(rawColor);
+
+    return true;
+}
+
 void Ppu::moveToNextPixel(RendererBgInfo* renderBg)
 {
     Background* bg = renderBg->background;
@@ -865,6 +954,8 @@ void Ppu::renderLine(int y, const Ppu::LayerPriority* layerPriority, const DrawP
             if (layer.m_Layer == Layer::background) {
                 RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
                 colorValid = getBackgroundCurrentPixel(renderBg, layer.m_Priority, &color);
+            } else if (layer.m_Layer == Layer::sprite) {
+                colorValid = getSpriteCurrentPixel(x, y, layer.m_Priority, &color);
             }
         }
 
@@ -920,6 +1011,13 @@ void Ppu::render(const DrawPointCb& drawPointCb)
         renderBg->tilemapMapper = getTilemapMapper(bg->m_TilemapSize);
     }
 
+    // Prepare sprites
+    for (size_t i = 0; i < SIZEOF_ARRAY(m_RenderObjInfo); i++) {
+        m_RenderObjInfo[i].m_ObjCount = 0;
+    }
+
+    loadObjs();
+
     // Start rendering. Draw each line at a time
     for (int y = 0; y < kPpuDisplayHeight; y++) {
         renderLine(y, layerPriority, drawPointCb);
@@ -963,6 +1061,38 @@ void Ppu::loadObjs()
 
         // Decode tile index (upper bit is within attribute byte)
         prop.m_TileIndex = ((objBase[3] & 1) << 8) | objBase[2];
+
+        // Compute other data
+        getSpriteSize(m_ObjSize, prop.m_Size, &prop.m_Width, &prop.m_Height);
+        prop.m_HeightPixel = prop.m_Height * kPpuBaseTileHeight;
+        prop.m_WidthPixel = prop.m_Width * kPpuBaseTileWidth;
+
+        prop.m_xEnd = prop.m_X + prop.m_WidthPixel;
+
+        if (prop.m_X + prop.m_WidthPixel < 0) {
+            prop.m_OnScreen = false;
+        } else if (prop.m_X > kPpuDisplayWidth) {
+            prop.m_OnScreen = false;
+        } else if (prop.m_Y > kPpuDisplayHeight) {
+            prop.m_OnScreen = false;
+        } else {
+            prop.m_OnScreen = true;
+        }
+
+        if (prop.m_OnScreen) {
+            // Save the lines where the sprite could be displayed
+            for (int16_t i = 0; i < prop.m_HeightPixel; i++) {
+                int16_t y = prop.m_Y + i;
+                if (y >= kPpuDisplayHeight) {
+                    break;
+                }
+
+                assert(static_cast<size_t>(i) < SIZEOF_ARRAY(m_RenderObjInfo));
+
+                m_RenderObjInfo[y].m_Obj[m_RenderObjInfo[y].m_ObjCount] = &prop;
+                m_RenderObjInfo[y].m_ObjCount++;
+            }
+        }
     }
 }
 
