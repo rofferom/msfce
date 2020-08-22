@@ -22,7 +22,7 @@ constexpr uint32_t kLowRomHeader_TitleSize = 21;
 using Clock = std::chrono::high_resolution_clock;
 
 constexpr auto kRenderPeriod = std::chrono::microseconds(16666);
-constexpr auto kVblankDuration = std::chrono::milliseconds(1);
+constexpr auto kVblankDuration = std::chrono::microseconds(2400);
 
 static int loadRom(const char* romPath, std::unique_ptr<std::vector<uint8_t>>* outRom)
 {
@@ -161,10 +161,18 @@ int main(int argc, char* argv[])
         auto now = Clock::now();
 
         if (now >= nextRender) {
+            auto beginRender = Clock::now();
             ppu->render(drawPointCb);
             SDL_RenderPresent(renderer);
+            auto endRender = Clock::now();
 
-            nextRender = Clock::now() + kRenderPeriod;
+            auto renderDuration = std::chrono::duration_cast<std::chrono::milliseconds>(endRender - beginRender);
+
+            if (renderDuration < kRenderPeriod) {
+                nextRender = nextRender + kRenderPeriod;
+            } else {
+                nextRender = Clock::now() + kRenderPeriod;
+            }
             nextVblank = nextRender - kVblankDuration;
         } else if (now >= nextVblank) {
             // Dirty hack to avoid vblank to be retriggered
