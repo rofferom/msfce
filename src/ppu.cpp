@@ -70,7 +70,7 @@ void getTilemapDimension(uint16_t tilemapSize, int* width, int* height)
 }
 
 /*
- * Unit of returned value is a pixel.
+ * Unit of returned value is tile.
  * tile_size comes from BGMODE register.
 */
 void getTileDimension(int tileSize, int* width, int* height)
@@ -92,6 +92,20 @@ void getTileDimension(int tileSize, int* width, int* height)
         *height = 0;
         break;
     }
+}
+
+/**
+ * Returns the number of maximum active background in the current mode
+ */
+size_t getBackgroundCountFromMode(int mode)
+{
+    static const int bgCount[] = {
+        4,
+        3,
+    };
+
+    assert(static_cast<size_t>(mode) < SIZEOF_ARRAY(bgCount));
+    return bgCount[mode];
 }
 
 /*
@@ -184,24 +198,6 @@ uint32_t tilemapMapper64x64(uint16_t tilemapBase, int x, int y)
     }
 
     return tilemapBase + idx * kPpuTilemapSize;
-}
-
-typedef uint32_t (*TilemapMapper)(uint16_t tilemapBase, int x, int y);
-
-//  tilemapSize is the tilemap size read in BGxSC registers
-TilemapMapper getTilemapMapper(uint16_t tilemapSize)
-{
-    static const TilemapMapper map[] = {
-        tilemapMapper32x32,
-        tilemapMapper64x32,
-        tilemapMapper32x64,
-        tilemapMapper64x64,
-    };
-
-    static_assert(SIZEOF_ARRAY(map) == 4);
-    assert(tilemapSize <= SIZEOF_ARRAY(map));
-
-    return map[tilemapSize];
 }
 
 // Set of functions to read the color of a pixel within a tile
@@ -303,7 +299,7 @@ void getSpriteSize(uint8_t obselSize, uint8_t objSize, int* width, int* height)
 // Background priority charts
 const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_On[] = {
     {Layer::background, 2,   1},
-    {Layer::sprite,    -1,   3},
+    //{Layer::sprite,    -1,   3},
     {Layer::background, 0,   1},
     {Layer::background, 1,   1},
     {Layer::background, 0,   0},
@@ -671,61 +667,262 @@ void Ppu::incrementVramAddress()
     }
 }
 
+//  tilemapSize is the tilemap size read in BGxSC registers
+Ppu::TilemapMapper Ppu::getTilemapMapper(uint16_t tilemapSize) const
+{
+    static const TilemapMapper map[] = {
+        tilemapMapper32x32,
+        tilemapMapper64x32,
+        tilemapMapper32x64,
+        tilemapMapper64x64,
+    };
+
+    static_assert(SIZEOF_ARRAY(map) == 4);
+    assert(tilemapSize <= SIZEOF_ARRAY(map));
+
+    return map[tilemapSize];
+}
+
+void Ppu::updateTileData(const Background* bg, RendererBgInfo* renderBg)
+{
+    // Get tileinfo from tilemap
+    // First we need to make a projection inside the submap
+    // (The working tilemap is always a 32x32 one)
+    uint32_t tilemapBase = renderBg->tilemapMapper(bg->m_TilemapBase, renderBg->tilemapX, renderBg->tilemapY);
+
+    int subtilemapX = renderBg->tilemapX % kPpuTilemapWidth;
+    int subtilemapY = renderBg->tilemapY % kPpuTilemapHeight;
+
+    int tileinfoAddr = tilemapBase + (subtilemapY * kPpuTilemapWidth + subtilemapX) * kPpuTileInfoSize;
+    uint16_t tileInfo = (m_Vram[tileinfoAddr + 1] << 8) | m_Vram[tileinfoAddr];
+
+    // Parse tileinfo
+    renderBg->verticalFlip = tileInfo >> 15;
+    renderBg->horizontalFlip = (tileInfo >> 14) & 1;
+    renderBg->priority = (tileInfo >> 13) & 1;
+    renderBg->palette = (tileInfo >> 10) & 0b111;
+    renderBg->tileIndex = tileInfo & 0b1111111111;
+
+    // Get the real pixel coordinates
+    // Use the flip status to point to the correct subtile
+    // Then compute the subtile coordinate to be able to compute
+    // the subtile location
+    int realPixelX;
+    if (!renderBg->horizontalFlip) {
+        realPixelX = renderBg->tileWidthPixel - renderBg->tilePixelX - 1;
+    } else {
+        realPixelX = renderBg->tilePixelX;
+    }
+
+    int realPixelY;
+    if (renderBg->verticalFlip) {
+        realPixelY = renderBg->tileHeightPixel - renderBg->tilePixelY - 1;
+    } else {
+        realPixelY = renderBg->tilePixelY;
+    }
+
+    renderBg->subtileX = realPixelX / kPpuBaseTileWidth;
+    renderBg->subtileY = realPixelY / kPpuBaseTileHeight;
+
+    renderBg->subtilePixelX = realPixelX % kPpuBaseTileWidth;
+    renderBg->subtilePixelY = realPixelY % kPpuBaseTileHeight;
+}
+
+void Ppu::updateSubtileData(const Background* bg, RendererBgInfo* renderBg)
+{
+    // The second row of tiles is located 0x10 tiles after
+    int tileBaseAddr = bg->m_TileBase + renderBg->tileSize * renderBg->tileIndex;
+    int tileAddr = tileBaseAddr + renderBg->subtileX * renderBg->tileSize + renderBg->subtileY * 0x10 * renderBg->tileSize;
+    tileAddr &= 0xFFFF;
+
+    // Point to the current tile lane
+    const uint8_t* tileData = m_Vram + tileAddr;
+
+    if (renderBg->tileBpp == 2) {
+        // 0-1 bits are stored in a 8 words chunk, in the first plane
+        renderBg->tileDataPlane0 = tileData + renderBg->subtilePixelY * 2;
+        renderBg->tileDataPlane1 = nullptr;
+    } else if (renderBg->tileBpp == 4) {
+        // 0-1 bits are stored in a 8 words chunk, in the first plane
+        renderBg->tileDataPlane0 = tileData + renderBg->subtilePixelY * 2;
+        // 2-3 bits are stored in the second plane
+        renderBg->tileDataPlane1 = renderBg->tileDataPlane0 + renderBg->tileSize / 2;
+    } else {
+        assert(false);
+    }
+}
+
+bool Ppu::getBackgroundCurrentPixel(RendererBgInfo* renderBg, int priority, Color* color)
+{
+    if (renderBg->priority != priority) {
+        return false;
+    }
+
+    // Get pixel and draw it
+    uint32_t tilePixelColor;
+
+    tilePixelColor = (renderBg->tileDataPlane0[0] >> renderBg->subtilePixelX) & 1;
+    tilePixelColor |= ((renderBg->tileDataPlane0[1] >> renderBg->subtilePixelX) & 1) << 1;
+
+    if (renderBg->tileBpp == 4) {
+        assert(renderBg->tileDataPlane1);
+        tilePixelColor |= ((renderBg->tileDataPlane1[0] >> renderBg->subtilePixelX) & 1) << 2;
+        tilePixelColor |= ((renderBg->tileDataPlane1[1] >> renderBg->subtilePixelX) & 1) << 3;
+    }
+
+    if (tilePixelColor == 0) {
+        return false;
+    }
+
+    uint32_t rawColor = getColorFromCgram(renderBg->bgIdx, renderBg->tileBpp, renderBg->palette, tilePixelColor);
+    *color = rawColorToRgb(rawColor);
+
+    return true;
+}
+
+void Ppu::moveToNextPixel(RendererBgInfo* renderBg)
+{
+    Background* bg = renderBg->background;
+
+    // Go to the next pixel
+    if (!renderBg->horizontalFlip) {
+        renderBg->tilePixelX = (renderBg->tilePixelX + 1) % renderBg->tileWidthPixel;
+        renderBg->subtilePixelX--;
+
+        // There is only things to do when we've reached to end of the
+        // current subtile
+        if (renderBg->subtilePixelX < 0) {
+            renderBg->subtilePixelX = kPpuBaseTileWidth - 1;
+            renderBg->subtileX--;
+
+            if (renderBg->subtileX >= 0) {
+                updateSubtileData(bg, renderBg);
+            } else {
+                renderBg->tilemapX = (renderBg->tilemapX + 1) % renderBg->tilemapWidth;
+
+                updateTileData(bg, renderBg);
+                updateSubtileData(bg, renderBg);
+            }
+        }
+    } else {
+        renderBg->tilePixelX = (renderBg->tilePixelX + 1) % renderBg->tileWidthPixel;
+        renderBg->subtilePixelX++;
+
+        // There is only things to do when we've reached to end of the
+        // current subtile
+        if (renderBg->subtilePixelX == kPpuBaseTileWidth) {
+            renderBg->subtilePixelX = 0;
+            renderBg->subtileX++;
+
+            if (renderBg->subtileX < renderBg->tileWidth) {
+                updateSubtileData(bg, renderBg);
+            } else {
+                renderBg->tilemapX = (renderBg->tilemapX + 1) % renderBg->tilemapWidth;
+
+                updateTileData(bg, renderBg);
+                updateSubtileData(bg, renderBg);
+            }
+        }
+    }
+}
+
+void Ppu::renderLine(int y, const Ppu::LayerPriority* layerPriority, const DrawPointCb& drawPointCb)
+{
+    const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
+
+    // Prepare background rendering for the current line.
+    // At the very end, the RendererBgInfo will provide the correct data to
+    // display pixel (0, y)
+    for (size_t i = 0; i < bgCount; i++) {
+        RendererBgInfo* renderBg = &m_RenderBgInfo[i];
+        Background* bg = &m_Backgrounds[i];;
+
+        // Compute background start coordinates in pixels at first
+        int bgX = bg->m_HOffset % renderBg->tilemapWidthPixel;
+        int bgY = (bg->m_VOffset + y) % renderBg->tilemapHeightPixel;
+
+        // Get the tile coordinates inside the tilemap
+        renderBg->tilemapX = bgX / renderBg->tileWidthPixel;
+        renderBg->tilemapY = bgY / renderBg->tileHeightPixel;
+
+        // Get the pixel coordinates inside the tile.
+        // Doesn't take account of horizontal/vertical flip (info unknown at this point)
+        renderBg->tilePixelX = bgX % renderBg->tileWidthPixel;
+        renderBg->tilePixelY = bgY % renderBg->tileHeightPixel;
+
+        // Prepare work info
+        updateTileData(bg, renderBg);
+        updateSubtileData(bg, renderBg);
+    }
+
+    for (int x = 0; x < kPpuDisplayWidth; x++) {
+        Color color;
+        bool colorValid = false;
+
+        for (size_t prioIdx = 0; !colorValid && layerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
+            const auto& layer = layerPriority[prioIdx];
+
+            if (layer.m_Layer == Layer::background) {
+                RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
+                colorValid = getBackgroundCurrentPixel(renderBg, layer.m_Priority, &color);
+            }
+        }
+
+        if (colorValid) {
+            drawPointCb(x, y, color);
+        } else {
+            drawPointCb(x, y, {0, 0, 0});
+        }
+
+        for (size_t i = 0; i < bgCount; i++) {
+            moveToNextPixel(&m_RenderBgInfo[i]);
+        }
+    }
+}
+
 void Ppu::render(const DrawPointCb& drawPointCb)
 {
+    const Ppu::LayerPriority* layerPriority;
+
+    // Only Mode 1 with BG3 priority is supported
     if (m_Bgmode != 1 || !m_Bg3Priority) {
         return;
     }
 
-    const Ppu::LayerPriority* layerPriority = s_LayerPriorityMode1_BG3_On;
+    layerPriority = s_LayerPriorityMode1_BG3_On;
 
-    loadObjs();
+    // Prepare background rendering
+    const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
+    static_assert(SIZEOF_ARRAY(m_Backgrounds) == SIZEOF_ARRAY(m_RenderBgInfo));
 
+    for (size_t bgIdx = 0; bgIdx < bgCount; bgIdx++) {
+        RendererBgInfo* renderBg = &m_RenderBgInfo[bgIdx];
+        Background* bg = &m_Backgrounds[bgIdx];;
+
+        renderBg->bgIdx = bgIdx;
+        renderBg->background = bg;
+
+        // Compute some dimensions that will be ready for future use
+        getTilemapDimension(bg->m_TilemapSize, &renderBg->tilemapWidth, &renderBg->tilemapHeight);;
+        renderBg->tilemapWidthPixel = renderBg->tilemapWidth * kPpuBaseTileWidth;
+        renderBg->tilemapHeightPixel = renderBg->tilemapHeight * kPpuBaseTileHeight;
+
+        getTileDimension(bg->m_TileSize, &renderBg->tileWidth, &renderBg->tileHeight);
+        renderBg->tileWidthPixel = renderBg->tileWidth * kPpuBaseTileWidth;
+        renderBg->tileHeightPixel = renderBg->tileHeight * kPpuBaseTileHeight;
+
+        renderBg->tileBpp = getTileBppFromMode(m_Bgmode, bgIdx);
+
+        // Compute the tile size in bytes. Tiles are always 8x8.
+        // 16x16 tiles are just a composition of multiple 8x8 tiles.
+        renderBg->tileSize = renderBg->tileBpp * 8;
+
+        renderBg->tilemapMapper = getTilemapMapper(bg->m_TilemapSize);
+    }
+
+    // Start rendering. Draw each line at a time
     for (int y = 0; y < kPpuDisplayHeight; y++) {
-        for (int x = 0; x < kPpuDisplayWidth; x++) {
-            bool drawn = false;
-
-            for (size_t prioIdx = 0; layerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
-                const auto& layer = layerPriority[prioIdx];
-
-                if (layer.m_Layer == Layer::background) {
-                    int bgIdx = layer.m_BgIdx;
-                    Color c;
-                    int pixelPriority;
-
-                    bool valid = getPixelFromBg(bgIdx, &m_Backgrounds[bgIdx], x, y, &c, &pixelPriority);
-                    if (!valid) {
-                        continue;
-                    }
-
-                    if (pixelPriority != layerPriority[prioIdx].m_Priority) {
-                        continue;
-                    }
-
-                    drawPointCb(x, y, c);
-                    drawn = true;
-                    break;
-                } else if (layer.m_Layer == Layer::sprite) {
-                    Color c;
-                    int pixelPriority;
-
-                    bool valid = getPixelFromObj(x, y, &c, &pixelPriority);
-                    if (!valid) {
-                        continue;
-                    }
-
-                    drawPointCb(x, y, c);
-                    drawn = true;
-                    break;
-                } else {
-                    assert(false);
-                }
-            }
-
-            if (!drawn) {
-                drawPointCb(x, y, {0, 0, 0});
-            }
-        }
+        renderLine(y, layerPriority, drawPointCb);
     }
 }
 

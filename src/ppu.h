@@ -64,7 +64,81 @@ private:
         int m_TileIndex = 0;
     };
 
+    typedef uint32_t (*TilemapMapper)(uint16_t tilemapBase, int x, int y);
+
+    struct RendererBgInfo {
+        int bgIdx;
+        Background* background;
+
+        /**
+         * BG global configuration.
+         * Unit "tile" is a base 8x8 tile.
+         */
+
+        // Unit: tile
+        int tilemapWidth;
+        int tilemapHeight;
+
+        // Unit: pixel
+        int tilemapWidthPixel;
+        int tilemapHeightPixel;
+
+        // Unit: tile
+        int tileWidth;
+        int tileHeight;
+
+        // Unit: pixel
+        int tileWidthPixel;
+        int tileHeightPixel;
+
+        int tileBpp;
+        int tileSize = tileBpp * 8;
+
+        TilemapMapper tilemapMapper;
+
+        /**
+         * Current position in the tilemap (unit: tile)
+         * The tile can be up to 16x16
+         */
+        int tilemapX;
+        int tilemapY;
+
+        // Tile position (unit: pixel)
+        int tilePixelX;
+        int tilePixelY;
+
+        // Subtile position (unit: tile)
+        int subtileX;
+        int subtileY;
+
+        // Subtile properties
+        int verticalFlip;
+        int horizontalFlip;
+        int priority;
+        int palette;
+        int tileIndex;
+
+        /**
+         * Current tile info
+         */
+        // Position inside the current tile (unit: pixel)
+        int subtilePixelX;
+        int subtilePixelY;
+
+        // Tile data
+        const uint8_t* tileDataPlane0; // 2 first bits
+        const uint8_t* tileDataPlane1; // 2 next bits
+    };
+
 private:
+    TilemapMapper getTilemapMapper(uint16_t tilemapSize) const;
+
+    void updateTileData(const Background* bg, RendererBgInfo* renderBg);
+    void updateSubtileData(const Background* bg, RendererBgInfo* renderBg);
+
+    bool getBackgroundCurrentPixel(RendererBgInfo* renderBg, int priority, Color* color);
+    void moveToNextPixel(RendererBgInfo* renderBg);
+    void renderLine(int y, const Ppu::LayerPriority* layerPriority, const DrawPointCb& drawPointCb);
     void incrementVramAddress();
 
     void loadObjs();
@@ -120,4 +194,7 @@ private:
 
     // Layers priority charts
     static const Ppu::LayerPriority s_LayerPriorityMode1_BG3_On[];
+
+    // Rendering
+    RendererBgInfo m_RenderBgInfo[kBackgroundCount];
 };
