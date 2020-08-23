@@ -48,4 +48,5 @@ target_link_directories(${PROJECT_NAME} PUBLIC
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
     ${PKG_SDL2_LIBRARIES}
+    -lpthread
 )

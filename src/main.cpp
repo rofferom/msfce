@@ -3,6 +3,7 @@
 #include <sys/stat.h>
 #include <chrono>
 #include <memory>
+#include <thread>
 #include <vector>
 #include <SDL.h>
 #include "65816.h"
@@ -143,7 +144,16 @@ int main(int argc, char* argv[])
     auto dma = std::make_shared<Dma>(membus);
     membus->plugDma(dma);
 
-    auto cpu = std::make_unique<Cpu65816>(membus);
+    auto cpu = std::make_shared<Cpu65816>(membus);
+    bool cpuRun = true;
+
+    auto cpuThreadEntry = [cpu, &cpuRun]() {
+        while (cpuRun) {
+            cpu->executeSingle();
+        }
+    };
+
+    std::thread cpuThread = std::thread(cpuThreadEntry);
 
     // Run
     auto nextRender = Clock::now() + kRenderPeriod;
@@ -182,9 +192,10 @@ int main(int argc, char* argv[])
 
             nextVblank += kRenderPeriod;
         }
-
-        cpu->executeSingle();
     }
+
+    cpuRun = false;
+    cpuThread.join();
 
     SDL_Quit();
 
