@@ -302,8 +302,11 @@ const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_On[] = {
     {Layer::sprite,    -1,   3},
     {Layer::background, 0,   1},
     {Layer::background, 1,   1},
+    {Layer::sprite,    -1,   2},
     {Layer::background, 0,   0},
     {Layer::background, 1,   0},
+    {Layer::sprite,    -1,   1},
+    {Layer::sprite,    -1,   0},
     {Layer::background, 2,   0},
 
     {Layer::none, 0, 0},
@@ -463,12 +466,13 @@ void Ppu::writeU8(size_t addr, uint8_t value)
 
     case kRegOAMADDL:
         m_OamAddress = (m_OamAddress & 0x100) | value;
+        m_OamHighestPriorityObj = value >> 1;
         m_OamFlip = 0;
         break;
 
     case kRegOAMADDH:
         m_OamAddress = ((value & 1) << 8) | (m_OamAddress & 0xFF);
-        m_OamPriority = value >> 7;
+        m_OamForcedPriority = value >> 7;
         m_OamFlip = 0;
         break;
 
@@ -789,9 +793,13 @@ bool Ppu::getSpriteCurrentPixel(int x, int y, int priority, Color* c)
     // Search sprite
     ObjProperty* prop = nullptr;
 
-    for (int i = m_RenderObjInfo[y].m_ObjCount - 1; i >= 0; i--) {
+    for (int i = 0; i < m_RenderObjInfo[y].m_ObjCount; i++) {
         auto searchProp = m_RenderObjInfo[y].m_Obj[i];
         assert(searchProp);
+
+        if (searchProp->m_Priority != priority) {
+            continue;
+        }
 
         if (searchProp->m_X <= x && x < searchProp->m_xEnd) {
             prop = searchProp;
@@ -1026,7 +1034,10 @@ void Ppu::render(const DrawPointCb& drawPointCb)
 
 void Ppu::loadObjs()
 {
-    for (int i = 0; i < kObjCount; i++) {
+    int firstObj = m_OamForcedPriority ? m_OamHighestPriorityObj : 0;
+    int i = firstObj;
+
+    do {
         ObjProperty& prop = m_Objs[i];
 
         // Attributes are 4 bytes long
@@ -1093,7 +1104,9 @@ void Ppu::loadObjs()
                 m_RenderObjInfo[y].m_ObjCount++;
             }
         }
-    }
+
+        i = (i + 1) % kObjCount;
+    } while (i != firstObj);
 }
 
 void Ppu::printObjsCoordinates()
