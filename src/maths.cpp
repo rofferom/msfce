@@ -98,7 +98,14 @@ void Maths::writeU8(size_t addr, uint8_t value)
 
 void Maths::writeU16(size_t addr, uint16_t value)
 {
-    switch (addr & 0xFFFF) {
+    size_t offset = addr & 0xFFFF;
+
+    switch (offset) {
+    case kRegisterWRDIVL:
+        writeU8(addr, value & 0xFF);
+        writeU8(addr + 1, value >> 8);
+        break;
+
     default:
         LOGW(TAG, "Unsupported writeU16 %04X (value=%04X)", static_cast<uint32_t>(addr), value);
         assert(false);
