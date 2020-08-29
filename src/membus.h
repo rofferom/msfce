@@ -38,6 +38,7 @@ private:
 
 private:
     uint8_t m_Wram[128 * 1024]; // 128 kbytes
+    uint8_t m_Sram[448 * 1024]; // 448 kbytes
 
     // Maths registers
     uint8_t m_MathsMutliplicand = 0;

@@ -133,6 +133,11 @@ const uint8_t* Membus::getReadPointer(size_t addr)
         return &m_Wram[offset];
     }
 
+    // SRAM
+    if (kSramBankStart <= bank && bank <= kSramBankEnd) {
+        return &m_Sram[(bank - kSramBankStart) * kBankSize + offset];
+    }
+
     // ROM
     if (offset >= 0x8000) {
         if (bank < kWramBankStart) {
@@ -274,6 +279,11 @@ uint8_t* Membus::getWritePointer(size_t addr)
     } else if (bank <= 0x3F && offset <= 0x1FFF) {
         // Bank 0x00 => 0x3F mirror
         return &m_Wram[offset];
+    }
+
+    // SRAM
+    if (kSramBankStart <= bank && bank <= kSramBankEnd) {
+        return &m_Sram[(bank - kSramBankStart) * kBankSize + offset];
     }
 
     // DMA/HDMA

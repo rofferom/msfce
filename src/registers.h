@@ -98,6 +98,10 @@ constexpr size_t kRegisterWMADDL = 0x2181;
 constexpr size_t kRegisterWMADDM = 0x2182;
 constexpr size_t kRegisterWMADDH = 0x2183;
 
+// SRAM registers
+constexpr size_t kSramBankStart = 0x70;
+constexpr size_t kSramBankEnd = 0x7D;
+
 // Joypad registers
 constexpr size_t kRegisterJoyWr = 0x4016;
 
