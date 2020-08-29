@@ -29,6 +29,7 @@ public:
     void writeU16(size_t addr, uint16_t value);
 
     bool isNMIEnabled() const;
+    bool isJoypadAutoreadEnabled() const;
 
     void render(const DrawPointCb& drawPointCb);
 
@@ -182,6 +183,9 @@ private:
 
     // VBlank interrupt
     bool m_NMIEnabled = false;
+
+    // Joypad interrupt
+    bool m_JoypadAutoread = false;
 
     // VRAM
     bool m_VramIncrementHigh = false;

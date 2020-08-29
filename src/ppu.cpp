@@ -391,8 +391,9 @@ void Ppu::writeU8(size_t addr, uint8_t value)
 
         // Joypad
         bool joypadAutoread = value & 1;
-        if (joypadAutoread) {
-            LOGD(TAG, "Joypad autoread is now %s", joypadAutoread ? "enabled" : "disabled");
+        if (m_JoypadAutoread != joypadAutoread) {
+            LOGI(TAG, "Joypad autoread is now %s", joypadAutoread ? "enabled" : "disabled");
+            m_JoypadAutoread = joypadAutoread;
         }
 
         break;
@@ -646,6 +647,11 @@ void Ppu::writeU16(size_t addr, uint16_t value)
 bool Ppu::isNMIEnabled() const
 {
     return m_NMIEnabled;
+}
+
+bool Ppu::isJoypadAutoreadEnabled() const
+{
+    return m_JoypadAutoread;
 }
 
 void Ppu::incrementVramAddress()

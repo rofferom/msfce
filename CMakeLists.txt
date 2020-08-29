@@ -16,6 +16,9 @@ set(MSFE_SOURCES
     src/apu.h
     src/apu.cpp
 
+    src/controller.h
+    src/controller.cpp
+
     src/dma.h
     src/dma.cpp
 

@@ -5,6 +5,7 @@
 #include <vector>
 
 class Apu;
+class ControllerPorts;
 class Dma;
 class Ppu;
 class Maths;
@@ -23,6 +24,7 @@ public:
     void writeU24(size_t addr, uint32_t value);
 
     int plugApu(const std::shared_ptr<Apu>& spu);
+    int plugControllerPorts(const std::shared_ptr<ControllerPorts>& controllerPorts);
     int plugDma(const std::shared_ptr<Dma>& dma);
     int plugMaths(const std::shared_ptr<Maths>& maths);
     int plugPpu(const std::shared_ptr<Ppu>& ppu);
@@ -51,6 +53,7 @@ private:
     const uint8_t* m_Rom = nullptr;
 
     std::shared_ptr<Apu> m_Apu;
+    std::shared_ptr<ControllerPorts> m_ControllerPorts;
     std::shared_ptr<Dma> m_Dma;
     std::shared_ptr<Maths> m_Maths;
     std::shared_ptr<Ppu> m_Ppu;

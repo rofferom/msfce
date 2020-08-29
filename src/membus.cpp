@@ -1,5 +1,6 @@
 #include <assert.h>
 #include "apu.h"
+#include "controller.h"
 #include "dma.h"
 #include "log.h"
 #include "maths.h"
@@ -90,6 +91,30 @@ bool isDmaAddress(size_t addr, uint8_t bank, uint16_t offset)
     }
 }
 
+bool isJoypadAddress(size_t addr, uint8_t bank, uint16_t offset)
+{
+    if (bank != 0x00) {
+        return false;
+    }
+
+    if (kRegDmaStart <= offset && offset <= kRegDmaEnd) {
+        return true;
+    }
+
+    switch (offset) {
+    case kRegisterJoy1L:
+    case kRegisterJoy1H:
+    case kRegisterJoy2L:
+    case kRegisterJoy2H:
+    case kRegisterJoyA:
+    case kRegisterJoyB:
+        return true;
+
+    default:
+        return false;
+    }
+}
+
 } // anonymous namespace
 
 const uint8_t* Membus::getReadPointer(size_t addr)
@@ -153,12 +178,8 @@ uint8_t Membus::readU8(size_t addr)
     }
 
     // Joypad
-    if (bank == 0 && (offset == kRegisterJoy1L || offset == kRegisterJoy1H)) {
-        return 0;
-    } else if (bank == 0 && (offset == kRegisterJoy2L || offset == kRegisterJoy2H)) {
-        return 0;
-    } else if (bank == 0 && (offset == kRegisterJoyA || offset == kRegisterJoyB)) {
-        return 0;
+    if (isJoypadAddress(addr, bank, offset)) {
+        return m_ControllerPorts->readU8(addr);
     }
 
     auto ptr = getReadPointer(addr);
@@ -191,10 +212,8 @@ uint16_t Membus::readU16(size_t addr)
     }
 
     // Joypad
-    if (bank == 0 && offset == kRegisterJoy1L) {
-        return 0;
-    } else if (bank == 0 && offset == kRegisterJoy2L) {
-        return 0;
+    if (isJoypadAddress(addr, bank, offset)) {
+        return m_ControllerPorts->readU16(addr);
     }
 
     auto ptr = getReadPointer(addr);
@@ -329,6 +348,12 @@ void Membus::writeU8(size_t addr, uint8_t value)
         return;
     }
 
+    // Joypad
+    if (isJoypadAddress(addr, bank, offset)) {
+        m_ControllerPorts->writeU8(addr, value);
+        return;
+    }
+
     if (addr == kRegNmitimen) {
         LOGI(TAG, "Writting to kRegNmitimen: 0x%02X", value);
         return;
@@ -370,6 +395,12 @@ void Membus::writeU16(size_t addr, uint16_t value)
     // Dma
     if (isDmaAddress(addr, bank, offset)) {
         m_Dma->writeU16(addr, value);
+        return;
+    }
+
+    // Joypad
+    if (isJoypadAddress(addr, bank, offset)) {
+        m_ControllerPorts->writeU16(addr, value);
         return;
     }
 
@@ -420,6 +451,13 @@ void Membus::writeU24(size_t addr, uint32_t value)
 int Membus::plugApu(const std::shared_ptr<Apu>& spu)
 {
     m_Apu = spu;
+
+    return 0;
+}
+
+int Membus::plugControllerPorts(const std::shared_ptr<ControllerPorts>& controllerPorts)
+{
+    m_ControllerPorts = controllerPorts;
 
     return 0;
 }
