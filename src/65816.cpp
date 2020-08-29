@@ -1685,14 +1685,14 @@ void Cpu65816::handleNMI()
     }
 
     // Save registers
-    m_Membus->writeU8(m_Registers.S, m_Registers.P);
-    m_Registers.S--;
-
     m_Membus->writeU8(m_Registers.S, m_Registers.PB);
     m_Registers.S--;
 
     m_Membus->writeU16(m_Registers.S - 1, m_Registers.PC & 0xFFFF);
     m_Registers.S -= 2;
+
+    m_Membus->writeU8(m_Registers.S, m_Registers.P);
+    m_Registers.S--;
 
     // Do jump
     m_Registers.PB = 0;
@@ -2878,15 +2878,16 @@ void Cpu65816::handleROR(uint32_t data)
 
 void Cpu65816::handleRTI(uint32_t data)
 {
-    // Save registers
+    // Restore registers
+    uint16_t P = m_Membus->readU8(m_Registers.S + 1);
+    m_Registers.S++;
+
     uint16_t PC = m_Membus->readU16(m_Registers.S + 1);
     m_Registers.S += 2;
 
     uint16_t PB = m_Membus->readU8(m_Registers.S + 1);
     m_Registers.S++;
 
-    uint16_t P = m_Membus->readU8(m_Registers.S + 1);
-    m_Registers.S++;
 
     // Do jump
     m_Registers.PB = PB;
