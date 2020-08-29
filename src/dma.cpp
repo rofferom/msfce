@@ -208,7 +208,15 @@ void Dma::runSingleDmaChannel(Channel* channel)
             incrementABusAddress(channel, aBusAddress);
             *bBusAddress = bBaseBusAddress;
 
-            channel->m_DMAByteCounter -=2;
+            if (channel->m_DMAByteCounter >= 2) {
+                channel->m_DMAByteCounter -=2;
+            } else {
+                m_Membus->writeU8(destAddress, m_Membus->readU8(srcAddress));
+                incrementABusAddress(channel, aBusAddress);
+                (*bBusAddress)++;
+
+                channel->m_DMAByteCounter = 0;
+            }
             break;
 
         default:
