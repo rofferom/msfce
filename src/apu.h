@@ -16,8 +16,9 @@ public:
 
 private:
     enum class State {
-        init,
-        started,
+        waiting,
+        waitingBlockBegin,
+        transfering,
         ending,
     };
 
@@ -27,7 +28,7 @@ private:
     };
 
 private:
-    State m_State = State::init;
+    State m_State = State::waiting;
 
     Port m_Port0 { 0xAA, 0 };
     Port m_Port1 { 0xBB, 0 };
