@@ -1630,7 +1630,7 @@ void Cpu65816::executeSingle()
         data = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
         m_Registers.PC += 2;
 
-        snprintf(strIntruction, sizeof(strIntruction), "%s $%02X, $%02X", opcodeDesc.m_Name, data & 0xFF, data >> 8);
+        snprintf(strIntruction, sizeof(strIntruction), "%s $%02X, $%02X", opcodeDesc.m_Name, data >> 8, data & 0xFF);
         break;
     }
 
@@ -2535,12 +2535,12 @@ void Cpu65816::handleLSR(uint32_t data)
 
 void Cpu65816::handleMVN(uint32_t data)
 {
-    uint8_t srcBank = data & 0xFF;
-    m_Registers.DB = data >> 16;
+    uint8_t srcBank = data >> 8;
+    m_Registers.DB = data & 0xFF;
 
     while (m_Registers.A != 0xFFFF) {
         uint32_t srcAddr = (srcBank << 16) | m_Registers.X;
-        uint32_t destAddr = (m_Registers.DB) | m_Registers.Y;
+        uint32_t destAddr = (m_Registers.DB << 16) | m_Registers.Y;
 
         m_Membus->writeU8(destAddr, m_Membus->readU8(srcAddr));
 
