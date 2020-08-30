@@ -304,8 +304,8 @@ const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_On[] = {
     {Layer::background, 1,   1},
     {Layer::sprite,    -1,   2},
     {Layer::background, 0,   0},
-    {Layer::background, 1,   0},
     {Layer::sprite,    -1,   1},
+    {Layer::background, 1,   0},
     {Layer::sprite,    -1,   0},
     {Layer::background, 2,   0},
 
