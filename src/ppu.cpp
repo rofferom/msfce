@@ -629,12 +629,9 @@ void Ppu::writeU16(size_t addr, uint16_t value)
 
     case kRegVMADDL:
     case kRegVMDATAL:
+    case kRegOAMADDL:
         writeU8(addr, value & 0xFF);
         writeU8(addr + 1 , value >> 8);
-        break;
-
-    // To be implemented
-    case kRegOAMADDL:
         break;
 
     default:
