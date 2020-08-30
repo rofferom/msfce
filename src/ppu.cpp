@@ -802,82 +802,79 @@ bool Ppu::getSpriteCurrentPixel(int x, int y, int priority, Color* c)
 
         if (searchProp->m_Priority != priority) {
             continue;
+        } else if (x < searchProp->m_X || searchProp->m_xEnd <= x) {
+            continue;
         }
 
-        if (searchProp->m_X <= x && x < searchProp->m_xEnd) {
-            prop = searchProp;
-            break;
+        prop = searchProp;
+
+        // Sprite found, lets read the requested pixel
+        // Define some callbacks to get some data depending of the current PPU configuration
+        auto colorReadCb = getColorReadCb(kPpuObjBpp);
+
+        // Extract the pixel coordinates in the tile
+        int tileX = x - prop->m_X;
+        int tileY = y - prop->m_Y;
+
+        // Use the flip status to point to the correct subtile
+        // Then compute the subtile coordinate to be able to compute
+        // the subtile location
+        int subtileX;
+        if (prop->m_HorizontalFlip) {
+            subtileX = prop->m_WidthPixel - tileX - 1;
+        } else {
+            subtileX = tileX;
         }
+
+        int subtileY;
+        if (prop->m_VerticalFlip) {
+            subtileY = prop->m_HeightPixel - tileY - 1;
+        } else {
+            subtileY = tileY;
+        }
+
+        subtileX /= kPpuBaseTileWidth;
+        subtileY /= kPpuBaseTileHeight;
+
+        // Compute the final tile location
+        // The second row of tiles is located 0x10 tiles after
+        int tileBaseAddr = m_ObjBase + prop->m_TileIndex * kPpuObjTileSize;
+        if (prop->m_TileIndex >= 0x100) {
+            tileBaseAddr += m_ObjGapSize;
+        }
+
+        int tileAddr = tileBaseAddr + subtileX * kPpuObjTileSize + subtileY * 0x10 * kPpuObjTileSize;
+        tileAddr &= 0xFFFF;
+
+        const uint8_t* tileData = m_Vram + tileAddr;
+
+        // Update coordinates before draw to apply some tile modifiers
+        if (prop->m_VerticalFlip) {
+            tileY = (kPpuBaseTileHeight - 1) - (tileY % kPpuBaseTileHeight);
+        } else {
+            tileY %= kPpuBaseTileHeight;
+        }
+
+        // Pixel horizontal order is reversed in the tile. Bit 7 is the first pixel
+        if (!prop->m_HorizontalFlip) {
+            tileX = (kPpuBaseTileWidth - 1) - (tileX % kPpuBaseTileWidth);
+        } else {
+            tileX %= kPpuBaseTileWidth;
+        }
+
+        // Read tile color and get the color from the palette
+        int color = colorReadCb(tileData, kPpuObjTileSize, tileY, tileX);
+        if (color == 0) {
+            continue;
+        }
+
+        uint32_t rawColor = getObjColorFromCgram(prop->m_Palette, color);
+        *c = rawColorToRgb(rawColor);
+
+        return true;
     }
 
-    if (!prop) {
-        return false;
-    }
-
-    // Sprite found, lets read the requested pixel
-    // Define some callbacks to get some data depending of the current PPU configuration
-    auto colorReadCb = getColorReadCb(kPpuObjBpp);
-
-    // Extract the pixel coordinates in the tile
-    int tileX = x - prop->m_X;
-    int tileY = y - prop->m_Y;
-
-    // Use the flip status to point to the correct subtile
-    // Then compute the subtile coordinate to be able to compute
-    // the subtile location
-    int subtileX;
-    if (prop->m_HorizontalFlip) {
-        subtileX = prop->m_WidthPixel - tileX - 1;
-    } else {
-        subtileX = tileX;
-    }
-
-    int subtileY;
-    if (prop->m_VerticalFlip) {
-        subtileY = prop->m_HeightPixel - tileY - 1;
-    } else {
-        subtileY = tileY;
-    }
-
-    subtileX /= kPpuBaseTileWidth;
-    subtileY /= kPpuBaseTileHeight;
-
-    // Compute the final tile location
-    // The second row of tiles is located 0x10 tiles after
-    int tileBaseAddr = m_ObjBase + prop->m_TileIndex * kPpuObjTileSize;
-    if (prop->m_TileIndex >= 0x100) {
-        tileBaseAddr += m_ObjGapSize;
-    }
-
-    int tileAddr = tileBaseAddr + subtileX * kPpuObjTileSize + subtileY * 0x10 * kPpuObjTileSize;
-    tileAddr &= 0xFFFF;
-
-    const uint8_t* tileData = m_Vram + tileAddr;
-
-    // Update coordinates before draw to apply some tile modifiers
-    if (prop->m_VerticalFlip) {
-        tileY = (kPpuBaseTileHeight - 1) - (tileY % kPpuBaseTileHeight);
-    } else {
-        tileY %= kPpuBaseTileHeight;
-    }
-
-    // Pixel horizontal order is reversed in the tile. Bit 7 is the first pixel
-    if (!prop->m_HorizontalFlip) {
-        tileX = (kPpuBaseTileWidth - 1) - (tileX % kPpuBaseTileWidth);
-    } else {
-        tileX %= kPpuBaseTileWidth;
-    }
-
-    // Read tile color and get the color from the palette
-    int color = colorReadCb(tileData, kPpuObjTileSize, tileY, tileX);
-    if (color == 0) {
-        return false;
-    }
-
-    uint32_t rawColor = getObjColorFromCgram(prop->m_Palette, color);
-    *c = rawColorToRgb(rawColor);
-
-    return true;
+    return false;
 }
 
 void Ppu::moveToNextPixel(RendererBgInfo* renderBg)
