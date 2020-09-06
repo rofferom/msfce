@@ -7,15 +7,16 @@
 #define TAG "dma"
 
 Dma::Dma(const std::shared_ptr<Membus> membus)
-    : m_Membus(membus)
+    : MemComponent(MemComponentType::dma),
+      m_Membus(membus)
 {
 }
 
-uint8_t Dma::readU8(size_t addr)
+uint8_t Dma::readU8(uint32_t addr)
 {
     switch (addr) {
     default:
-        LOGW(TAG, "Unsupported readU8 %04X", static_cast<uint32_t>(addr));
+        LOGW(TAG, "Unsupported readU8 %04X", addr);
         assert(false);
         break;
     }
@@ -23,19 +24,7 @@ uint8_t Dma::readU8(size_t addr)
     return 0;
 }
 
-uint16_t Dma::readU16(size_t addr)
-{
-    switch (addr) {
-    default:
-        LOGW(TAG, "Unsupported readU16 %04X", static_cast<uint32_t>(addr));
-        assert(false);
-        break;
-    }
-
-    return 0;
-}
-
-void Dma::writeU8(size_t addr, uint8_t value)
+void Dma::writeU8(uint32_t addr, uint8_t value)
 {
     if (addr == kRegisterMDMAEN) {
         runDma(value);
@@ -130,12 +119,6 @@ void Dma::writeU8(size_t addr, uint8_t value)
         LOGW(TAG, "Unsupported writeU8 %04X", static_cast<uint32_t>(addr));
         break;
     }
-}
-
-void Dma::writeU16(size_t addr, uint16_t value)
-{
-    writeU8(addr, value & 0xFF);
-    writeU8(addr + 1, value >> 8);
 }
 
 void Dma::runDma(uint8_t value)

@@ -213,7 +213,7 @@ uint16_t Membus::readU16(size_t addr)
 
     // DMA
     if (isDmaAddress(addr, bank, offset)) {
-        return m_Dma->readU16(addr);
+        return (m_Dma->readU8(addr + 1) << 8) | m_Dma->readU8(addr);
     }
 
     // Joypad
@@ -404,7 +404,8 @@ void Membus::writeU16(size_t addr, uint16_t value)
 
     // Dma
     if (isDmaAddress(addr, bank, offset)) {
-        m_Dma->writeU16(addr, value);
+        m_Dma->writeU8(addr + 1, value >> 8);
+        m_Dma->writeU8(addr, value & 0xFF);
         return;
     }
 

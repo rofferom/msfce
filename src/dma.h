@@ -4,18 +4,17 @@
 #include <stdint.h>
 #include <memory>
 
+#include "memcomponent.h"
+
 class Membus;
 
-class Dma {
+class Dma : public MemComponent {
 public:
     Dma(const std::shared_ptr<Membus> membus);
     ~Dma() = default;
 
-    uint8_t readU8(size_t addr);
-    uint16_t readU16(size_t addr);
-
-    void writeU8(size_t addr, uint8_t value);
-    void writeU16(size_t addr, uint16_t value);
+    uint8_t readU8(uint32_t addr) override;
+    void writeU8(uint32_t addr, uint8_t value) override;
 
 private:
     static constexpr int kChannelCount = 8;
