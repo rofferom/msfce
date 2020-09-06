@@ -6,4 +6,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g")
 set(CMAKE_CXX_FLAGS_DEBUG   "${CMAKE_CXX_FLAGS_DEBUG}   -O0 -g")
 
 add_subdirectory(external/googletest)
+
 add_subdirectory(src)
+add_subdirectory(tests)
