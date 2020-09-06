@@ -1,6 +1,10 @@
 #pragma once
 
-#include <stdint.h>
+#include <cstdint>
+#include <cstdlib>
+#include <vector>
+
+#include "utils.h"
 
 enum class MemComponentType {
     rom,
@@ -32,4 +36,16 @@ public:
 
 private:
     MemComponentType m_Type;
+};
+
+class BufferMemComponent : public MemComponent {
+public:
+    BufferMemComponent(MemComponentType type, size_t size);
+    BufferMemComponent(MemComponentType type, std::vector<uint8_t>&& data);
+
+    uint8_t readU8(uint32_t address) override;
+    void writeU8(uint32_t address, uint8_t value) override;
+
+private:
+    std::vector<uint8_t> m_Data;
 };
