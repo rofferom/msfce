@@ -36,16 +36,6 @@ private:
     uint8_t m_Wram[128 * 1024]; // 128 kbytes
     uint8_t m_Sram[448 * 1024]; // 448 kbytes
 
-    // Maths registers
-    uint8_t m_MathsMutliplicand = 0;
-    uint8_t m_MathsMutliplier = 0;
-
-    uint16_t m_MathsDividend = 0;
-    uint8_t m_MathsDivisor = 0;
-
-    uint16_t m_MathsQuotient = 0;
-    uint16_t m_MathsRemainderProduct = 0;
-
     std::unique_ptr<std::vector<uint8_t>> m_RomPtr;
     const uint8_t* m_Rom = nullptr;
 
