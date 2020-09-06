@@ -1,11 +1,5 @@
 #include <assert.h>
-#include "apu.h"
-#include "controller.h"
-#include "dma.h"
 #include "log.h"
-#include "maths.h"
-#include "ppu.h"
-#include "utils.h"
 #include "registers.h"
 #include "membus.h"
 
@@ -13,503 +7,326 @@
 
 namespace {
 
-constexpr size_t kBankSize = 0x10000;
-
-bool isPpuAddress(size_t addr, uint8_t bank, uint16_t offset)
-{
-    if (bank != 0x00) {
-        return false;
-    }
-
-    if (kRegPpuStart <= offset && offset <= kRegPpuEnd) {
-        return true;
-    }
-
-    switch (offset) {
-    case kRegNmitimen:
-    case kRegRDNMI:
-    case kRegTIMEUP:
-    case kRegVTIMEL:
-    case kRegVTIMEH:
-    case kRegVMAIN:
-    case kRegVMADDL:
-    case kRegVMADDH:
-    case kRegVMDATAL:
-    case kRegVMDATAH:
-    case kRegRDVRAML:
-    case kRegRDVRAMH:
-    case kRegOAMADDL:
-    case kRegOAMADDH:
-    case kRegOAMDATA:
-        return true;
-
-    default:
-        return false;
-    }
-}
-
-bool isMathsAddress(size_t addr, uint8_t bank, uint16_t offset)
-{
-    if (bank > 0x3F) {
-        return false;
-    }
-
-    switch (offset) {
-    case kRegisterWRMPYA:
-    case kRegisterWRMPYB:
-    case kRegisterWRDIVL:
-    case kRegisterWRDIVH:
-    case kRegisterWRDIVB:
-    case kRegisterRDDIVL:
-    case kRegisterRDDIVH:
-    case kRegisterRDMPYL:
-    case kRegisterRDMPYH:
-        return true;
-
-    default:
-        return false;
-    }
-}
-
-bool isDmaAddress(size_t addr, uint8_t bank, uint16_t offset)
-{
-    if (bank != 0x00) {
-        return false;
-    }
-
-    if (kRegDmaStart <= offset && offset <= kRegDmaEnd) {
-        return true;
-    }
-
-    switch (offset) {
-    case kRegisterMDMAEN:
-    case kRegisterHDMAEN:
-        return true;
-
-    default:
-        return false;
-    }
-}
-
-bool isJoypadAddress(size_t addr, uint8_t bank, uint16_t offset)
-{
-    if (bank != 0x00) {
-        return false;
-    }
-
-    if (kRegDmaStart <= offset && offset <= kRegDmaEnd) {
-        return true;
-    }
-
-    switch (offset) {
-    case kRegisterJoy1L:
-    case kRegisterJoy1H:
-    case kRegisterJoy2L:
-    case kRegisterJoy2H:
-    case kRegisterJoyA:
-    case kRegisterJoyB:
-        return true;
-
-    default:
-        return false;
-    }
-}
+constexpr uint32_t kComponentAccessR = (1 << 0);
+constexpr uint32_t kComponentAccessW = (1 << 1);
+constexpr uint32_t kComponentAccessRW = kComponentAccessR | kComponentAccessW;
 
 } // anonymous namespace
 
-const uint8_t* Membus::getReadPointer(size_t addr)
+Membus::Membus(AddressingType addrType)
+    : m_AddrType(addrType)
 {
-    uint8_t bank = (addr >> 16) & 0xFF;
-    uint16_t offset = addr & 0xFFFF;
-
-    // WRAM
-    if (kWramBankStart <= bank && bank <= kWramBankEnd) {
-        // Direct access
-        //LOGI(TAG, "Read from 0x%06X", (uint32_t) ((bank - kWramBankStart) * kBankSize + offset));
-        return &m_Wram[(bank - kWramBankStart) * kBankSize + offset];
-    } else if (bank <= 0x3F && offset <= 0x1FFF) {
-        // Bank 0x00 => 0x3F mirror
-        //LOGI(TAG, "Read from 0x%06X", offset);
-        return &m_Wram[offset];
+    if (addrType == AddressingType::lowrom) {
+        initLowRom();
+    } else {
+        assert(false);
     }
 
-    // SRAM
-    if (kSramBankStart <= bank && bank <= kSramBankEnd) {
-        return &m_Sram[(bank - kSramBankStart) * kBankSize + offset];
-    }
+    // Fill generic mirroring info
+    m_Components[enumToInt(MemComponentType::ram)].addrConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
+        if (kWramBankStart <= bank && bank <= kWramBankEnd) {
+            // Direct access
+            return (bank - kWramBankStart) * 0x10000 + offset;
+        } else if (bank <= 0x3F && offset <= 0x1FFF) {
+            return offset;
+        } else {
+            assert(false);
+            return 0;
+        }
+    };
+}
 
-    // ROM
-    if (offset >= 0x8000) {
-        if (bank < kWramBankStart) {
-            // Direct access. WRAM banks are hiding the ROM
-            return &m_Rom[bank * 0x8000 + (offset - 0x8000)];
-        } else if (bank < 0xFE) {
-            assert(bank >= 0x80);
-            // Two cases:
-            // 1. 0x80 => 0xFD : Bank 0x00 => 0x7D mirror
-            // 2. 0xFE => 0xFF : Direct access. Last part hidden by WRAM in 0x7E => 0x7F
-            return &m_Rom[(bank - 0x80) * 0x8000 + (offset - 0x8000)];
+void Membus::initLowRom()
+{
+    // Fill "real" mapping
+    for (const auto& component: s_LowRomMap.components) {
+        for (int i = component.bankStart; i <= component.bankEnd; i++) {
+            if (m_Banks[i].type == BankType::invalid) {
+                m_Banks[i].type = BankType::direct;
+            } else {
+                assert(m_Banks[i].type == BankType::direct);
+            }
+
+            m_Banks[i].ranges.push_back(&component);
         }
     }
 
-    LOGC(TAG, "Unhandled read address 0x%06X", static_cast<uint32_t>(addr));
-    assert(false);
-    return nullptr;
+    // Fill mirroring info
+    for (const auto& mirror: s_LowRomMap.mirrors) {
+        assert(mirror.srcBankEnd - mirror.srcBankStart == mirror.targetBankEnd - mirror.targetBankStart);
+
+        for (int i = mirror.srcBankStart; i <= mirror.srcBankEnd; i++) {
+            m_Banks[i].type = BankType::mirrored;
+            m_Banks[i].targetBank = mirror.targetBankStart + (i - mirror.srcBankStart);
+        }
+    }
+
+    // Plug LowRom specific address converters
+    m_Components[enumToInt(MemComponentType::rom)].addrConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
+        if (bank <= 0x7D) {
+            return bank * 0x8000 + (offset - 0x8000);
+        } else if (bank >= 0xFE) {
+            return (bank - 0xFE + 0x7E) * 0x8000 + (offset - 0x8000);
+        } else {
+            assert(false);
+        }
+    };
+
+    m_Components[enumToInt(MemComponentType::sram)].addrConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
+        if (bank >= 0xFE) {
+            return (bank - 0xFE + 0xE) * 0x8000 + offset;
+        } else {
+            return (bank - kSramBankStart) * 0x8000 + offset;
+        }
+    };
 }
 
-uint8_t Membus::readU8(size_t addr)
+Membus::ComponentHandler *Membus::getComponentFromAddr(
+    uint32_t addr,
+    MemComponentType* type,
+    uint8_t *outBankId,
+    uint16_t *outOffset,
+    uint32_t access)
 {
-    uint8_t bank = (addr >> 16) & 0xFF;
+    Bank* bank;
+    const MemoryRange* range = nullptr;
+
+    uint8_t bankId = addr >> 16;
     uint16_t offset = addr & 0xFFFF;
+    uint8_t targetBank;
 
-    // APU
-    if (bank == 0 && (kRegApuStart <= offset && offset <= kRegApuEnd)) {
-        return m_Apu->readU8(addr);
+    // Get target bank (aka: handle mirroring)
+    if (m_Banks[bankId].type == BankType::mirrored) {
+        targetBank = m_Banks[bankId].targetBank;
+    } else {
+        targetBank = bankId;
     }
 
-    // PPU
-    if (isPpuAddress(addr, bank, offset)) {
-        return m_Ppu->readU8(addr);
+    bank = &m_Banks[targetBank];
+
+    // Find target component
+    for (auto& i: bank->ranges) {
+        if (i->offsetStart <= offset && offset <= i->offsetEnd) {
+            range = i;
+            break;
+        }
     }
 
-    // Maths
-    if (isMathsAddress(addr, bank, offset)) {
-        return m_Maths->readU8(addr);
-    }
-
-    // DMA
-    if (isDmaAddress(addr, bank, offset)) {
-        return m_Dma->readU8(addr);
-    }
-
-    // Joypad
-    if (isJoypadAddress(addr, bank, offset)) {
-        return m_ControllerPorts->readU8(addr);
-    }
-
-    auto ptr = getReadPointer(addr);
-    return *ptr;
-}
-
-uint16_t Membus::readU16(size_t addr)
-{
-    uint8_t bank = (addr >> 16) & 0xFF;
-    uint16_t offset = addr & 0xFFFF;
-
-    // APU
-    if (bank == 0 && (kRegApuStart <= offset && offset <= kRegApuEnd)) {
-        return (m_Apu->readU8(addr + 1) << 8) | m_Apu->readU8(addr);
-    }
-
-    // PPU
-    if (isPpuAddress(addr, bank, offset)) {
-        return (m_Ppu->readU8(addr + 1) << 8) | m_Ppu->readU8(addr);
-    }
-
-    // Maths
-    if (isMathsAddress(addr, bank, offset)) {
-        return (m_Maths->readU8(addr + 1) << 8) | m_Maths->readU8(addr);
-    }
-
-    // DMA
-    if (isDmaAddress(addr, bank, offset)) {
-        return (m_Dma->readU8(addr + 1) << 8) | m_Dma->readU8(addr);
-    }
-
-    // Joypad
-    if (isJoypadAddress(addr, bank, offset)) {
-        return (m_ControllerPorts->readU8(addr + 1) << 8) | m_ControllerPorts->readU8(addr);
-    }
-
-    auto ptr = getReadPointer(addr);
-    return *ptr | (*(ptr + 1) << 8);
-}
-
-uint32_t Membus::readU24(size_t addr)
-{
-    uint8_t bank = (addr >> 16) & 0xFF;
-    uint16_t offset = addr & 0xFFFF;
-
-    // APU
-    if (bank == 0 && (kRegApuStart <= offset && offset <= kRegApuEnd)) {
+    if (!range) {
+        return nullptr;
+    } else if (!(range->access & access)) {
         assert(false);
-        return 0;
-    }
-
-    // PPU
-    if (isPpuAddress(addr, bank, offset)) {
-        assert(false);
-        return 0;
-    }
-
-    // Maths
-    if (isMathsAddress(addr, bank, offset)) {
-        assert(false);
-        return 0;
-    }
-
-    // DMA
-    if (isDmaAddress(addr, bank, offset)) {
-        assert(false);
-        return 0;
-    }
-
-    // Joypad
-    if (bank == 0 && offset == kRegisterJoy1L) {
-        assert(false);
-        return 0;
-    } else if (bank == 0 && offset == kRegisterJoy2L) {
-        assert(false);
-        return 0;
-    }
-
-    auto ptr = getReadPointer(addr);
-    return *ptr | (*(ptr + 1) << 8) | (*(ptr + 2) << 16);
-}
-
-uint8_t* Membus::getWritePointer(size_t addr)
-{
-    uint8_t bank = (addr >> 16) & 0xFF;
-    uint16_t offset = addr & 0xFFFF;
-
-    // WRAM
-    if (kWramBankStart <= bank && bank <= kWramBankEnd) {
-        // Direct access
-        return &m_Wram[(bank - kWramBankStart) * kBankSize + offset];
-    } else if (bank <= 0x3F && offset <= 0x1FFF) {
-        // Bank 0x00 => 0x3F mirror
-        return &m_Wram[offset];
-    }
-
-    // SRAM
-    if (kSramBankStart <= bank && bank <= kSramBankEnd) {
-        return &m_Sram[(bank - kSramBankStart) * kBankSize + offset];
-    }
-
-    // DMA/HDMA
-    if (bank == 0 && (kRegDmaStart <= offset && offset <= kRegDmaEnd)) {
-        LOGW(TAG , "DMA write (0x%04X) ignored", offset);
         return nullptr;
     }
 
-    // Misc registers
-    switch (addr) {
-    case kRegNmitimen:
-    case kRegisterMDMAEN:
-    case kRegisterHDMAEN:
-    case kRegisterJoyWr:
-        LOGW(TAG , "%02X write ignored", static_cast<uint32_t>(addr));
-        return nullptr;
+    *type = range->type;
+    *outBankId = targetBank;
+    *outOffset = offset;
 
-    case kRegisterMemsel:
-    case kRegisterJoyWrio:
-    case kRegisterWRMPYA:
-    case kRegisterWRMPYB:
-    case kRegisterWRDIVL:
-    case kRegisterWRDIVH:
-    case kRegisterWRDIVB:
-    case kRegisterHTIMEL:
-    case kRegisterHTIMEH:
-    case kRegisterVTIMEL:
-    case kRegisterVTIMEH:
-    case kRegisterWMADDL:
-    case kRegisterWMADDM:
-    case kRegisterWMADDH:
-    case kRegisterWMDATA:
-        LOGC(TAG, "Unhandled write address 0x%06X", static_cast<uint32_t>(addr));
+    return &m_Components[enumToInt(range->type)];
+}
+
+int Membus::plugComponent(const std::shared_ptr<MemComponent>& component)
+{
+    m_Components[enumToInt(component->getType())].ptr = component;
+
+    return 0;
+}
+
+uint8_t Membus::readU8(uint32_t addr)
+{
+    ComponentHandler *component;
+    MemComponentType type;
+    uint8_t bank;
+    uint16_t offset;
+    uint32_t finalAddr;
+
+    component = getComponentFromAddr(addr, &type, &bank, &offset, kComponentAccessR);
+    if (type == MemComponentType::membus) {
+        return internalReadU8(addr);
+    } else if (!component) {
         assert(false);
-        return nullptr;
-
-    default:
-        break;
+        return 0;
     }
 
-    LOGC(TAG, "Unhandled write address 0x%06X", static_cast<uint32_t>(addr));
-    assert(false);
-    return nullptr;
+    if (component->addrConverter) {
+        finalAddr = component->addrConverter(bank, offset);
+    } else {
+        finalAddr = (bank << 16) | offset;
+    }
+
+    assert(component->ptr);
+    return component->ptr->readU8(finalAddr);
 }
 
-void Membus::writeU8(size_t addr, uint8_t value)
+uint16_t Membus::readU16(uint32_t addr)
 {
-    uint8_t bank = (addr >> 16) & 0xFF;
-    uint16_t offset = addr & 0xFFFF;
+    ComponentHandler *component;
+    MemComponentType type;
+    uint8_t bank;
+    uint16_t offset;
+    uint32_t finalAddr;
 
-    // APU
-    if (bank == 0 && (kRegApuStart <= offset && offset <= kRegApuEnd)) {
-        m_Apu->writeU8(addr, value);
-        return;
+    component = getComponentFromAddr(addr, &type, &bank, &offset, kComponentAccessR);
+    if (type == MemComponentType::membus) {
+        return internalReadU8(addr);
+    } else if (!component) {
+        assert(false);
+        return 0;
     }
 
-    // PPU
-    if (isPpuAddress(addr, bank, offset)) {
-        m_Ppu->writeU8(addr, value);
-        return;
+    if (component->addrConverter) {
+        finalAddr = component->addrConverter(bank, offset);
+    } else {
+        finalAddr = (bank << 16) | offset;
     }
 
-    // Maths
-    if (isMathsAddress(addr, bank, offset)) {
-        m_Maths->writeU8(addr, value);
-        return;
-    }
-
-    // Dma
-    if (isDmaAddress(addr, bank, offset)) {
-        m_Dma->writeU8(addr, value);
-        return;
-    }
-
-    // Joypad
-    if (isJoypadAddress(addr, bank, offset)) {
-        m_ControllerPorts->writeU8(addr, value);
-        return;
-    }
-
-    if (addr == kRegNmitimen) {
-        LOGI(TAG, "Writting to kRegNmitimen: 0x%02X", value);
-        return;
-    } else if (addr == kRegSETINI) {
-        LOGI(TAG, "Writting to kRegSETINI: 0x%02X", value);
-    } else if (addr == kRegINIDISP) {
-        LOGI(TAG, "Writting to kRegINIDISP: 0x%02X", value);
-    }
-
-    auto ptr = getWritePointer(addr);
-    if (ptr) {
-        *ptr = value;
-    }
+    assert(component->ptr);
+    return (component->ptr->readU8(finalAddr + 1) << 8)
+          | component->ptr->readU8(finalAddr);
 }
 
-void Membus::writeU16(size_t addr, uint16_t value)
+uint32_t Membus::readU24(uint32_t addr)
 {
-    uint8_t bank = (addr >> 16) & 0xFF;
-    uint16_t offset = addr & 0xFFFF;
+    ComponentHandler *component;
+    MemComponentType type;
+    uint8_t bank;
+    uint16_t offset;
+    uint32_t finalAddr;
 
-    // APU
-    if (bank == 0 && (kRegApuStart <= offset && offset <= kRegApuEnd)) {
-        m_Apu->writeU8(addr, value & 0xFF);
-        m_Apu->writeU8(addr + 1, value >> 8);
-        return;
+    component = getComponentFromAddr(addr, &type, &bank, &offset, kComponentAccessR);
+    if (type == MemComponentType::membus) {
+        return internalReadU8(addr);
+    } else if (!component) {
+        assert(false);
+        return 0;
     }
 
-    // PPU
-    if (isPpuAddress(addr, bank, offset)) {
-        m_Ppu->writeU8(addr, value & 0xFF);
-        m_Ppu->writeU8(addr + 1, value >> 8);
-        return;
+    if (component->addrConverter) {
+        finalAddr = component->addrConverter(bank, offset);
+    } else {
+        finalAddr = (bank << 16) | offset;
     }
 
-    // Maths
-    if (isMathsAddress(addr, bank, offset)) {
-        m_Maths->writeU8(addr, value & 0xFF);
-        m_Maths->writeU8(addr + 1, value >> 8);
-        return;
-    }
-
-    // Dma
-    if (isDmaAddress(addr, bank, offset)) {
-        m_Dma->writeU8(addr + 1, value >> 8);
-        m_Dma->writeU8(addr, value & 0xFF);
-        return;
-    }
-
-    // Joypad
-    if (isJoypadAddress(addr, bank, offset)) {
-        m_ControllerPorts->writeU8(addr, value & 0xFF);
-        m_ControllerPorts->writeU8(addr + 1, value >> 8);
-        return;
-    }
-
-    auto ptr = getWritePointer(addr);
-    if (ptr) {
-        *ptr = value & 0xFF;;
-        *(ptr + 1) = value >> 8;
-    }
+    assert(component->ptr);
+    return (component->ptr->readU8(finalAddr + 2) << 16)
+         | (component->ptr->readU8(finalAddr + 1) << 8)
+         |  component->ptr->readU8(finalAddr);
 }
 
-void Membus::writeU24(size_t addr, uint32_t value)
+void Membus::writeU8(uint32_t addr, uint8_t value)
 {
-    uint8_t bank = (addr >> 16) & 0xFF;
-    uint16_t offset = addr & 0xFFFF;
+    ComponentHandler *component;
+    MemComponentType type;
+    uint8_t bank;
+    uint16_t offset;
+    uint32_t finalAddr;
 
-    // APU
-    if (bank == 0 && (kRegApuStart <= offset && offset <= kRegApuEnd)) {
+    component = getComponentFromAddr(addr, &type, &bank, &offset, kComponentAccessW);
+    if (type == MemComponentType::membus) {
+        internalWriteU8(addr, value);
+        return;
+    } else if (!component) {
         assert(false);
         return;
     }
 
-    // PPU
-    if (isPpuAddress(addr, bank, offset)) {
+    if (component->addrConverter) {
+        finalAddr = component->addrConverter(bank, offset);
+    } else {
+        finalAddr = (bank << 16) | offset;
+    }
+
+    assert(component->ptr);
+    component->ptr->writeU8(finalAddr, value);
+}
+
+void Membus::writeU16(uint32_t addr, uint16_t value)
+{
+    ComponentHandler *component;
+    MemComponentType type;
+    uint8_t bank;
+    uint16_t offset;
+    uint32_t finalAddr;
+
+    component = getComponentFromAddr(addr, &type, &bank, &offset, kComponentAccessW);
+    if (type == MemComponentType::membus) {
+        internalWriteU8(addr, value);
+        return;
+    } else if (!component) {
         assert(false);
         return;
     }
 
-    // Maths
-    if (isMathsAddress(addr, bank, offset)) {
-        assert(false);
-        return;
+    if (component->addrConverter) {
+        finalAddr = component->addrConverter(bank, offset);
+    } else {
+        finalAddr = (bank << 16) | offset;
     }
 
-    // Dma
-    if (isDmaAddress(addr, bank, offset)) {
-        assert(false);
-        return;
-    }
-
-    auto ptr = getWritePointer(addr);
-    if (ptr) {
-        *ptr = value & 0xFF;;
-        *(ptr + 1) = (value >> 8) & 0xFF;
-        *(ptr + 2) = value >> 16;
-    }
+    assert(component->ptr);
+    component->ptr->writeU8(finalAddr, value & 0xFF);
+    component->ptr->writeU8(finalAddr + 1, value >> 8);
 }
 
-int Membus::plugApu(const std::shared_ptr<MemComponent>& spu)
+uint8_t Membus::internalReadU8(uint32_t addr)
 {
-    m_Apu = spu;
-
     return 0;
 }
 
-int Membus::plugControllerPorts(const std::shared_ptr<MemComponent>& controllerPorts)
+void Membus::internalWriteU8(uint32_t addr, uint8_t value)
 {
-    m_ControllerPorts = controllerPorts;
-
-    return 0;
 }
 
-int Membus::plugDma(const std::shared_ptr<MemComponent>& dma)
-{
-    m_Dma = dma;
+const Membus::MemoryMap Membus::s_LowRomMap = {
+    // Components
+    {
+        // WRAM direct access
+        { 0x00, 0x3F, 0x0000, 0x1FFF, MemComponentType::ram, kComponentAccessRW },
+        { 0x7E, 0x7F, 0x0000, 0xFFFF, MemComponentType::ram, kComponentAccessRW },
 
-    return 0;
-}
+        // WRAM indirect access
+        //{ 0x00, 0x3F, 0x2180, 0x2183, MemComponentType::indirectRam, kComponentAccessRW },
 
-int Membus::plugMaths(const std::shared_ptr<MemComponent>& maths)
-{
-    m_Maths = maths;
+        // PPU
+        { 0x00, 0x3F, 0x2100, 0x2133, MemComponentType::ppu, kComponentAccessW },
+        { 0x00, 0x3F, 0x2134, 0x213F, MemComponentType::ppu, kComponentAccessR },
 
-    return 0;
-}
+        // APU
+        { 0x00, 0x3F, 0x2140, 0x217F, MemComponentType::apu, kComponentAccessRW },
 
-int Membus::plugPpu(const std::shared_ptr<MemComponent>& ppu)
-{
-    m_Ppu = ppu;
+        // DMA
+        { 0x00, 0x3F, 0x4300, 0x437F, MemComponentType::dma, kComponentAccessRW },
+        { 0x00, 0x3F, 0x420B, 0x420C, MemComponentType::dma, kComponentAccessRW },
 
-    return 0;
-}
+        // Maths
+        { 0x00, 0x3F, 0x4202, 0x4206, MemComponentType::maths, kComponentAccessW },
+        { 0x00, 0x3F, 0x4214, 0x4217, MemComponentType::maths, kComponentAccessR },
 
-int Membus::plugRom(std::unique_ptr<std::vector<uint8_t>> rom)
-{
-    m_RomPtr = std::move(rom);
-    m_Rom = m_RomPtr->data();
+        // IRQ configuration
+        { 0x00, 0x3F, 0x4200, 0x4200, MemComponentType::ppu, kComponentAccessRW },
+        { 0x00, 0x3F, 0x4207, 0x420A, MemComponentType::ppu, kComponentAccessRW },
+        { 0x00, 0x3F, 0x4210, 0x4212, MemComponentType::ppu, kComponentAccessRW },
 
-    return 0;
-}
+        // ROM
+        { 0x00, 0x7D, 0x8000, 0xFFFF, MemComponentType::rom, kComponentAccessR },
+        { 0xFE, 0xFF, 0x8000, 0xFFFF, MemComponentType::rom, kComponentAccessR },
 
-void Membus::dump()
-{
-    FILE* f = fopen("dump_wram.bin", "wb");
-    assert(f);
-    fwrite(m_Wram, 1, sizeof(m_Wram), f);
-    fclose(f);
-}
+        // SRAM
+        { 0x70, 0x7D, 0x0000, 0x7FFF, MemComponentType::sram, kComponentAccessRW },
+        { 0xFE, 0xFF, 0x0000, 0x7FFF, MemComponentType::sram, kComponentAccessRW },
+
+        // Membus
+        { 0x00, 0x3F, 0x420D, 0x420D, MemComponentType::membus, kComponentAccessRW },
+
+        // Joypad
+        { 0x00, 0x3F, 0x4016, 0x4017, MemComponentType::joypads, kComponentAccessRW },
+        { 0x00, 0x3F, 0x4201, 0x4201, MemComponentType::joypads, kComponentAccessRW },
+        { 0x00, 0x3F, 0x4213, 0x4213, MemComponentType::joypads, kComponentAccessRW },
+        { 0x00, 0x3F, 0x4218, 0x421F, MemComponentType::joypads, kComponentAccessRW },
+    },
+    // Mirrors (src bank => target bank)
+    {
+        { 0x80, 0xFD, 0x00, 0x7D },
+    },
+};

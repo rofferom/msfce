@@ -90,6 +90,8 @@ constexpr size_t kRegApuPort2 = 0x2142;
 constexpr size_t kRegApuPort3 = 0x2143;
 
 // WRAM registers
+constexpr size_t kWramSize = 128 * 1024; // 128 kbytes
+
 constexpr size_t kWramBankStart = 0x7E;
 constexpr size_t kWramBankEnd = 0x7F;
 
@@ -99,6 +101,8 @@ constexpr size_t kRegisterWMADDM = 0x2182;
 constexpr size_t kRegisterWMADDH = 0x2183;
 
 // SRAM registers
+constexpr size_t kSramSize = 512 * 1024; // 512 kbytes
+
 constexpr size_t kSramBankStart = 0x70;
 constexpr size_t kSramBankEnd = 0x7D;
 

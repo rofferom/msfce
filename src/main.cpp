@@ -84,7 +84,7 @@ static void handleKey(
     *buttonValue = pressed;
 }
 
-static int loadRom(const char* romPath, std::unique_ptr<std::vector<uint8_t>>* outRom)
+static int loadRom(const char* romPath, std::vector<uint8_t>* outRom)
 {
     int ret;
 
@@ -109,10 +109,9 @@ static int loadRom(const char* romPath, std::unique_ptr<std::vector<uint8_t>>* o
     LOGI(TAG, "Rom size: %lu bytes", fStat.st_size);
 
     // Read file content
-    auto rom = std::make_unique<std::vector<uint8_t>>();
-    rom->reserve(fStat.st_size);
+    std::vector<uint8_t> rom(fStat.st_size);
 
-    size_t readRet = fread(rom->data(), 1, fStat.st_size, f);
+    size_t readRet = fread(rom.data(), 1, fStat.st_size, f);
     if (readRet < static_cast<size_t>(fStat.st_size)) {
         LOGE(TAG, "Fail to read ROM (got only %zu bytes)", readRet);
         ret = -EIO;
@@ -172,40 +171,52 @@ int main(int argc, char* argv[])
     // Load ROM
     const char* romPath = argv[1];
 
-    std::unique_ptr<std::vector<uint8_t>> romPtr;
-    ret = loadRom(romPath, &romPtr);
+    std::vector<uint8_t> romData;
+    ret = loadRom(romPath, &romData);
     if (ret < 0) {
         return 1;
     }
 
-    const uint8_t* rom = romPtr->data();
+    const uint8_t* romRawPtr = romData.data();
 
     // Parse header
     char title[kLowRomHeader_TitleSize+1];
     memset(title, 0, sizeof(title));
-    strncpy(title, reinterpret_cast<const char*>(&rom[kLowRomHeader_Title]), kLowRomHeader_TitleSize);
+    strncpy(title, reinterpret_cast<const char*>(&romRawPtr[kLowRomHeader_Title]), kLowRomHeader_TitleSize);
     LOGI(TAG, "ROM title: '%s'", title);
 
     // Create components
-    auto membus = std::make_shared<Membus>();
+    auto membus = std::make_shared<Membus>(AddressingType::lowrom);
 
-    membus->plugRom(std::move(romPtr));
-    rom = nullptr;
+    auto rom = std::make_shared<BufferMemComponent>(
+        MemComponentType::rom,
+        std::move(romData));
+    membus->plugComponent(rom);
+
+    auto ram = std::make_shared<BufferMemComponent>(
+        MemComponentType::ram,
+        kWramSize);
+    membus->plugComponent(ram);
+
+    auto sram = std::make_shared<BufferMemComponent>(
+        MemComponentType::sram,
+        kSramSize);
+    membus->plugComponent(sram);
 
     auto apu = std::make_shared<Apu>();
-    membus->plugApu(apu);
+    membus->plugComponent(apu);
 
     auto ppu = std::make_shared<Ppu>();
-    membus->plugPpu(ppu);
+    membus->plugComponent(ppu);
 
     auto maths = std::make_shared<Maths>();
-    membus->plugMaths(maths);
+    membus->plugComponent(maths);
 
     auto dma = std::make_shared<Dma>(membus);
-    membus->plugDma(dma);
+    membus->plugComponent(dma);
 
     auto controllerPorts = std::make_shared<ControllerPorts>(controller);
-    membus->plugControllerPorts(controllerPorts);
+    membus->plugComponent(controllerPorts);
 
     auto cpu = std::make_shared<Cpu65816>(membus);
     bool cpuRun = true;

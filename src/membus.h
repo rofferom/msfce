@@ -3,45 +3,92 @@
 #include <stdint.h>
 #include <memory>
 #include <vector>
+#include <functional>
 
 #include "memcomponent.h"
 
+enum class AddressingType {
+    lowrom,
+    highrom,
+};
+
 class Membus {
 public:
-    Membus() = default;
+    Membus(AddressingType addrType);
     ~Membus() = default;
 
-    uint8_t readU8(size_t addr);
-    uint16_t readU16(size_t addr);
-    uint32_t readU24(size_t addr);
+    int plugComponent(const std::shared_ptr<MemComponent>& component);
 
-    void writeU8(size_t addr, uint8_t value);
-    void writeU16(size_t addr, uint16_t value);
-    void writeU24(size_t addr, uint32_t value);
+    uint8_t readU8(uint32_t addr);
+    uint16_t readU16(uint32_t addr);
+    uint32_t readU24(uint32_t addr);
 
-    int plugApu(const std::shared_ptr<MemComponent>& spu);
-    int plugControllerPorts(const std::shared_ptr<MemComponent>& controllerPorts);
-    int plugDma(const std::shared_ptr<MemComponent>& dma);
-    int plugMaths(const std::shared_ptr<MemComponent>& maths);
-    int plugPpu(const std::shared_ptr<MemComponent>& ppu);
-    int plugRom(std::unique_ptr<std::vector<uint8_t>> rom);
-
-    void dump();
+    void writeU8(uint32_t addr, uint8_t value);
+    void writeU16(uint32_t addr, uint16_t value);
 
 private:
-    const uint8_t* getReadPointer(size_t addr);
-    uint8_t* getWritePointer(size_t addr);
+    enum class BankType {
+        invalid,
+        direct,
+        mirrored,
+    };
+
+    struct MemoryRange {
+        uint8_t bankStart;
+        uint8_t bankEnd;
+
+        uint16_t offsetStart;
+        uint16_t offsetEnd;
+
+        MemComponentType type;
+        uint32_t access;
+    };
+
+    struct MemoryMirror {
+        uint8_t srcBankStart;
+        uint8_t srcBankEnd;
+
+        uint8_t targetBankStart;
+        uint8_t targetBankEnd;
+    };
+
+    struct MemoryMap {
+        std::vector<MemoryRange> components;
+        std::vector<MemoryMirror> mirrors;
+    };
+
+    struct Bank {
+        BankType type = BankType::invalid;
+
+        // type == direct
+        std::vector<const MemoryRange *> ranges;
+
+        // type == mirrored
+        uint8_t targetBank;
+    };
+
+    struct ComponentHandler {
+        std::shared_ptr<MemComponent> ptr;
+        std::function<uint32_t(uint8_t bank, uint16_t offset)> addrConverter;
+    };
 
 private:
-    uint8_t m_Wram[128 * 1024]; // 128 kbytes
-    uint8_t m_Sram[448 * 1024]; // 448 kbytes
+    void initLowRom();
 
-    std::unique_ptr<std::vector<uint8_t>> m_RomPtr;
-    const uint8_t* m_Rom = nullptr;
+    ComponentHandler *getComponentFromAddr(
+        uint32_t addr,
+        MemComponentType *type,
+        uint8_t *bankId,
+        uint16_t *offset,
+        uint32_t access);
 
-    std::shared_ptr<MemComponent> m_Apu;
-    std::shared_ptr<MemComponent> m_ControllerPorts;
-    std::shared_ptr<MemComponent> m_Dma;
-    std::shared_ptr<MemComponent> m_Maths;
-    std::shared_ptr<MemComponent> m_Ppu;
+    uint8_t internalReadU8(uint32_t addr);
+    void internalWriteU8(uint32_t addr, uint8_t value);
+
+private:
+    AddressingType m_AddrType;
+    Bank m_Banks[0x100];
+    ComponentHandler m_Components[kComponentTypeCount];
+
+    static const MemoryMap s_LowRomMap;
 };
