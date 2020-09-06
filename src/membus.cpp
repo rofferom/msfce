@@ -463,35 +463,35 @@ void Membus::writeU24(size_t addr, uint32_t value)
     }
 }
 
-int Membus::plugApu(const std::shared_ptr<Apu>& spu)
+int Membus::plugApu(const std::shared_ptr<MemComponent>& spu)
 {
     m_Apu = spu;
 
     return 0;
 }
 
-int Membus::plugControllerPorts(const std::shared_ptr<ControllerPorts>& controllerPorts)
+int Membus::plugControllerPorts(const std::shared_ptr<MemComponent>& controllerPorts)
 {
     m_ControllerPorts = controllerPorts;
 
     return 0;
 }
 
-int Membus::plugDma(const std::shared_ptr<Dma>& dma)
+int Membus::plugDma(const std::shared_ptr<MemComponent>& dma)
 {
     m_Dma = dma;
 
     return 0;
 }
 
-int Membus::plugMaths(const std::shared_ptr<Maths>& maths)
+int Membus::plugMaths(const std::shared_ptr<MemComponent>& maths)
 {
     m_Maths = maths;
 
     return 0;
 }
 
-int Membus::plugPpu(const std::shared_ptr<Ppu>& ppu)
+int Membus::plugPpu(const std::shared_ptr<MemComponent>& ppu)
 {
     m_Ppu = ppu;
 
