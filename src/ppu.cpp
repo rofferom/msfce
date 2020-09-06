@@ -312,6 +312,11 @@ const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_On[] = {
     {Layer::none, 0, 0},
 };
 
+Ppu::Ppu()
+    : MemComponent(MemComponentType::ppu)
+{
+}
+
 void Ppu::dump() const
 {
     FILE* f;
@@ -335,7 +340,7 @@ void Ppu::dump() const
     fclose(f);
 }
 
-uint8_t Ppu::readU8(size_t addr)
+uint8_t Ppu::readU8(uint32_t addr)
 {
     switch (addr) {
     case kRegRDNMI:
@@ -344,20 +349,12 @@ uint8_t Ppu::readU8(size_t addr)
         return 0;
     }
 
-    LOGW(TAG, "Ignore ReadU8 at %06X", static_cast<uint32_t>(addr));
+    LOGW(TAG, "Ignore ReadU8 at %06X", addr);
     assert(false);
     return 0;
 }
 
-uint16_t Ppu::readU16(size_t addr)
-{
-    LOGW(TAG, "Ignore ReadU16 at %06X", static_cast<uint32_t>(addr));
-    assert(false);
-
-    return 0;
-}
-
-void Ppu::writeU8(size_t addr, uint8_t value)
+void Ppu::writeU8(uint32_t addr, uint8_t value)
 {
     switch (addr) {
     case kRegINIDISP: {
@@ -608,34 +605,7 @@ void Ppu::writeU8(size_t addr, uint8_t value)
 
     case kRegRDCGRAM:
     default:
-        LOGW(TAG, "Ignore WriteU8 %02X at %06X", value, static_cast<uint32_t>(addr));
-        assert(false);
-        break;
-    }
-}
-
-void Ppu::writeU16(size_t addr, uint16_t value)
-{
-    switch (addr) {
-    case kRegNmitimen: {
-        LOGC(TAG, "Trying to write an U16 in a U8 register (%04X)", static_cast<uint32_t>(addr));
-        assert(false);
-        break;
-    }
-
-    case kRegVTIMEL:
-        // H/V IRQ can't be enabled in the current implementation (assert on activation)
-        break;
-
-    case kRegVMADDL:
-    case kRegVMDATAL:
-    case kRegOAMADDL:
-        writeU8(addr, value & 0xFF);
-        writeU8(addr + 1 , value >> 8);
-        break;
-
-    default:
-        LOGW(TAG, "Ignore WriteU16 %04X at %06X", value, static_cast<uint32_t>(addr));
+        LOGW(TAG, "Ignore WriteU8 %02X at %06X", value, addr);
         assert(false);
         break;
     }

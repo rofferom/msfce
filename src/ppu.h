@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <functional>
 
+#include "memcomponent.h"
 #include "registers.h"
 
 struct Color {
@@ -12,21 +13,18 @@ struct Color {
     uint8_t b;
 };
 
-class Ppu {
+class Ppu : public MemComponent {
 public:
     using DrawPointCb = std::function<void(int x, int y, const Color& c)>;
 
 public:
-    Ppu() = default;
+    Ppu();
     ~Ppu() = default;
 
     void dump() const;
 
-    uint8_t readU8(size_t addr);
-    uint16_t readU16(size_t addr);
-
-    void writeU8(size_t addr, uint8_t value);
-    void writeU16(size_t addr, uint16_t value);
+    uint8_t readU8(uint32_t addr) override;
+    void writeU8(uint32_t addr, uint8_t value) override;
 
     bool isNMIEnabled() const;
     bool isJoypadAutoreadEnabled() const;

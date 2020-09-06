@@ -203,7 +203,7 @@ uint16_t Membus::readU16(size_t addr)
 
     // PPU
     if (isPpuAddress(addr, bank, offset)) {
-        return m_Ppu->readU16(addr);
+        return (m_Ppu->readU8(addr + 1) << 8) | m_Ppu->readU8(addr);
     }
 
     // Maths
@@ -392,7 +392,8 @@ void Membus::writeU16(size_t addr, uint16_t value)
 
     // PPU
     if (isPpuAddress(addr, bank, offset)) {
-        m_Ppu->writeU16(addr, value);
+        m_Ppu->writeU8(addr, value & 0xFF);
+        m_Ppu->writeU8(addr + 1, value >> 8);
         return;
     }
 
