@@ -2,6 +2,8 @@
 
 #include <memory>
 
+#include "memcomponent.h"
+
 struct SnesController {
     bool up = false;
     bool down = false;
@@ -20,16 +22,13 @@ struct SnesController {
     bool a = false;
 };
 
-class ControllerPorts {
+class ControllerPorts : public MemComponent {
 public:
     ControllerPorts(const std::shared_ptr<SnesController>& snesController);
     ~ControllerPorts() = default;
 
-    uint8_t readU8(size_t addr);
-    uint16_t readU16(size_t addr);
-
-    void writeU8(size_t addr, uint8_t value);
-    void writeU16(size_t addr, uint16_t value);
+    uint8_t readU8(uint32_t addr) override;
+    void writeU8(uint32_t addr, uint8_t value) override;
 
     void readController();
 

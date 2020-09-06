@@ -218,7 +218,7 @@ uint16_t Membus::readU16(size_t addr)
 
     // Joypad
     if (isJoypadAddress(addr, bank, offset)) {
-        return m_ControllerPorts->readU16(addr);
+        return (m_ControllerPorts->readU8(addr + 1) << 8) | m_ControllerPorts->readU8(addr);
     }
 
     auto ptr = getReadPointer(addr);
@@ -414,7 +414,8 @@ void Membus::writeU16(size_t addr, uint16_t value)
 
     // Joypad
     if (isJoypadAddress(addr, bank, offset)) {
-        m_ControllerPorts->writeU16(addr, value);
+        m_ControllerPorts->writeU8(addr, value & 0xFF);
+        m_ControllerPorts->writeU8(addr + 1, value >> 8);
         return;
     }
 

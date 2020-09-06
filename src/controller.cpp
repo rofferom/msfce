@@ -39,11 +39,12 @@ static bool controllerGetButton(
 } // anonymous namespace
 
 ControllerPorts::ControllerPorts(const std::shared_ptr<SnesController>& snesController)
-    : m_Controller1(snesController)
+    : MemComponent(MemComponentType::joypads),
+      m_Controller1(snesController)
 {
 }
 
-uint8_t ControllerPorts::readU8(size_t addr)
+uint8_t ControllerPorts::readU8(uint32_t addr)
 {
     switch (addr) {
     case kRegisterJoy1L: {
@@ -67,18 +68,7 @@ uint8_t ControllerPorts::readU8(size_t addr)
     }
 }
 
-uint16_t ControllerPorts::readU16(size_t addr)
-{
-    assert(false);
-    return 0;
-}
-
-void ControllerPorts::writeU8(size_t addr, uint8_t value)
-{
-    assert(false);
-}
-
-void ControllerPorts::writeU16(size_t addr, uint16_t value)
+void ControllerPorts::writeU8(uint32_t addr, uint8_t value)
 {
     assert(false);
 }
