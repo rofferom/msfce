@@ -198,7 +198,7 @@ uint16_t Membus::readU16(size_t addr)
 
     // APU
     if (bank == 0 && (kRegApuStart <= offset && offset <= kRegApuEnd)) {
-        return m_Apu->readU16(addr);
+        return (m_Apu->readU8(addr + 1) << 8) | m_Apu->readU8(addr);
     }
 
     // PPU
@@ -386,7 +386,8 @@ void Membus::writeU16(size_t addr, uint16_t value)
 
     // APU
     if (bank == 0 && (kRegApuStart <= offset && offset <= kRegApuEnd)) {
-        m_Apu->writeU16(addr, value);
+        m_Apu->writeU8(addr, value & 0xFF);
+        m_Apu->writeU8(addr + 1, value >> 8);
         return;
     }
 

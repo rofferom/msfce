@@ -5,7 +5,12 @@
 
 #define TAG "apu"
 
-uint8_t Apu::readU8(size_t addr)
+Apu::Apu()
+    : MemComponent(MemComponentType::apu)
+{
+}
+
+uint8_t Apu::readU8(uint32_t addr)
 {
     switch (addr) {
     case kRegApuPort0: {
@@ -39,29 +44,7 @@ uint8_t Apu::readU8(size_t addr)
     return 0;
 }
 
-uint16_t Apu::readU16(size_t addr)
-{
-    switch (addr) {
-    case kRegApuPort0:
-        return readU8(addr) | (readU8(addr + 1) << 8);
-
-    case kRegApuPort1:
-        return m_Port1.m_Apu | (m_Port2.m_Apu << 8);
-
-    case kRegApuPort2:
-        return m_Port2.m_Cpu | (m_Port3.m_Cpu << 8);;
-
-    case kRegApuPort3:
-    default:
-        break;
-    }
-
-    assert(false);
-
-    return 0;
-}
-
-void Apu::writeU8(size_t addr, uint8_t value)
+void Apu::writeU8(uint32_t addr, uint8_t value)
 {
     switch (addr) {
     case kRegApuPort0:
@@ -107,23 +90,6 @@ void Apu::writeU8(size_t addr, uint8_t value)
 
     case kRegApuPort3:
         m_Port3.m_Cpu = value;
-        break;
-
-    default:
-        assert(false);
-        break;
-    }
-}
-
-void Apu::writeU16(size_t addr, uint16_t value)
-{
-    switch (addr) {
-    case kRegApuPort0:
-    case kRegApuPort1:
-    case kRegApuPort2:
-    case kRegApuPort3:
-        writeU8(addr + 1, value >> 8);
-        writeU8(addr, value & 0xFF);
         break;
 
     default:

@@ -3,16 +3,15 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-class Apu {
+#include "memcomponent.h"
+
+class Apu : public MemComponent {
 public:
-    Apu() = default;
+    Apu();
     ~Apu() = default;
 
-    uint8_t readU8(size_t addr);
-    uint16_t readU16(size_t addr);
-
-    void writeU8(size_t addr, uint8_t value);
-    void writeU16(size_t addr, uint16_t value);
+    uint8_t readU8(uint32_t addr) override;
+    void writeU8(uint32_t addr, uint8_t value) override;
 
 private:
     enum class State {
