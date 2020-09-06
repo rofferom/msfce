@@ -5,7 +5,12 @@
 
 #define TAG "maths"
 
-uint8_t Maths::readU8(size_t addr)
+Maths::Maths()
+    : MemComponent(MemComponentType::maths)
+{
+}
+
+uint8_t Maths::readU8(uint32_t addr)
 {
     switch (addr & 0xFFFF) {
     case kRegisterRDDIVL:
@@ -21,7 +26,7 @@ uint8_t Maths::readU8(size_t addr)
         return m_RemainderProduct >> 8;
 
     default:
-        LOGW(TAG, "Unsupported readU8 %04X", static_cast<uint32_t>(addr));
+        LOGW(TAG, "Unsupported readU8 %04X", addr);
         assert(false);
         break;
     }
@@ -29,25 +34,7 @@ uint8_t Maths::readU8(size_t addr)
     return 0;
 }
 
-uint16_t Maths::readU16(size_t addr)
-{
-    switch (addr & 0xFFFF) {
-    case kRegisterRDDIVL:
-        return m_Quotient;
-
-    case kRegisterRDMPYL:
-        return m_RemainderProduct;
-
-    default:
-        LOGW(TAG, "Unsupported readU16 %04X", static_cast<uint32_t>(addr));
-        assert(false);
-        break;
-    }
-
-    return 0;
-}
-
-void Maths::writeU8(size_t addr, uint8_t value)
+void Maths::writeU8(uint32_t addr, uint8_t value)
 {
     switch (addr & 0xFFFF) {
     case kRegisterWRMPYA:
@@ -90,24 +77,7 @@ void Maths::writeU8(size_t addr, uint8_t value)
         break;
 
     default:
-        LOGW(TAG, "Unsupported writeU8 %04X (value=%02X)", static_cast<uint32_t>(addr), value);
-        assert(false);
-        break;
-    }
-}
-
-void Maths::writeU16(size_t addr, uint16_t value)
-{
-    size_t offset = addr & 0xFFFF;
-
-    switch (offset) {
-    case kRegisterWRDIVL:
-        writeU8(addr, value & 0xFF);
-        writeU8(addr + 1, value >> 8);
-        break;
-
-    default:
-        LOGW(TAG, "Unsupported writeU16 %04X (value=%04X)", static_cast<uint32_t>(addr), value);
+        LOGW(TAG, "Unsupported writeU8 %04X (value=%02X)", addr, value);
         assert(false);
         break;
     }

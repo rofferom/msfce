@@ -208,7 +208,7 @@ uint16_t Membus::readU16(size_t addr)
 
     // Maths
     if (isMathsAddress(addr, bank, offset)) {
-        return m_Maths->readU16(addr);
+        return (m_Maths->readU8(addr + 1) << 8) | m_Maths->readU8(addr);
     }
 
     // DMA
@@ -400,7 +400,8 @@ void Membus::writeU16(size_t addr, uint16_t value)
 
     // Maths
     if (isMathsAddress(addr, bank, offset)) {
-        m_Maths->writeU16(addr, value);
+        m_Maths->writeU8(addr, value & 0xFF);
+        m_Maths->writeU8(addr + 1, value >> 8);
         return;
     }
 

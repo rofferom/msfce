@@ -3,16 +3,15 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-class Maths {
+#include "memcomponent.h"
+
+class Maths : public MemComponent {
 public:
-    Maths() = default;
+    Maths();
     ~Maths() = default;
 
-    uint8_t readU8(size_t addr);
-    uint16_t readU16(size_t addr);
-
-    void writeU8(size_t addr, uint8_t value);
-    void writeU16(size_t addr, uint16_t value);
+    uint8_t readU8(uint32_t addr) override;
+    void writeU8(uint32_t addr, uint8_t value) override;
 
 private:
     uint16_t m_Multiplicand = 0;
