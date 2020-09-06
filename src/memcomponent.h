@@ -18,6 +18,7 @@ enum class MemComponentType {
     count
 };
 
+constexpr auto kComponentTypeCount = enumToInt(MemComponentType::count);
 
 class MemComponent {
 public:
