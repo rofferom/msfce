@@ -31,6 +31,9 @@ set(MSFE_SOURCES
     src/membus.h
     src/membus.cpp
 
+    src/memcomponent.h
+    src/memcomponent.cpp
+
     src/ppu.h
     src/ppu.cpp
 
