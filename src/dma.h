@@ -16,6 +16,8 @@ public:
     uint8_t readU8(uint32_t addr) override;
     void writeU8(uint32_t addr, uint8_t value) override;
 
+    void run();
+
 private:
     static constexpr int kChannelCount = 8;
 
@@ -53,11 +55,12 @@ private:
     };
 
 private:
-    void runDma(uint8_t value);
     void runSingleDmaChannel(Channel* channel);
     void incrementABusAddress(const Channel* channel, uint32_t* aBusAddress);
 
 private:
     Channel m_Channels[kChannelCount];
     std::shared_ptr<Membus> m_Membus;
+
+    uint8_t m_ActiveDmaChannels = 0;
 };

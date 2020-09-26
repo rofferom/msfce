@@ -4,6 +4,7 @@
 
 #include "65816.h"
 #include "controller.h"
+#include "dma.h"
 #include "log.h"
 #include "ppu.h"
 #include "scheduler.h"
@@ -18,12 +19,14 @@ constexpr auto kVblankDuration = std::chrono::microseconds(2400);
 Scheduler::Scheduler(
     const std::shared_ptr<Frontend>& frontend,
     const std::shared_ptr<Cpu65816>& cpu,
+    const std::shared_ptr<Dma>& dma,
     const std::shared_ptr<Ppu>& ppu,
     const std::shared_ptr<ControllerPorts>& controllerPorts)
     : MemComponent(MemComponentType::irq),
       m_Frontend(frontend),
       m_ControllerPorts(controllerPorts),
       m_Cpu(cpu),
+      m_Dma(dma),
       m_Ppu(ppu)
 {
 }
@@ -130,11 +133,7 @@ int Scheduler::run()
 void Scheduler::cpuLoop()
 {
     while (m_RunCpu) {
-        /*
-         * - Check HDMA/DMA, run only one at a time
-         * - Run single instruction
-         */
-
+        m_Dma->run();
         m_Cpu->executeSingle();
     }
 }

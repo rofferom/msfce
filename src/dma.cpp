@@ -27,7 +27,8 @@ uint8_t Dma::readU8(uint32_t addr)
 void Dma::writeU8(uint32_t addr, uint8_t value)
 {
     if (addr == kRegisterMDMAEN) {
-        runDma(value);
+        LOGD(TAG, "Start DMA: %02X", value);
+        m_ActiveDmaChannels = value;
         return;
     } else if (addr == kRegisterHDMAEN) {
         // Start HDMA
@@ -121,18 +122,20 @@ void Dma::writeU8(uint32_t addr, uint8_t value)
     }
 }
 
-void Dma::runDma(uint8_t value)
+void Dma::run()
 {
-    LOGD(TAG, "Start DMA: %02X", value);
+    if (!m_ActiveDmaChannels) {
+        return;
+    }
 
     for (int i = 0; i < kChannelCount; i++) {
-        if (!(value & (1 << i))) {
-            continue;
+        if (m_ActiveDmaChannels & (1 << i)) {
+            LOGD(TAG, "Start DMA channel %d", i);
+            runSingleDmaChannel(&m_Channels[i]);
         }
-
-        LOGD(TAG, "Start DMA channel %d", i);
-        runSingleDmaChannel(&m_Channels[i]);
     }
+
+    m_ActiveDmaChannels = 0;
 }
 
 void Dma::runSingleDmaChannel(Channel* channel)

@@ -7,6 +7,7 @@
 
 class ControllerPorts;
 class Cpu65816;
+class Dma;
 class Frontend;
 class Ppu;
 
@@ -15,6 +16,7 @@ public:
     Scheduler(
         const std::shared_ptr<Frontend>& frontend,
         const std::shared_ptr<Cpu65816>& cpu,
+        const std::shared_ptr<Dma>& dma,
         const std::shared_ptr<Ppu>& ppu,
         const std::shared_ptr<ControllerPorts>& controllerPorts);
 
@@ -31,8 +33,9 @@ private:
     std::shared_ptr<Frontend> m_Frontend;
     std::shared_ptr<ControllerPorts> m_ControllerPorts;
 
-    // CPU and PPU variables
+    // Components
     std::shared_ptr<Cpu65816> m_Cpu;
+    std::shared_ptr<Dma> m_Dma;
     bool m_RunCpu = false;
     std::thread m_CpuThread;
 
