@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
+#include "frontend.h"
 #include "log.h"
 #include "registers.h"
 #include "utils.h"
@@ -312,8 +313,9 @@ const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_On[] = {
     {Layer::none, 0, 0},
 };
 
-Ppu::Ppu()
-    : MemComponent(MemComponentType::ppu)
+Ppu::Ppu(const std::shared_ptr<Frontend>& frontend)
+    : MemComponent(MemComponentType::ppu),
+      m_Frontend(frontend)
 {
 }
 
@@ -893,7 +895,7 @@ void Ppu::moveToNextPixel(RendererBgInfo* renderBg)
     }
 }
 
-void Ppu::renderLine(int y, const Ppu::LayerPriority* layerPriority, const DrawPointCb& drawPointCb)
+void Ppu::renderLine(int y, const Ppu::LayerPriority* layerPriority)
 {
     const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
 
@@ -938,9 +940,9 @@ void Ppu::renderLine(int y, const Ppu::LayerPriority* layerPriority, const DrawP
         }
 
         if (colorValid) {
-            drawPointCb(x, y, color);
+            m_Frontend->drawPoint(x, y, color);
         } else {
-            drawPointCb(x, y, {0, 0, 0});
+            m_Frontend->drawPoint(x, y, {0, 0, 0});
         }
 
         for (size_t i = 0; i < bgCount; i++) {
@@ -949,7 +951,7 @@ void Ppu::renderLine(int y, const Ppu::LayerPriority* layerPriority, const DrawP
     }
 }
 
-void Ppu::render(const DrawPointCb& drawPointCb)
+void Ppu::render()
 {
     const Ppu::LayerPriority* layerPriority;
 
@@ -998,7 +1000,7 @@ void Ppu::render(const DrawPointCb& drawPointCb)
 
     // Start rendering. Draw each line at a time
     for (int y = 0; y < kPpuDisplayHeight; y++) {
-        renderLine(y, layerPriority, drawPointCb);
+        renderLine(y, layerPriority);
     }
 }
 

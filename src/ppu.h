@@ -2,23 +2,15 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-#include <functional>
+#include <memory>
 
+#include "frontend.h"
 #include "memcomponent.h"
 #include "registers.h"
 
-struct Color {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-};
-
 class Ppu : public MemComponent {
 public:
-    using DrawPointCb = std::function<void(int x, int y, const Color& c)>;
-
-public:
-    Ppu();
+    Ppu(const std::shared_ptr<Frontend>& frontend);
     ~Ppu() = default;
 
     void dump() const;
@@ -29,7 +21,7 @@ public:
     bool isNMIEnabled() const;
     bool isJoypadAutoreadEnabled() const;
 
-    void render(const DrawPointCb& drawPointCb);
+    void render();
 
 private:
     typedef uint32_t (*TilemapMapper)(uint16_t tilemapBase, int x, int y);
@@ -164,7 +156,7 @@ private:
     bool getBackgroundCurrentPixel(RendererBgInfo* renderBg, int priority, Color* color);
     bool getSpriteCurrentPixel(int x, int y, int priority, Color* color);
     void moveToNextPixel(RendererBgInfo* renderBg);
-    void renderLine(int y, const Ppu::LayerPriority* layerPriority, const DrawPointCb& drawPointCb);
+    void renderLine(int y, const Ppu::LayerPriority* layerPriority);
     void incrementVramAddress();
 
     void loadObjs();
@@ -176,6 +168,8 @@ private:
     bool getPixelFromObj(int screen_x, int screen_y, Color* c, int* priority);
 
 private:
+    std::shared_ptr<Frontend> m_Frontend;
+
     bool m_ForcedBlanking = false;
     uint8_t m_Brightness = 0;
 

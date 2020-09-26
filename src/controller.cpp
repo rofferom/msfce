@@ -1,4 +1,5 @@
 #include <assert.h>
+#include "frontend.h"
 #include "log.h"
 #include "registers.h"
 #include "utils.h"
@@ -38,9 +39,9 @@ static bool controllerGetButton(
 
 } // anonymous namespace
 
-ControllerPorts::ControllerPorts(const std::shared_ptr<SnesController>& snesController)
+ControllerPorts::ControllerPorts(const std::shared_ptr<Frontend>& frontend)
     : MemComponent(MemComponentType::joypads),
-      m_Controller1(snesController)
+      m_Controller1(frontend->getController1())
 {
 }
 

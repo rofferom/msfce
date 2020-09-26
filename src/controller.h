@@ -22,9 +22,11 @@ struct SnesController {
     bool a = false;
 };
 
+class Frontend;
+
 class ControllerPorts : public MemComponent {
 public:
-    ControllerPorts(const std::shared_ptr<SnesController>& snesController);
+    ControllerPorts(const std::shared_ptr<Frontend>& frontend);
     ~ControllerPorts() = default;
 
     uint8_t readU8(uint32_t addr) override;
