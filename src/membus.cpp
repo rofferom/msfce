@@ -69,6 +69,7 @@ void Membus::initLowRom()
             return (bank - 0xFE + 0x7E) * 0x8000 + (offset - 0x8000);
         } else {
             assert(false);
+            return 0;
         }
     };
 
