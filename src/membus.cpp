@@ -304,9 +304,9 @@ const Membus::MemoryMap Membus::s_LowRomMap = {
         { 0x00, 0x3F, 0x4214, 0x4217, MemComponentType::maths, kComponentAccessR },
 
         // IRQ configuration
-        { 0x00, 0x3F, 0x4200, 0x4200, MemComponentType::ppu, kComponentAccessRW },
-        { 0x00, 0x3F, 0x4207, 0x420A, MemComponentType::ppu, kComponentAccessRW },
-        { 0x00, 0x3F, 0x4210, 0x4212, MemComponentType::ppu, kComponentAccessRW },
+        { 0x00, 0x3F, 0x4200, 0x4200, MemComponentType::irq, kComponentAccessRW },
+        { 0x00, 0x3F, 0x4207, 0x420A, MemComponentType::irq, kComponentAccessRW },
+        { 0x00, 0x3F, 0x4210, 0x4212, MemComponentType::irq, kComponentAccessRW },
 
         // ROM
         { 0x00, 0x7D, 0x8000, 0xFFFF, MemComponentType::rom, kComponentAccessR },

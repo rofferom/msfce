@@ -344,13 +344,6 @@ void Ppu::dump() const
 
 uint8_t Ppu::readU8(uint32_t addr)
 {
-    switch (addr) {
-    case kRegRDNMI:
-    case kRegTIMEUP:
-        // Ack interrupt
-        return 0;
-    }
-
     LOGW(TAG, "Ignore ReadU8 at %06X", addr);
     assert(false);
     return 0;
@@ -371,30 +364,6 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
             m_Brightness = brightness;
             LOGD(TAG, "Brightness is now %d", m_Brightness);
         }
-        break;
-    }
-
-    case kRegNmitimen: {
-        // H/V IRQ
-        if (value & (0b11 << 4)) {
-            // To be implemented
-            break;
-        }
-
-        // NMI
-        bool enableNMI = value & (1 << 7);
-        if (m_NMIEnabled != enableNMI) {
-            m_NMIEnabled = enableNMI;
-            LOGD(TAG, "NMI is now %s", m_NMIEnabled ? "enabled" : "disabled");
-        }
-
-        // Joypad
-        bool joypadAutoread = value & 1;
-        if (m_JoypadAutoread != joypadAutoread) {
-            LOGI(TAG, "Joypad autoread is now %s", joypadAutoread ? "enabled" : "disabled");
-            m_JoypadAutoread = joypadAutoread;
-        }
-
         break;
     }
 
@@ -611,16 +580,6 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         assert(false);
         break;
     }
-}
-
-bool Ppu::isNMIEnabled() const
-{
-    return m_NMIEnabled;
-}
-
-bool Ppu::isJoypadAutoreadEnabled() const
-{
-    return m_JoypadAutoread;
 }
 
 void Ppu::incrementVramAddress()

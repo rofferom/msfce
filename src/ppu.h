@@ -18,9 +18,6 @@ public:
     uint8_t readU8(uint32_t addr) override;
     void writeU8(uint32_t addr, uint8_t value) override;
 
-    bool isNMIEnabled() const;
-    bool isJoypadAutoreadEnabled() const;
-
     void render();
 
 private:
@@ -172,12 +169,6 @@ private:
 
     bool m_ForcedBlanking = false;
     uint8_t m_Brightness = 0;
-
-    // VBlank interrupt
-    bool m_NMIEnabled = false;
-
-    // Joypad interrupt
-    bool m_JoypadAutoread = false;
 
     // VRAM
     bool m_VramIncrementHigh = false;

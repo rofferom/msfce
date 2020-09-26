@@ -1,9 +1,14 @@
+#include <assert.h>
+
 #include <chrono>
 
 #include "65816.h"
 #include "controller.h"
+#include "log.h"
 #include "ppu.h"
 #include "scheduler.h"
+
+#define TAG "scheduler"
 
 using Clock = std::chrono::high_resolution_clock;
 
@@ -15,11 +20,55 @@ Scheduler::Scheduler(
     const std::shared_ptr<Cpu65816>& cpu,
     const std::shared_ptr<Ppu>& ppu,
     const std::shared_ptr<ControllerPorts>& controllerPorts)
-    : m_Frontend(frontend),
+    : MemComponent(MemComponentType::irq),
+      m_Frontend(frontend),
       m_ControllerPorts(controllerPorts),
       m_Cpu(cpu),
       m_Ppu(ppu)
 {
+}
+
+uint8_t Scheduler::readU8(uint32_t addr)
+{
+    switch (addr) {
+    case kRegRDNMI:
+    case kRegTIMEUP:
+        // Ack interrupt
+        return 0;
+    }
+
+    LOGW(TAG, "Ignore ReadU8 at %06X", addr);
+    assert(false);
+    return 0;
+}
+
+void Scheduler::writeU8(uint32_t addr, uint8_t value)
+{
+    switch (addr) {
+    case kRegNmitimen: {
+        // H/V IRQ
+        if (value & (0b11 << 4)) {
+            // To be implemented
+            break;
+        }
+
+        // NMI
+        bool enableNMI = value & (1 << 7);
+        if (m_NMIEnabled != enableNMI) {
+            m_NMIEnabled = enableNMI;
+            LOGD(TAG, "NMI is now %s", m_NMIEnabled ? "enabled" : "disabled");
+        }
+
+        // Joypad
+        bool joypadAutoread = value & 1;
+        if (m_JoypadAutoread != joypadAutoread) {
+            LOGI(TAG, "Joypad autoread is now %s", joypadAutoread ? "enabled" : "disabled");
+            m_JoypadAutoread = joypadAutoread;
+        }
+
+        break;
+    }
+    }
 }
 
 int Scheduler::run()
@@ -51,18 +100,19 @@ int Scheduler::run()
             auto renderDuration = std::chrono::duration_cast<std::chrono::milliseconds>(endRender - beginRender);
 
             if (renderDuration < kRenderPeriod) {
-                nextRender = nextRender + kRenderPeriod;
+                nextRender += kRenderPeriod;
             } else {
                 nextRender = Clock::now() + kRenderPeriod;
             }
+
             nextVblank = nextRender - kVblankDuration;
         } else if (now >= nextVblank) {
-            if (m_Ppu->isJoypadAutoreadEnabled()) {
+            if (m_JoypadAutoread) {
                 m_ControllerPorts->readController();
             }
 
             // Dirty hack to avoid vblank to be retriggered
-            if (m_Ppu->isNMIEnabled()) {
+            if (m_NMIEnabled) {
                 m_Cpu->setNMI();
             }
 
@@ -80,6 +130,11 @@ int Scheduler::run()
 void Scheduler::cpuLoop()
 {
     while (m_RunCpu) {
+        /*
+         * - Check HDMA/DMA, run only one at a time
+         * - Run single instruction
+         */
+
         m_Cpu->executeSingle();
     }
 }
