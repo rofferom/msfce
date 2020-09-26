@@ -3,6 +3,8 @@
 #include <list>
 #include <memory>
 
+#include "utils.h"
+
 class Membus;
 
 class Cpu65816 {
@@ -150,8 +152,7 @@ private:
         uint16_t P = 0;
     };
 
-    enum class AddressingMode {
-        Invalid,
+    enum class AddressingMode : uint8_t {
         Implied,
         Immediate,
         ImmediateA,
@@ -178,21 +179,164 @@ private:
         StackRelative,
         StackRelativeIndirectIndexedY,
         BlockMove,
+
+        Count,
     };
+
+    static constexpr uint8_t kAddressingMode = enumToInt(AddressingMode::Count);
 
     typedef void (Cpu65816::*OpcodeHandler)(uint32_t data);
 
     struct OpcodeDesc {
         const char* m_Name = nullptr;
         uint8_t m_Value = 0;
-        AddressingMode m_AddressingMode = AddressingMode::Invalid;
+        AddressingMode m_AddressingMode = AddressingMode::Count;
         OpcodeHandler m_OpcodeHandler = nullptr;
     };
+
+    static constexpr int kStrInstructionLen = 32;
+
+    typedef void (Cpu65816::*AddressingModeHandler)(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+private:
+    void handleImplied(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleImmediate(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleImmediateA(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleImmediateIndex(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleAbsolute(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleAbsoluteJMP(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleAbsoluteJMPIndirectIndexedX(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleAbsoluteIndexedX(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleAbsoluteIndexedY(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleAbsoluteLong(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleAbsoluteIndirect(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleAbsoluteIndirectLong(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleAbsoluteLongIndexedX(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleDp(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleDpIndexedX(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleDpIndexedY(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleDpIndirect(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleDpIndirectIndexedX(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleDpIndirectIndexedY(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleDpIndirectLong(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleDpIndirectLongIndexedY(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handlePcRelative(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handlePcRelativeLong(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleStackRelative(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleStackRelativeIndirectIndexedY(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
+
+    void handleBlockMove(
+        const OpcodeDesc& opcodeDesc,
+        char strIntruction[kStrInstructionLen],
+        uint32_t* data);
 
 private:
     std::shared_ptr<Membus> m_Membus;
 
     OpcodeDesc m_Opcodes[0x100];
+    AddressingModeHandler m_AddressingModes[kAddressingMode];
     Registers m_Registers;
 
     State m_State = State::running;
