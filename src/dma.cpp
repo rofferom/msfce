@@ -205,6 +205,24 @@ void Dma::runSingleDmaChannel(Channel* channel)
             }
             break;
 
+        case 2:
+        case 6:
+            m_Membus->writeU8(destAddress, m_Membus->readU8(srcAddress));
+            incrementABusAddress(channel, aBusAddress);
+
+            m_Membus->writeU8(destAddress, m_Membus->readU8(srcAddress));
+            incrementABusAddress(channel, aBusAddress);
+
+            if (channel->m_DMAByteCounter >= 2) {
+                channel->m_DMAByteCounter -=2;
+            } else {
+                m_Membus->writeU8(destAddress, m_Membus->readU8(srcAddress));
+                incrementABusAddress(channel, aBusAddress);
+
+                channel->m_DMAByteCounter = 0;
+            }
+            break;
+
         default:
             LOGC(TAG, "Unimplemented mode %d", channel->m_Mode);
             assert(false);
