@@ -43,6 +43,8 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
     m_Registers.P = setBit(m_Registers.P, kPRegister_M);
     m_Registers.P = setBit(m_Registers.P, kPRegister_X);
 
+    m_Registers.PC = m_Membus->readU16(kRegIV_RESET);
+
     // Load opcodes
     static const OpcodeDesc s_OpcodeList[] = {
         {

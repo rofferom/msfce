@@ -147,7 +147,7 @@ private:
         uint16_t D = 0;
 
         uint8_t PB = 0;
-        uint16_t PC = 0x8000;
+        uint16_t PC = 0;
 
         uint16_t P = 0;
     };

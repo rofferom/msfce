@@ -4,6 +4,7 @@
 
 // Interrupt vector (starts at 0xFFE0)
 constexpr size_t kRegIV_NMI = 0xFFEA;
+constexpr size_t kRegIV_RESET = 0xFFFC;
 
 // PPU registers
 constexpr int kPpuDisplayWidth = 256;
