@@ -65,6 +65,7 @@ target_link_directories(msfe_lib PUBLIC
 
 target_link_libraries(msfe_lib PUBLIC
     ${PKG_SDL2_LIBRARIES}
+    -lstdc++fs
     -lpthread
 )
 

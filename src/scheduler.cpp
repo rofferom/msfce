@@ -265,3 +265,13 @@ void Scheduler::speedNormal()
     m_SpeedUp.active = false;
     m_Ppu->setDrawConfig(Ppu::DrawConfig::Draw);
 }
+
+void Scheduler::pause()
+{
+    m_Running = false;
+}
+
+void Scheduler::resume()
+{
+    m_Running = true;
+}

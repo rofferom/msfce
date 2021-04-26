@@ -31,3 +31,13 @@ void BufferMemComponent::writeU8(uint32_t address, uint8_t value)
 {
     m_Data[address] = value;
 }
+
+void BufferMemComponent::dumpToFile(FILE* f)
+{
+    fwrite(m_Data.data(), m_Data.size(), 1, f);
+}
+
+void BufferMemComponent::loadFromFile(FILE* f)
+{
+    fread(m_Data.data(), m_Data.size(), 1, f);
+}

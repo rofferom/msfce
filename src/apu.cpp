@@ -97,3 +97,21 @@ void Apu::writeU8(uint32_t addr, uint8_t value)
         break;
     }
 }
+
+void Apu::dumpToFile(FILE* f)
+{
+    fwrite(&m_State, sizeof(m_State), 1, f);
+    fwrite(&m_Port0, sizeof(m_Port0), 1, f);
+    fwrite(&m_Port1, sizeof(m_Port1), 1, f);
+    fwrite(&m_Port2, sizeof(m_Port2), 1, f);
+    fwrite(&m_Port3, sizeof(m_Port3), 1, f);
+}
+
+void Apu::loadFromFile(FILE* f)
+{
+    fread(&m_State, sizeof(m_State), 1, f);
+    fread(&m_Port0, sizeof(m_Port0), 1, f);
+    fread(&m_Port1, sizeof(m_Port1), 1, f);
+    fread(&m_Port2, sizeof(m_Port2), 1, f);
+    fread(&m_Port3, sizeof(m_Port3), 1, f);
+}

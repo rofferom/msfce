@@ -1,5 +1,7 @@
+#include <assert.h>
 #include <stdio.h>
 #include <sys/stat.h>
+#include <filesystem>
 
 #include "65816.h"
 #include "apu.h"
@@ -69,12 +71,19 @@ int Snes::plugCartidge(const char* path)
 
     fclose(f);
 
+    m_RomBasename = std::filesystem::path(path).replace_extension("");
+
     return 0;
 
 close_f:
     fclose(f);
 
     return ret;
+}
+
+std::string Snes::getRomBasename() const
+{
+    return m_RomBasename;
 }
 
 void Snes::run()
@@ -86,35 +95,35 @@ void Snes::run()
         std::move(romData));
     membus->plugComponent(rom);
 
-    auto ram = std::make_shared<Wram>();
-    membus->plugComponent(ram);
+    m_Ram = std::make_shared<Wram>();
+    membus->plugComponent(m_Ram);
 
-    auto indirectWram = std::make_shared<IndirectWram>(ram);
-    membus->plugComponent(indirectWram);
+    m_IndirectWram = std::make_shared<IndirectWram>(m_Ram);
+    membus->plugComponent(m_IndirectWram);
 
     auto sram = std::make_shared<BufferMemComponent>(
         MemComponentType::sram,
         kSramSize);
     membus->plugComponent(sram);
 
-    auto apu = std::make_shared<Apu>();
-    membus->plugComponent(apu);
+    m_Apu = std::make_shared<Apu>();
+    membus->plugComponent(m_Apu);
 
-    auto ppu = std::make_shared<Ppu>(m_Frontend);
-    membus->plugComponent(ppu);
+    m_Ppu = std::make_shared<Ppu>(m_Frontend);
+    membus->plugComponent(m_Ppu);
 
-    auto maths = std::make_shared<Maths>();
-    membus->plugComponent(maths);
+    m_Maths = std::make_shared<Maths>();
+    membus->plugComponent(m_Maths);
 
-    auto dma = std::make_shared<Dma>(membus);
-    membus->plugComponent(dma);
+    m_Dma = std::make_shared<Dma>(membus);
+    membus->plugComponent(m_Dma);
 
-    auto controllerPorts = std::make_shared<ControllerPorts>(m_Frontend);
-    membus->plugComponent(controllerPorts);
+    m_ControllerPorts = std::make_shared<ControllerPorts>(m_Frontend);
+    membus->plugComponent(m_ControllerPorts);
 
-    auto cpu = std::make_shared<Cpu65816>(membus);
+    m_Cpu = std::make_shared<Cpu65816>(membus);
 
-    m_Scheduler = std::make_shared<Scheduler>(m_Frontend, cpu, dma, ppu, controllerPorts);
+    m_Scheduler = std::make_shared<Scheduler>(m_Frontend, m_Cpu, m_Dma, m_Ppu, m_ControllerPorts);
     membus->plugComponent(m_Scheduler);
 
     m_Scheduler->run();
@@ -133,4 +142,50 @@ void Snes::speedUp()
 void Snes::speedNormal()
 {
     m_Scheduler->speedNormal();
+}
+
+void Snes::saveState(const std::string& path)
+{
+    LOGI(TAG, "Save state to %s", path.c_str());
+
+    FILE* f = fopen(path.c_str(), "wb");
+    assert(f);
+
+    m_Scheduler->pause();
+
+    m_Ram->dumpToFile(f);
+    m_IndirectWram->dumpToFile(f);
+    m_Apu->dumpToFile(f);
+    m_Ppu->dumpToFile(f);
+    m_Maths->dumpToFile(f);
+    m_Dma->dumpToFile(f);
+    m_ControllerPorts->dumpToFile(f);
+    m_Cpu->dumpToFile(f);
+
+    m_Scheduler->resume();
+
+    fclose(f);
+}
+
+void Snes::loadState(const std::string& path)
+{
+    LOGI(TAG, "Load state from %s", path.c_str());
+
+    FILE* f = fopen(path.c_str(), "rb");
+    assert(f);
+
+    m_Scheduler->pause();
+
+    m_Ram->loadFromFile(f);
+    m_IndirectWram->loadFromFile(f);
+    m_Apu->loadFromFile(f);
+    m_Ppu->loadFromFile(f);
+    m_Maths->loadFromFile(f);
+    m_Dma->loadFromFile(f);
+    m_ControllerPorts->loadFromFile(f);
+    m_Cpu->loadFromFile(f);
+
+    m_Scheduler->resume();
+
+    fclose(f);
 }

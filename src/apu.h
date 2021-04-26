@@ -13,6 +13,9 @@ public:
     uint8_t readU8(uint32_t addr) override;
     void writeU8(uint32_t addr, uint8_t value) override;
 
+    void dumpToFile(FILE* f);
+    void loadFromFile(FILE* f);
+
 private:
     enum class State {
         waiting,

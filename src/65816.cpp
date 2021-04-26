@@ -3875,3 +3875,17 @@ void Cpu65816::addCyclesIndexCross(int *cycles, uint32_t addr, uint32_t shiftedA
         *cycles += kTimingCpuOneCycle;
     }
 }
+
+void Cpu65816::dumpToFile(FILE* f)
+{
+    fwrite(&m_Registers, sizeof(m_Registers), 1, f);
+    fwrite(&m_State, sizeof(m_State), 1, f);
+    fwrite(&m_NMI, sizeof(m_NMI), 1, f);
+}
+
+void Cpu65816::loadFromFile(FILE* f)
+{
+    fread(&m_Registers, sizeof(m_Registers), 1, f);
+    fread(&m_State, sizeof(m_State), 1, f);
+    fread(&m_NMI, sizeof(m_NMI), 1, f);
+}

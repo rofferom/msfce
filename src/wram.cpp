@@ -61,3 +61,13 @@ void IndirectWram::writeU8(uint32_t addr, uint8_t value)
         break;
     }
 }
+
+void IndirectWram::dumpToFile(FILE* f)
+{
+    fwrite(&m_Address, sizeof(m_Address), 1, f);
+}
+
+void IndirectWram::loadFromFile(FILE* f)
+{
+    fread(&m_Address, sizeof(m_Address), 1, f);
+}

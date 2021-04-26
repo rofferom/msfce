@@ -28,6 +28,8 @@ private:
         SDL_Scancode scancode,
         bool pressed);
 
+    std::string getSavestateName() const;
+
 private:
     SDL_Window* m_Window = nullptr;
     SDL_Renderer* m_Renderer = nullptr;

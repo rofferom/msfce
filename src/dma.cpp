@@ -298,3 +298,15 @@ void Dma::incrementABusAddress(const Channel* channel, uint32_t* aBusAddress)
         break;
     }
 }
+
+void Dma::dumpToFile(FILE* f)
+{
+    fwrite(&m_Channels, sizeof(m_Channels), 1, f);
+    fwrite(&m_ActiveDmaChannels, sizeof(m_ActiveDmaChannels), 1, f);
+}
+
+void Dma::loadFromFile(FILE* f)
+{
+    fread(&m_Channels, sizeof(m_Channels), 1, f);
+    fread(&m_ActiveDmaChannels, sizeof(m_ActiveDmaChannels), 1, f);
+}

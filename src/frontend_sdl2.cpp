@@ -192,9 +192,28 @@ bool FrontendSdl2::handleShortcut(
         }
         break;
 
+    case SDL_SCANCODE_F2: {
+        if (pressed) {
+            m_Snes->saveState(getSavestateName());
+        }
+        break;
+    }
+
+    case SDL_SCANCODE_F4: {
+        if (pressed) {
+            m_Snes->loadState(getSavestateName());
+        }
+        break;
+    }
+
     default:
         break;
     }
 
     return true;
+}
+
+std::string FrontendSdl2::getSavestateName() const
+{
+    return m_Snes->getRomBasename() + ".msfe";
 }

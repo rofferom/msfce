@@ -86,3 +86,17 @@ void ControllerPorts::readController()
         }
     }
 }
+
+void ControllerPorts::dumpToFile(FILE* f)
+{
+    const auto controller1 = m_Controller1.get();
+    fwrite(controller1, sizeof(*controller1), 1, f);
+    fwrite(&m_Joypad1Register, sizeof(m_Joypad1Register), 1, f);
+}
+
+void ControllerPorts::loadFromFile(FILE* f)
+{
+    const auto controller1 = m_Controller1.get();
+    fread(controller1, sizeof(*controller1), 1, f);
+    fread(&m_Joypad1Register, sizeof(m_Joypad1Register), 1, f);
+}

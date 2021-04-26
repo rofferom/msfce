@@ -34,6 +34,9 @@ public:
 
     void readController();
 
+    void dumpToFile(FILE* f);
+    void loadFromFile(FILE* f);
+
 private:
     std::shared_ptr<SnesController> m_Controller1;
     uint16_t m_Joypad1Register = 0;

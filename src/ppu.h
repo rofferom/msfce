@@ -35,6 +35,9 @@ public:
     uint32_t getEvents() const;
     void setDrawConfig(DrawConfig config);
 
+    void dumpToFile(FILE* f);
+    void loadFromFile(FILE* f);
+
 private:
     typedef uint32_t (*TilemapMapper)(uint16_t tilemapBase, int x, int y);
 

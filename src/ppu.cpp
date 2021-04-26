@@ -1385,3 +1385,57 @@ bool Ppu::getPixelFromObj(int screenX, int screenY, Color* c, int* outPriority)
 
     return true;
 }
+
+void Ppu::dumpToFile(FILE* f)
+{
+    fwrite(&m_ForcedBlanking, sizeof(m_ForcedBlanking), 1, f);
+    fwrite(&m_Brightness, sizeof(m_Brightness), 1, f);
+    fwrite(&m_VramIncrementHigh, sizeof(m_VramIncrementHigh), 1, f);
+    fwrite(&m_VramIncrementStep, sizeof(m_VramIncrementStep), 1, f);
+    fwrite(m_Vram, sizeof(m_Vram), 1, f);
+    fwrite(&m_VramAddress, sizeof(m_VramAddress), 1, f);
+    fwrite(&m_Cgram, sizeof(m_Cgram), 1, f);
+    fwrite(&m_CgdataAddress, sizeof(m_CgdataAddress), 1, f);
+    fwrite(&m_CgramLsbSet, sizeof(m_CgramLsbSet), 1, f);
+    fwrite(&m_CgramLsb, sizeof(m_CgramLsb), 1, f);
+    fwrite(&m_Oam, sizeof(m_Oam), 1, f);
+    fwrite(&m_OamAddress, sizeof(m_OamAddress), 1, f);
+    fwrite(&m_OamHighestPriorityObj, sizeof(m_OamHighestPriorityObj), 1, f);
+    fwrite(&m_OamForcedPriority, sizeof(m_OamForcedPriority), 1, f);
+    fwrite(&m_OamFlip, sizeof(m_OamFlip), 1, f);
+    fwrite(&m_OamWriteRegister, sizeof(m_OamWriteRegister), 1, f);
+    fwrite(&m_ObjSize, sizeof(m_ObjSize), 1, f);
+    fwrite(&m_ObjGapSize, sizeof(m_ObjGapSize), 1, f);
+    fwrite(&m_ObjBase, sizeof(m_ObjBase), 1, f);
+    fwrite(&m_Backgrounds, sizeof(m_Backgrounds), 1, f);
+    fwrite(&m_OldBgByte, sizeof(m_OldBgByte), 1, f);
+    fwrite(&m_Bgmode, sizeof(m_Bgmode), 1, f);
+    fwrite(&m_Bg3Priority, sizeof(m_Bg3Priority), 1, f);
+}
+
+void Ppu::loadFromFile(FILE* f)
+{
+    fread(&m_ForcedBlanking, sizeof(m_ForcedBlanking), 1, f);
+    fread(&m_Brightness, sizeof(m_Brightness), 1, f);
+    fread(&m_VramIncrementHigh, sizeof(m_VramIncrementHigh), 1, f);
+    fread(&m_VramIncrementStep, sizeof(m_VramIncrementStep), 1, f);
+    fread(m_Vram, sizeof(m_Vram), 1, f);
+    fread(&m_VramAddress, sizeof(m_VramAddress), 1, f);
+    fread(&m_Cgram, sizeof(m_Cgram), 1, f);
+    fread(&m_CgdataAddress, sizeof(m_CgdataAddress), 1, f);
+    fread(&m_CgramLsbSet, sizeof(m_CgramLsbSet), 1, f);
+    fread(&m_CgramLsb, sizeof(m_CgramLsb), 1, f);
+    fread(&m_Oam, sizeof(m_Oam), 1, f);
+    fread(&m_OamAddress, sizeof(m_OamAddress), 1, f);
+    fread(&m_OamHighestPriorityObj, sizeof(m_OamHighestPriorityObj), 1, f);
+    fread(&m_OamForcedPriority, sizeof(m_OamForcedPriority), 1, f);
+    fread(&m_OamFlip, sizeof(m_OamFlip), 1, f);
+    fread(&m_OamWriteRegister, sizeof(m_OamWriteRegister), 1, f);
+    fread(&m_ObjSize, sizeof(m_ObjSize), 1, f);
+    fread(&m_ObjGapSize, sizeof(m_ObjGapSize), 1, f);
+    fread(&m_ObjBase, sizeof(m_ObjBase), 1, f);
+    fread(&m_Backgrounds, sizeof(m_Backgrounds), 1, f);
+    fread(&m_OldBgByte, sizeof(m_OldBgByte), 1, f);
+    fread(&m_Bgmode, sizeof(m_Bgmode), 1, f);
+    fread(&m_Bg3Priority, sizeof(m_Bg3Priority), 1, f);
+}

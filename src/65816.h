@@ -19,6 +19,9 @@ public:
 
     void setNMI();
 
+    void dumpToFile(FILE* f);
+    void loadFromFile(FILE* f);
+
 private:
     template <typename... Args>
     void logInstruction(const char* format, Args... args);

@@ -82,3 +82,23 @@ void Maths::writeU8(uint32_t addr, uint8_t value)
         break;
     }
 }
+
+void Maths::dumpToFile(FILE* f)
+{
+    fwrite(&m_Multiplicand, sizeof(m_Multiplicand), 1, f);
+    fwrite(&m_Multiplier, sizeof(m_Multiplier), 1, f);
+    fwrite(&m_Dividend, sizeof(m_Dividend), 1, f);
+    fwrite(&m_Divisor, sizeof(m_Divisor), 1, f);
+    fwrite(&m_Quotient, sizeof(m_Quotient), 1, f);
+    fwrite(&m_RemainderProduct, sizeof(m_RemainderProduct), 1, f);
+}
+
+void Maths::loadFromFile(FILE* f)
+{
+    fread(&m_Multiplicand, sizeof(m_Multiplicand), 1, f);
+    fread(&m_Multiplier, sizeof(m_Multiplier), 1, f);
+    fread(&m_Dividend, sizeof(m_Dividend), 1, f);
+    fread(&m_Divisor, sizeof(m_Divisor), 1, f);
+    fread(&m_Quotient, sizeof(m_Quotient), 1, f);
+    fread(&m_RemainderProduct, sizeof(m_RemainderProduct), 1, f);
+}

@@ -31,6 +31,8 @@ public:
     int run();
 
     void toggleRunning();
+    void pause();
+    void resume();
 
     void resumeTask(SchedulerTask* task, int cycles);
 
