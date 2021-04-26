@@ -1297,6 +1297,11 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0xFB,
             Cpu65816::AddressingMode::Implied,
             &Cpu65816::handleXCE,
+        }, {
+            "WAI",
+            0xCB,
+            Cpu65816::AddressingMode::Implied,
+            &Cpu65816::handleWAI,
         },
     };
 
@@ -1351,6 +1356,11 @@ void Cpu65816::executeSingle()
     if (m_NMI) {
         handleNMI();
         m_NMI = false;
+        m_WaitInterrupt = false;
+    }
+
+    if (m_WaitInterrupt) {
+        return;
     }
 
     // Debug stuff
@@ -3090,6 +3100,11 @@ void Cpu65816::handleXCE(uint32_t data)
     } else {
         m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
     }
+}
+
+void Cpu65816::handleWAI(uint32_t data)
+{
+    m_WaitInterrupt = true;
 }
 
 void Cpu65816::setNMI()

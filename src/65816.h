@@ -130,6 +130,7 @@ private:
     void handleTYX(uint32_t data);
     void handleXBA(uint32_t data);
     void handleXCE(uint32_t data);
+    void handleWAI(uint32_t data);
 
 private:
     enum class State {
@@ -341,6 +342,7 @@ private:
 
     State m_State = State::running;
     bool m_NMI = false;
+    bool m_WaitInterrupt = false;
 
     std::list<std::string> m_InstructionsLog;
 };
