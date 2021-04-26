@@ -124,3 +124,13 @@ void Snes::toggleRunning()
 {
     m_Scheduler->toggleRunning();
 }
+
+void Snes::speedUp()
+{
+    m_Scheduler->speedUp();
+}
+
+void Snes::speedNormal()
+{
+    m_Scheduler->speedNormal();
+}

@@ -629,6 +629,11 @@ uint32_t Ppu::getEvents() const
     return m_Events;
 }
 
+void Ppu::setDrawConfig(DrawConfig config)
+{
+    m_DrawConfig = config;
+}
+
 void Ppu::incrementVramAddress()
 {
     switch (m_VramIncrementStep) {
@@ -946,6 +951,10 @@ int Ppu::run()
 
 void Ppu::initScreenRender()
 {
+    if (m_DrawConfig != DrawConfig::Draw) {
+        return;
+    }
+
     // Prepare background rendering
     const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
     static_assert(SIZEOF_ARRAY(m_Backgrounds) == SIZEOF_ARRAY(m_RenderBgInfo));
@@ -985,6 +994,10 @@ void Ppu::initScreenRender()
 
 void Ppu::initLineRender(int y)
 {
+    if (m_DrawConfig != DrawConfig::Draw) {
+        return;
+    }
+
     const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
 
     // Prepare background rendering for the current line.
@@ -1023,6 +1036,10 @@ void Ppu::initLineRender(int y)
 
 void Ppu::renderDot(int x, int y)
 {
+    if (m_DrawConfig != DrawConfig::Draw) {
+        return;
+    }
+
     Color color;
     bool colorValid = false;
 

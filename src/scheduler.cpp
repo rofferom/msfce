@@ -16,6 +16,8 @@ namespace {
 
 constexpr bool kLogTimings = true;
 
+constexpr int kSpeedupFrameSkip = 2; // x3
+
 constexpr auto kRenderPeriod = std::chrono::microseconds(16666);
 
 } // anonymous namespace
@@ -180,7 +182,6 @@ bool Scheduler::runRunning()
         m_PpuTime.end();
 
         m_Ppu->setNextRunCycle(m_MasterClock + ppuCycles);
-
         auto ppuEvents = m_Ppu->getEvents();
         if (ppuEvents & Ppu::Event_VBlankStart) {
             m_Vblank = true;
@@ -196,6 +197,20 @@ bool Scheduler::runRunning()
         }
 
         if (ppuEvents & Ppu::Event_ScanEnded) {
+            // In case of speedup, present can be skipped
+            bool doPresent = true;
+
+            if (m_SpeedUp.active) {
+                if (m_SpeedUp.framesToSkip == 0) {
+                    m_Ppu->setDrawConfig(Ppu::DrawConfig::Draw);
+                    m_SpeedUp.framesToSkip = kSpeedupFrameSkip;
+                } else {
+                    m_Ppu->setDrawConfig(Ppu::DrawConfig::Skip);
+                    m_SpeedUp.framesToSkip--;
+                    doPresent = false;
+                }
+            }
+
             m_Vblank = false;
 
             if (kLogTimings) {
@@ -207,10 +222,11 @@ bool Scheduler::runRunning()
                 m_PpuTime.reset();
             }
 
-            std::this_thread::sleep_until(m_NextPresent);
-
-            m_Frontend->present();
-            m_NextPresent += kRenderPeriod;
+            if (doPresent) {
+                std::this_thread::sleep_until(m_NextPresent);
+                m_Frontend->present();
+                m_NextPresent += kRenderPeriod;
+            }
 
             // Run frontend after present
             keepRunning = m_Frontend->runOnce();
@@ -235,4 +251,17 @@ bool Scheduler::runPaused()
 void Scheduler::resumeTask(SchedulerTask* task, int cycles)
 {
     task->setNextRunCycle(m_MasterClock + cycles);
+}
+
+void Scheduler::speedUp()
+{
+    m_SpeedUp.active = true;
+    m_Ppu->setDrawConfig(Ppu::DrawConfig::Skip);
+    m_SpeedUp.framesToSkip = kSpeedupFrameSkip;
+}
+
+void Scheduler::speedNormal()
+{
+    m_SpeedUp.active = false;
+    m_Ppu->setDrawConfig(Ppu::DrawConfig::Draw);
 }

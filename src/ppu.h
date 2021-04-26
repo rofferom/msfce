@@ -16,6 +16,11 @@ public:
         Event_ScanEnded = (1 << 1),
     };
 
+    enum class DrawConfig {
+        Draw,
+        Skip,
+    };
+
 public:
     Ppu(const std::shared_ptr<Frontend>& frontend);
     ~Ppu() = default;
@@ -28,6 +33,7 @@ public:
     int run() override;
 
     uint32_t getEvents() const;
+    void setDrawConfig(DrawConfig config);
 
 private:
     typedef uint32_t (*TilemapMapper)(uint16_t tilemapBase, int x, int y);
@@ -179,6 +185,7 @@ private:
 
 private:
     std::shared_ptr<Frontend> m_Frontend;
+    DrawConfig m_DrawConfig = DrawConfig::Draw;
     uint32_t m_Events = 0;
 
     bool m_ForcedBlanking = false;

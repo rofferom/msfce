@@ -182,6 +182,16 @@ bool FrontendSdl2::handleShortcut(
         }
         break;
 
+    case SDL_SCANCODE_GRAVE:
+        if (pressed) {
+            LOGI(TAG, "Speedup");
+            m_Snes->speedUp();
+        } else {
+            LOGI(TAG, "Normal speed");
+            m_Snes->speedNormal();
+        }
+        break;
+
     default:
         break;
     }

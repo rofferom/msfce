@@ -34,6 +34,9 @@ public:
 
     void resumeTask(SchedulerTask* task, int cycles);
 
+    void speedUp();
+    void speedNormal();
+
 private:
     bool runRunning();
     bool runPaused();
@@ -65,6 +68,11 @@ private:
     // State
     bool m_Running = false;
 
+    struct {
+        bool active = false;
+        int framesToSkip = 0;
+    } m_SpeedUp;
+
     // Components
     std::shared_ptr<Cpu65816> m_Cpu;
     std::shared_ptr<Dma> m_Dma;
@@ -87,4 +95,5 @@ private:
 
     DurationTool m_CpuTime;
     DurationTool m_PpuTime;
+
 };

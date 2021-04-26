@@ -16,6 +16,9 @@ public:
 
     void toggleRunning();
 
+    void speedUp();
+    void speedNormal();
+
 private:
     int loadRom(const char* romPath, std::vector<uint8_t>* outRom);
 
