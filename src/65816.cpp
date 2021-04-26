@@ -3394,7 +3394,7 @@ void Cpu65816::handleDpIndirectLong(
     uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
     m_Registers.PC++;
 
-    uint32_t address = ((m_Registers.DB << 16) | (m_Registers.D + rawData));
+    uint32_t address = m_Registers.D + rawData;
     address = m_Membus->readU24(address);
 
     *data = address;
@@ -3410,7 +3410,7 @@ void Cpu65816::handleDpIndirectLongIndexedY(
     uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
     m_Registers.PC++;
 
-    uint32_t address = ((m_Registers.DB << 16) | (m_Registers.D + rawData));
+    uint32_t address = m_Registers.D + rawData;
     address = m_Membus->readU24(address) + m_Registers.Y;
 
     *data = address;
