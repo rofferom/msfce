@@ -280,7 +280,7 @@ void getSpriteSize(uint8_t obselSize, uint8_t objSize, int* width, int* height)
             *width = 2;
             *height = 2;
         }
-    } else if (objSize == 3) {
+    } else if (obselSize == 3) {
         if (objSize == 0) {
             *width = 2;
             *height = 2;
