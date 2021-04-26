@@ -313,6 +313,20 @@ const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_On[] = {
     {Layer::none, 0, 0},
 };
 
+const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_Off[] = {
+    {Layer::sprite,    -1,   3},
+    {Layer::background, 0,   1},
+    {Layer::background, 1,   1},
+    {Layer::sprite,    -1,   2},
+    {Layer::background, 0,   0},
+    {Layer::background, 1,   0},
+    {Layer::sprite,    -1,   1},
+    {Layer::background, 2,   1},
+    {Layer::sprite,    -1,   0},
+    {Layer::background, 2,   0},
+    {Layer::none, 0, 0},
+};
+
 Ppu::Ppu(const std::shared_ptr<Frontend>& frontend)
     : MemComponent(MemComponentType::ppu),
       m_Frontend(frontend)
@@ -914,12 +928,11 @@ void Ppu::render()
 {
     const Ppu::LayerPriority* layerPriority;
 
-    // Only Mode 1 with BG3 priority is supported
-    if (m_Bgmode != 1 || !m_Bg3Priority) {
+    if (m_Bgmode == 1) {
+        layerPriority = m_Bg3Priority ? s_LayerPriorityMode1_BG3_On : s_LayerPriorityMode1_BG3_Off;
+    } else {
         return;
     }
-
-    layerPriority = s_LayerPriorityMode1_BG3_On;
 
     // Prepare background rendering
     const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);

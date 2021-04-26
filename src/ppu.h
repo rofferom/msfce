@@ -207,6 +207,7 @@ private:
 
     // Layers priority charts
     static const Ppu::LayerPriority s_LayerPriorityMode1_BG3_On[];
+    static const Ppu::LayerPriority s_LayerPriorityMode1_BG3_Off[];
 
     // Rendering
     RendererBgInfo m_RenderBgInfo[kBackgroundCount];
