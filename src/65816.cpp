@@ -1349,10 +1349,7 @@ void Cpu65816::executeSingle()
 {
     // Check if NMI has been raised
     if (m_NMI) {
-        if (!getBit(m_Registers.P, kPRegister_I)) {
-            handleNMI();
-        }
-
+        handleNMI();
         m_NMI = false;
     }
 
