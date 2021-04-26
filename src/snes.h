@@ -4,6 +4,7 @@
 #include <vector>
 
 class Frontend;
+class Scheduler;
 
 class Snes {
 public:
@@ -13,11 +14,14 @@ public:
 
     void run();
 
+    void toggleRunning();
+
 private:
     int loadRom(const char* romPath, std::vector<uint8_t>* outRom);
 
 private:
     std::shared_ptr<Frontend> m_Frontend;
+    std::shared_ptr<Scheduler> m_Scheduler;
 
     std::vector<uint8_t> romData;
 };

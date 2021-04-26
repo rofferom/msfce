@@ -24,9 +24,12 @@ int main(int argc, char* argv[])
     // Create and run SNES
     const char* romPath = argv[1];
 
-    Snes snes(frontend);
-    snes.plugCartidge(romPath);
-    snes.run();
+    auto snes = std::make_shared<Snes>(frontend);
+    snes->plugCartidge(romPath);
+
+    frontend->setSnes(snes);
+
+    snes->run();
 
     frontend.reset();
 

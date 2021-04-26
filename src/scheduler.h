@@ -30,12 +30,40 @@ public:
 
     int run();
 
+    void toggleRunning();
+
     void resumeTask(SchedulerTask* task, int cycles);
+
+private:
+    bool runRunning();
+    bool runPaused();
+
+private:
+    struct DurationTool {
+        // Current measure
+        Scheduler::Clock::time_point begin_tp;
+        Scheduler::Clock::time_point end_tp;
+
+        // Total measure
+        Scheduler::Clock::duration total_duration;
+
+        void reset();
+
+        void begin();
+
+        void end();
+
+        template <typename Duration>
+        int64_t total();
+    };
 
 private:
     // Frontend and controller variables
     std::shared_ptr<Frontend> m_Frontend;
     std::shared_ptr<ControllerPorts> m_ControllerPorts;
+
+    // State
+    bool m_Running = false;
 
     // Components
     std::shared_ptr<Cpu65816> m_Cpu;
@@ -55,5 +83,8 @@ private:
 
     // Scheduling
     uint64_t m_MasterClock = 0;
+    Clock::time_point m_NextPresent;
 
+    DurationTool m_CpuTime;
+    DurationTool m_PpuTime;
 };

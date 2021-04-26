@@ -114,8 +114,13 @@ void Snes::run()
 
     auto cpu = std::make_shared<Cpu65816>(membus);
 
-    auto scheduler = std::make_shared<Scheduler>(m_Frontend, cpu, dma, ppu, controllerPorts);
-    membus->plugComponent(scheduler);
+    m_Scheduler = std::make_shared<Scheduler>(m_Frontend, cpu, dma, ppu, controllerPorts);
+    membus->plugComponent(m_Scheduler);
 
-    scheduler->run();
+    m_Scheduler->run();
+}
+
+void Snes::toggleRunning()
+{
+    m_Scheduler->toggleRunning();
 }

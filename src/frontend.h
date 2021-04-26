@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <memory>
 
+struct Snes;
 struct SnesController;
 
 struct Color {
@@ -22,4 +23,6 @@ public:
 
     virtual void drawPoint(int x, int y, const Color& c) = 0;
     virtual void present() = 0;
+
+    virtual void setSnes(const std::shared_ptr<Snes>& snes) = 0;
 };

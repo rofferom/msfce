@@ -5,6 +5,7 @@
 #include "controller.h"
 #include "log.h"
 #include "ppu.h"
+#include "snes.h"
 #include "frontend_sdl2.h"
 
 #define TAG "FrontendSdl2"
@@ -42,7 +43,7 @@ bool* controllerGetButton(
     return reinterpret_cast<bool *>(rawPtr);
 }
 
-void handleContollerKey(
+bool handleContollerKey(
     const std::shared_ptr<SnesController>& controller,
     SDL_Scancode scancode,
     bool pressed)
@@ -53,7 +54,7 @@ void handleContollerKey(
 
     auto it = s_ControllerMapping.find(scancode);
     if (it == s_ControllerMapping.end()) {
-        return;
+        return false;
     }
 
     const auto& mapping = it->second;
@@ -65,6 +66,8 @@ void handleContollerKey(
 
     auto buttonValue = controllerGetButton(controller, mapping);
     *buttonValue = pressed;
+
+    return true;
 }
 
 } // anonymous namespace
@@ -103,6 +106,7 @@ int FrontendSdl2::init()
 bool FrontendSdl2::runOnce()
 {
     SDL_Event event;
+    bool keyHandled;
 
     if (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT) {
@@ -111,11 +115,31 @@ bool FrontendSdl2::runOnce()
 
         switch (event.type) {
         case SDL_KEYDOWN:
-            handleContollerKey(m_Controller1, event.key.keysym.scancode, true);
+            keyHandled = handleContollerKey(m_Controller1, event.key.keysym.scancode, true);
+            if (keyHandled) {
+                return true;
+            }
+
+            if (event.key.repeat) {
+                return true;
+            }
+
+            handleShortcut(event.key.keysym.scancode, true);
+
             break;
 
         case SDL_KEYUP:
-            handleContollerKey(m_Controller1, event.key.keysym.scancode, false);
+            keyHandled = handleContollerKey(m_Controller1, event.key.keysym.scancode, false);
+            if (keyHandled) {
+                return true;
+            }
+
+            if (event.key.repeat) {
+                return true;
+            }
+
+            handleShortcut(event.key.keysym.scancode, false);
+
             break;
 
         default:
@@ -140,4 +164,27 @@ void FrontendSdl2::drawPoint(int x, int y, const Color& c)
 void FrontendSdl2::present()
 {
     SDL_RenderPresent(m_Renderer);
+}
+
+void FrontendSdl2::setSnes(const std::shared_ptr<Snes>& snes)
+{
+    m_Snes = snes;
+}
+
+bool FrontendSdl2::handleShortcut(
+    SDL_Scancode scancode,
+    bool pressed)
+{
+    switch (scancode) {
+    case SDL_SCANCODE_P:
+        if (pressed) {
+            m_Snes->toggleRunning();
+        }
+        break;
+
+    default:
+        break;
+    }
+
+    return true;
 }
