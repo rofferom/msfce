@@ -194,6 +194,7 @@ private:
         uint8_t m_Value = 0;
         AddressingMode m_AddressingMode = AddressingMode::Count;
         OpcodeHandler m_OpcodeHandler = nullptr;
+        bool m_AutoStepPC = true;
     };
 
     static constexpr int kStrInstructionLen = 32;

@@ -763,6 +763,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0x54,
             Cpu65816::AddressingMode::BlockMove,
             &Cpu65816::handleMVN,
+            false,
         }, {
             "NOP",
             0xEA,
@@ -1380,7 +1381,9 @@ void Cpu65816::executeSingle()
         assert(false);
     }
 
-    m_Registers.PC++;
+    if (opcodeDesc.m_AutoStepPC) {
+        m_Registers.PC++;
+    }
 
     // Load data
     uint32_t data = 0;
@@ -2288,15 +2291,17 @@ void Cpu65816::handleMVN(uint32_t data)
     uint8_t srcBank = data >> 8;
     m_Registers.DB = data & 0xFF;
 
-    while (m_Registers.A != 0xFFFF) {
-        uint32_t srcAddr = (srcBank << 16) | m_Registers.X;
-        uint32_t destAddr = (m_Registers.DB << 16) | m_Registers.Y;
+    uint32_t srcAddr = (srcBank << 16) | m_Registers.X;
+    uint32_t destAddr = (m_Registers.DB << 16) | m_Registers.Y;
+    m_Membus->writeU8(destAddr, m_Membus->readU8(srcAddr));
 
-        m_Membus->writeU8(destAddr, m_Membus->readU8(srcAddr));
+    m_Registers.A--;
+    m_Registers.X++;
+    m_Registers.Y++;
 
-        m_Registers.A--;
-        m_Registers.X++;
-        m_Registers.Y++;
+    if (m_Registers.A == 0xFFFF) {
+        // Skip opcode + parameters
+        m_Registers.PC += 3;
     }
 }
 
@@ -3481,8 +3486,8 @@ void Cpu65816::handleBlockMove(
     char strIntruction[kStrInstructionLen],
     uint32_t* data)
 {
-    *data = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
-    m_Registers.PC += 2;
+    // PC isn't changed automatically, skip the opcode
+    *data = m_Membus->readU16((m_Registers.PB << 16) | (m_Registers.PC + 1));
 
     snprintf(strIntruction, kStrInstructionLen, "%s $%02X, $%02X", opcodeDesc.m_Name, *data >> 8, *data & 0xFF);
 }
