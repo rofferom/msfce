@@ -1352,17 +1352,19 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
     }
 }
 
-void Cpu65816::executeSingle()
+int  Cpu65816::executeSingle()
 {
+    int cycles = 0;
+
     // Check if NMI has been raised
     if (m_NMI) {
-        handleNMI();
+        handleNMI(&cycles);
         m_NMI = false;
         m_WaitInterrupt = false;
     }
 
     if (m_WaitInterrupt) {
-        return;
+        return cycles;
     }
 
     // Debug stuff
@@ -1370,7 +1372,7 @@ void Cpu65816::executeSingle()
     uint32_t opcodePC = (m_Registers.PB << 16) | m_Registers.PC;
 
     // Load opcode
-    uint8_t opcode = m_Membus->readU8(opcodePC);
+    uint8_t opcode = m_Membus->readU8(opcodePC, &cycles);
     const auto& opcodeDesc = m_Opcodes[opcode];
 
     if (!opcodeDesc.m_Name) {
@@ -1388,14 +1390,16 @@ void Cpu65816::executeSingle()
     // Load data
     uint32_t data = 0;
     const auto addressingModeHandler = m_AddressingModes[enumToInt(opcodeDesc.m_AddressingMode)];
-    (this->*addressingModeHandler)(opcodeDesc, strIntruction, &data);
+    (this->*addressingModeHandler)(opcodeDesc, strIntruction, &data, &cycles);
 
     // Log instruction
     logInstruction(opcodePC, strIntruction);
 
     // Execute instruction
     assert(opcodeDesc.m_OpcodeHandler);
-    (this->*opcodeDesc.m_OpcodeHandler)(data);
+    (this->*opcodeDesc.m_OpcodeHandler)(data, &cycles);
+
+    return cycles;
 }
 
 void Cpu65816::logInstruction(uint32_t opcodePC, const char* strIntruction)
@@ -1429,22 +1433,22 @@ void Cpu65816::printInstructionsLog() const
     }
 }
 
-void Cpu65816::handleNMI()
+void Cpu65816::handleNMI(int *cycles)
 {
     // Bank is forced at 0
-    uint16_t handlerAddress = m_Membus->readU16(kRegIV_NMI);
+    uint16_t handlerAddress = m_Membus->readU16(kRegIV_NMI, cycles);
     if (!handlerAddress) {
         return;
     }
 
     // Save registers
-    m_Membus->writeU8(m_Registers.S, m_Registers.PB);
+    m_Membus->writeU8(m_Registers.S, m_Registers.PB, cycles);
     m_Registers.S--;
 
-    m_Membus->writeU16(m_Registers.S - 1, m_Registers.PC & 0xFFFF);
+    m_Membus->writeU16(m_Registers.S - 1, m_Registers.PC & 0xFFFF, cycles);
     m_Registers.S -= 2;
 
-    m_Membus->writeU8(m_Registers.S, m_Registers.P);
+    m_Membus->writeU8(m_Registers.S, m_Registers.P, cycles);
     m_Registers.S--;
 
     // Do jump
@@ -1487,7 +1491,7 @@ void Cpu65816::setNZFlags(uint16_t value, uint16_t negativeMask)
     setZFlag(value);
 }
 
-void Cpu65816::handleADC(uint32_t address)
+void Cpu65816::handleADC(uint32_t address, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
@@ -1495,7 +1499,7 @@ void Cpu65816::handleADC(uint32_t address)
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint32_t data = m_Membus->readU8(address);
+        uint32_t data = m_Membus->readU8(address, cycles);
         uint32_t result = (m_Registers.A & 0xFF) + data + getBit(m_Registers.P, kPRegister_C);
 
         // V flag
@@ -1519,7 +1523,7 @@ void Cpu65816::handleADC(uint32_t address)
             m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
         }
     } else {
-        uint32_t data = m_Membus->readU16(address);
+        uint32_t data = m_Membus->readU16(address, cycles);
         uint32_t result = m_Registers.A + data + getBit(m_Registers.P, kPRegister_C);
 
         // V flag
@@ -1545,7 +1549,7 @@ void Cpu65816::handleADC(uint32_t address)
     }
 }
 
-void Cpu65816::handleADCImmediate(uint32_t data)
+void Cpu65816::handleADCImmediate(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
@@ -1601,7 +1605,7 @@ void Cpu65816::handleADCImmediate(uint32_t data)
     }
 }
 
-void Cpu65816::handleANDImmediate(uint32_t data)
+void Cpu65816::handleANDImmediate(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
@@ -1615,22 +1619,22 @@ void Cpu65816::handleANDImmediate(uint32_t data)
     }
 }
 
-void Cpu65816::handleAND(uint32_t data)
+void Cpu65816::handleAND(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint8_t value = m_Membus->readU8(data);
+        uint8_t value = m_Membus->readU8(data, cycles);
         m_Registers.A = (m_Registers.A & 0xFF00) | ((m_Registers.A & 0xFF) & value);
         setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
-        m_Registers.A &= m_Membus->readU16(data);
+        m_Registers.A &= m_Membus->readU16(data, cycles);
         setNZFlags(m_Registers.A, 0x8000);
     }
 }
 
-void Cpu65816::handleASL_A(uint32_t data)
+void Cpu65816::handleASL_A(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
     uint32_t C = getBit(m_Registers.P, kPRegister_C);
@@ -1661,7 +1665,7 @@ void Cpu65816::handleASL_A(uint32_t data)
     }
 }
 
-void Cpu65816::handleASL(uint32_t data)
+void Cpu65816::handleASL(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
     uint32_t C = getBit(m_Registers.P, kPRegister_C);
@@ -1669,20 +1673,20 @@ void Cpu65816::handleASL(uint32_t data)
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint8_t v = m_Membus->readU8(data);
+        uint8_t v = m_Membus->readU8(data, cycles);
 
         finalC = v >> 7;
         v <<= 1;
 
-        m_Membus->writeU8(data, v);
+        m_Membus->writeU8(data, v, cycles);
         setNZFlags(v, 0x80);
     } else {
-        uint16_t v = m_Membus->readU16(data);
+        uint16_t v = m_Membus->readU16(data, cycles);
 
         finalC = v >> 15;
         v <<= 1;
 
-        m_Membus->writeU16(data, v);
+        m_Membus->writeU16(data, v, cycles);
         setNZFlags(v, 0x8000);
     }
 
@@ -1693,28 +1697,28 @@ void Cpu65816::handleASL(uint32_t data)
     }
 }
 
-void Cpu65816::handleBCC(uint32_t data)
+void Cpu65816::handleBCC(uint32_t data, int *cycles)
 {
     if (!getBit(m_Registers.P, kPRegister_C)) {
         m_Registers.PC = data;
     }
 }
 
-void Cpu65816::handleBCS(uint32_t data)
+void Cpu65816::handleBCS(uint32_t data, int *cycles)
 {
     if (getBit(m_Registers.P, kPRegister_C)) {
         m_Registers.PC = data;
     }
 }
 
-void Cpu65816::handleBEQ(uint32_t data)
+void Cpu65816::handleBEQ(uint32_t data, int *cycles)
 {
     if (getBit(m_Registers.P, kPRegister_Z)) {
         m_Registers.PC = data;
     }
 }
 
-void Cpu65816::handleBITImmediate(uint32_t data)
+void Cpu65816::handleBITImmediate(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
@@ -1731,13 +1735,13 @@ void Cpu65816::handleBITImmediate(uint32_t data)
     }
 }
 
-void Cpu65816::handleBIT(uint32_t address)
+void Cpu65816::handleBIT(uint32_t address, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint8_t data = m_Membus->readU8(address);
+        uint8_t data = m_Membus->readU8(address, cycles);
         uint8_t result = (m_Registers.A & 0xFF) & data;
 
         setZFlag(result);
@@ -1754,7 +1758,7 @@ void Cpu65816::handleBIT(uint32_t address)
             m_Registers.P = clearBit(m_Registers.P, kPRegister_V);
         }
     } else {
-        uint16_t data = m_Membus->readU16(address);
+        uint16_t data = m_Membus->readU16(address, cycles);
         uint16_t result = m_Registers.A & data;
 
         setZFlag(result);
@@ -1773,73 +1777,73 @@ void Cpu65816::handleBIT(uint32_t address)
     }
 }
 
-void Cpu65816::handleBMI(uint32_t data)
+void Cpu65816::handleBMI(uint32_t data, int *cycles)
 {
     if (getBit(m_Registers.P, kPRegister_N)) {
         m_Registers.PC = data;
     }
 }
 
-void Cpu65816::handleBNE(uint32_t data)
+void Cpu65816::handleBNE(uint32_t data, int *cycles)
 {
     if (!getBit(m_Registers.P, kPRegister_Z)) {
         m_Registers.PC = data;
     }
 }
 
-void Cpu65816::handleBPL(uint32_t data)
+void Cpu65816::handleBPL(uint32_t data, int *cycles)
 {
     if (!getBit(m_Registers.P, kPRegister_N)) {
         m_Registers.PC = data;
     }
 }
 
-void Cpu65816::handleBRA(uint32_t data)
+void Cpu65816::handleBRA(uint32_t data, int *cycles)
 {
     m_Registers.PC = data;
 }
 
-void Cpu65816::handleBRL(uint32_t data)
+void Cpu65816::handleBRL(uint32_t data, int *cycles)
 {
     m_Registers.PB = data >> 16;
     m_Registers.PC = data & 0xFFFF;
 }
 
-void Cpu65816::handleBVC(uint32_t data)
+void Cpu65816::handleBVC(uint32_t data, int *cycles)
 {
     if (!getBit(m_Registers.P, kPRegister_V)) {
         m_Registers.PC = data;
     }
 }
 
-void Cpu65816::handleBVS(uint32_t data)
+void Cpu65816::handleBVS(uint32_t data, int *cycles)
 {
     if (getBit(m_Registers.P, kPRegister_V)) {
         m_Registers.PC = data;
     }
 }
 
-void Cpu65816::handleCLC(uint32_t data)
+void Cpu65816::handleCLC(uint32_t data, int *cycles)
 {
     m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
 }
 
-void Cpu65816::handleCLD(uint32_t data)
+void Cpu65816::handleCLD(uint32_t data, int *cycles)
 {
     m_Registers.P = clearBit(m_Registers.P, kPRegister_D);
 }
 
-void Cpu65816::handleCLI(uint32_t data)
+void Cpu65816::handleCLI(uint32_t data, int *cycles)
 {
     m_Registers.P = clearBit(m_Registers.P, kPRegister_I);
 }
 
-void Cpu65816::handleCLV(uint32_t data)
+void Cpu65816::handleCLV(uint32_t data, int *cycles)
 {
     m_Registers.P = clearBit(m_Registers.P, kPRegister_V);
 }
 
-void Cpu65816::handleCMPImmediate(uint32_t data)
+void Cpu65816::handleCMPImmediate(uint32_t data, int *cycles)
 {
     uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
@@ -1858,7 +1862,7 @@ void Cpu65816::handleCMPImmediate(uint32_t data)
     setCFlag(result);
 }
 
-void Cpu65816::handleCMP(uint32_t data)
+void Cpu65816::handleCMP(uint32_t data, int *cycles)
 {
     uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
@@ -1866,10 +1870,10 @@ void Cpu65816::handleCMP(uint32_t data)
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        result = (m_Registers.A & 0xFF) - m_Membus->readU8(data);
+        result = (m_Registers.A & 0xFF) - m_Membus->readU8(data, cycles);
         negativeMask = 0x80;
     } else {
-        result = m_Registers.A - m_Membus->readU16(data);
+        result = m_Registers.A - m_Membus->readU16(data, cycles);
         negativeMask = 0x8000;
     }
 
@@ -1877,7 +1881,7 @@ void Cpu65816::handleCMP(uint32_t data)
     setCFlag(result);
 }
 
-void Cpu65816::handleCPX(uint32_t data)
+void Cpu65816::handleCPX(uint32_t data, int *cycles)
 {
     uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
@@ -1885,10 +1889,10 @@ void Cpu65816::handleCPX(uint32_t data)
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
-        result = (m_Registers.X & 0xFF) - m_Membus->readU8(data);
+        result = (m_Registers.X & 0xFF) - m_Membus->readU8(data, cycles);
         negativeMask = 0x80;
     } else {
-        result  = m_Registers.X - m_Membus->readU16(data);
+        result  = m_Registers.X - m_Membus->readU16(data, cycles);
         negativeMask = 0x8000;
     }
 
@@ -1896,7 +1900,7 @@ void Cpu65816::handleCPX(uint32_t data)
     setCFlag(result);
 }
 
-void Cpu65816::handleCPXImmediate(uint32_t data)
+void Cpu65816::handleCPXImmediate(uint32_t data, int *cycles)
 {
     uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
@@ -1915,7 +1919,7 @@ void Cpu65816::handleCPXImmediate(uint32_t data)
     setCFlag(result);
 }
 
-void Cpu65816::handleCPY(uint32_t data)
+void Cpu65816::handleCPY(uint32_t data, int *cycles)
 {
     uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
@@ -1923,10 +1927,10 @@ void Cpu65816::handleCPY(uint32_t data)
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
-        result = (m_Registers.Y & 0xFF) - m_Membus->readU8(data);
+        result = (m_Registers.Y & 0xFF) - m_Membus->readU8(data, cycles);
         negativeMask = 0x80;
     } else {
-        result  = m_Registers.Y - m_Membus->readU16(data);
+        result  = m_Registers.Y - m_Membus->readU16(data, cycles);
         negativeMask = 0x8000;
     }
 
@@ -1934,7 +1938,7 @@ void Cpu65816::handleCPY(uint32_t data)
     setCFlag(result);
 }
 
-void Cpu65816::handleCPYImmediate(uint32_t data)
+void Cpu65816::handleCPYImmediate(uint32_t data, int *cycles)
 {
     uint16_t negativeMask;
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
@@ -1953,7 +1957,7 @@ void Cpu65816::handleCPYImmediate(uint32_t data)
     setCFlag(result);
 }
 
-void Cpu65816::handleDEC_A(uint32_t data)
+void Cpu65816::handleDEC_A(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
@@ -1967,28 +1971,28 @@ void Cpu65816::handleDEC_A(uint32_t data)
     }
 }
 
-void Cpu65816::handleDEC(uint32_t data)
+void Cpu65816::handleDEC(uint32_t data, int *cycles)
 {
     uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint8_t value = m_Membus->readU8(data) - 1;
-        m_Membus->writeU8(data, value);
+        uint8_t value = m_Membus->readU8(data, cycles) - 1;
+        m_Membus->writeU8(data, value, cycles);
 
         negativeMask = 0x80;
         setNZFlags(value, negativeMask);
     } else {
-        uint16_t value = m_Membus->readU16(data) - 1;
-        m_Membus->writeU16(data, value);
+        uint16_t value = m_Membus->readU16(data, cycles) - 1;
+        m_Membus->writeU16(data, value, cycles);
 
         negativeMask = 0x8000;
         setNZFlags(value, negativeMask);
     }
 }
 
-void Cpu65816::handleDEX(uint32_t data)
+void Cpu65816::handleDEX(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
@@ -2003,7 +2007,7 @@ void Cpu65816::handleDEX(uint32_t data)
     }
 }
 
-void Cpu65816::handleDEY(uint32_t data)
+void Cpu65816::handleDEY(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
@@ -2018,22 +2022,22 @@ void Cpu65816::handleDEY(uint32_t data)
     }
 }
 
-void Cpu65816::handleEOR(uint32_t data)
+void Cpu65816::handleEOR(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint8_t value = m_Membus->readU8(data);
+        uint8_t value = m_Membus->readU8(data, cycles);
         m_Registers.A = (m_Registers.A & 0xFF00) | ((m_Registers.A & 0xFF) ^ value);
         setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
-        m_Registers.A ^= m_Membus->readU16(data);
+        m_Registers.A ^= m_Membus->readU16(data, cycles);
         setNZFlags(m_Registers.A, 0x8000);
     }
 }
 
-void Cpu65816::handleEORImmediate(uint32_t data)
+void Cpu65816::handleEORImmediate(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
@@ -2048,7 +2052,7 @@ void Cpu65816::handleEORImmediate(uint32_t data)
     }
 }
 
-void Cpu65816::handleINC_A(uint32_t data)
+void Cpu65816::handleINC_A(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
@@ -2062,28 +2066,28 @@ void Cpu65816::handleINC_A(uint32_t data)
     }
 }
 
-void Cpu65816::handleINC(uint32_t data)
+void Cpu65816::handleINC(uint32_t data, int *cycles)
 {
     uint16_t negativeMask;
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint8_t value = m_Membus->readU8(data) + 1;
-        m_Membus->writeU8(data, value);
+        uint8_t value = m_Membus->readU8(data, cycles) + 1;
+        m_Membus->writeU8(data, value, cycles);
 
         negativeMask = 0x80;
         setNZFlags(value, negativeMask);
     } else {
-        uint16_t value = m_Membus->readU16(data) + 1;
-        m_Membus->writeU16(data, value);
+        uint16_t value = m_Membus->readU16(data, cycles) + 1;
+        m_Membus->writeU16(data, value, cycles);
 
         negativeMask = 0x8000;
         setNZFlags(value, negativeMask);
     }
 }
 
-void Cpu65816::handleINX(uint32_t data)
+void Cpu65816::handleINX(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
@@ -2097,7 +2101,7 @@ void Cpu65816::handleINX(uint32_t data)
     }
 }
 
-void Cpu65816::handleINY(uint32_t data)
+void Cpu65816::handleINY(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
@@ -2111,33 +2115,33 @@ void Cpu65816::handleINY(uint32_t data)
     }
 }
 
-void Cpu65816::handleJMP(uint32_t data)
+void Cpu65816::handleJMP(uint32_t data, int *cycles)
 {
     m_Registers.PB = data >> 16;
     m_Registers.PC = data & 0xFFFF;
 }
 
-void Cpu65816::handleJSR(uint32_t data)
+void Cpu65816::handleJSR(uint32_t data, int *cycles)
 {
-    m_Membus->writeU16(m_Registers.S - 1, m_Registers.PC - 1);
+    m_Membus->writeU16(m_Registers.S - 1, m_Registers.PC - 1, cycles);
     m_Registers.S -= 2;
 
     m_Registers.PC = data;
 }
 
-void Cpu65816::handleJSL(uint32_t data)
+void Cpu65816::handleJSL(uint32_t data, int *cycles)
 {
-    m_Membus->writeU8(m_Registers.S, m_Registers.PB);
+    m_Membus->writeU8(m_Registers.S, m_Registers.PB, cycles);
     m_Registers.S--;
 
-    m_Membus->writeU16(m_Registers.S - 1, (m_Registers.PC & 0xFFFF) - 1);
+    m_Membus->writeU16(m_Registers.S - 1, (m_Registers.PC & 0xFFFF) - 1, cycles);
     m_Registers.S -= 2;
 
     m_Registers.PB = data >> 16;
     m_Registers.PC = data & 0xFFFF;
 }
 
-void Cpu65816::handleLDAImmediate(uint32_t data)
+void Cpu65816::handleLDAImmediate(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
@@ -2152,23 +2156,23 @@ void Cpu65816::handleLDAImmediate(uint32_t data)
     }
 }
 
-void Cpu65816::handleLDA(uint32_t data)
+void Cpu65816::handleLDA(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint16_t value = m_Membus->readU8(data);
+        uint16_t value = m_Membus->readU8(data, cycles);
         m_Registers.A &= 0xFF00;
         m_Registers.A |= value & 0xFF;
         setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
-        m_Registers.A = m_Membus->readU16(data);;
+        m_Registers.A = m_Membus->readU16(data, cycles);;
         setNZFlags(m_Registers.A, 0x8000);
     }
 }
 
-void Cpu65816::handleLDXImmediate(uint32_t data)
+void Cpu65816::handleLDXImmediate(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
@@ -2182,21 +2186,21 @@ void Cpu65816::handleLDXImmediate(uint32_t data)
     }
 }
 
-void Cpu65816::handleLDX(uint32_t data)
+void Cpu65816::handleLDX(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
-        m_Registers.X = m_Membus->readU8(data);
+        m_Registers.X = m_Membus->readU8(data, cycles);
         setNZFlags(m_Registers.X & 0xFF, 0x80);
     } else {
-        m_Registers.X = m_Membus->readU16(data);
+        m_Registers.X = m_Membus->readU16(data, cycles);
         setNZFlags(m_Registers.X, 0x8000);
     }
 }
 
-void Cpu65816::handleLDYImmediate(uint32_t data)
+void Cpu65816::handleLDYImmediate(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
@@ -2210,21 +2214,21 @@ void Cpu65816::handleLDYImmediate(uint32_t data)
     }
 }
 
-void Cpu65816::handleLDY(uint32_t data)
+void Cpu65816::handleLDY(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
-        m_Registers.Y = m_Membus->readU8(data);
+        m_Registers.Y = m_Membus->readU8(data, cycles);
         setNZFlags(m_Registers.Y & 0xFF, 0x80);
     } else {
-        m_Registers.Y = m_Membus->readU16(data);
+        m_Registers.Y = m_Membus->readU16(data, cycles);
         setNZFlags(m_Registers.Y, 0x8000);
     }
 }
 
-void Cpu65816::handleLSR_A(uint32_t data)
+void Cpu65816::handleLSR_A(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
     uint32_t C = getBit(m_Registers.P, kPRegister_C);
@@ -2255,27 +2259,27 @@ void Cpu65816::handleLSR_A(uint32_t data)
     }
 }
 
-void Cpu65816::handleLSR(uint32_t data)
+void Cpu65816::handleLSR(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
     uint32_t C = getBit(m_Registers.P, kPRegister_C);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint16_t v = m_Membus->readU8(data);
+        uint16_t v = m_Membus->readU8(data, cycles);
 
         C = v & 1;
         v >>= 1;
 
-        m_Membus->writeU8(data, v);
+        m_Membus->writeU8(data, v, cycles);
         setNZFlags(v, 0x80);
     } else {
-        uint32_t v = m_Membus->readU16(data);
+        uint32_t v = m_Membus->readU16(data, cycles);
 
         C = v & 1;
         v >>= 1;
 
-        m_Membus->writeU16(data, v);
+        m_Membus->writeU16(data, v, cycles);
         setNZFlags(v, 0x8000);
     }
 
@@ -2286,14 +2290,14 @@ void Cpu65816::handleLSR(uint32_t data)
     }
 }
 
-void Cpu65816::handleMVN(uint32_t data)
+void Cpu65816::handleMVN(uint32_t data, int *cycles)
 {
     uint8_t srcBank = data >> 8;
     m_Registers.DB = data & 0xFF;
 
     uint32_t srcAddr = (srcBank << 16) | m_Registers.X;
     uint32_t destAddr = (m_Registers.DB << 16) | m_Registers.Y;
-    m_Membus->writeU8(destAddr, m_Membus->readU8(srcAddr));
+    m_Membus->writeU8(destAddr, m_Membus->readU8(srcAddr, cycles), cycles);
 
     m_Registers.A--;
     m_Registers.X++;
@@ -2305,26 +2309,26 @@ void Cpu65816::handleMVN(uint32_t data)
     }
 }
 
-void Cpu65816::handleNOP(uint32_t data)
+void Cpu65816::handleNOP(uint32_t data, int *cycles)
 {
 }
 
-void Cpu65816::handleORA(uint32_t data)
+void Cpu65816::handleORA(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint8_t value = m_Membus->readU8(data);
+        uint8_t value = m_Membus->readU8(data, cycles);
         m_Registers.A = (m_Registers.A & 0xFF00) | ((m_Registers.A & 0xFF) | value);
         setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
-        m_Registers.A |= m_Membus->readU16(data);
+        m_Registers.A |= m_Membus->readU16(data, cycles);
         setNZFlags(m_Registers.A, 0x8000);
     }
 }
 
-void Cpu65816::handleORAImmediate(uint32_t data)
+void Cpu65816::handleORAImmediate(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
@@ -2339,125 +2343,125 @@ void Cpu65816::handleORAImmediate(uint32_t data)
     }
 }
 
-void Cpu65816::handlePEA(uint32_t data)
+void Cpu65816::handlePEA(uint32_t data, int *cycles)
 {
-    m_Membus->writeU16(m_Registers.S - 1, data & 0xFFFF);
+    m_Membus->writeU16(m_Registers.S - 1, data & 0xFFFF, cycles);
     m_Registers.S -= 2;
 }
 
-void Cpu65816::handlePEI(uint32_t data)
+void Cpu65816::handlePEI(uint32_t data, int *cycles)
 {
-    m_Membus->writeU16(m_Registers.S - 1, data & 0xFFFF);
+    m_Membus->writeU16(m_Registers.S - 1, data & 0xFFFF, cycles);
     m_Registers.S -= 2;
 }
 
-void Cpu65816::handlePER(uint32_t data)
+void Cpu65816::handlePER(uint32_t data, int *cycles)
 {
-    m_Membus->writeU16(m_Registers.S - 1, data & 0xFFFF);
+    m_Membus->writeU16(m_Registers.S - 1, data & 0xFFFF, cycles);
     m_Registers.S -= 2;
 }
 
-void Cpu65816::handlePHA(uint32_t data)
+void Cpu65816::handlePHA(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        m_Membus->writeU8(m_Registers.S, m_Registers.A & 0xFF);
+        m_Membus->writeU8(m_Registers.S, m_Registers.A & 0xFF, cycles);
         m_Registers.S--;
     } else {
-        m_Membus->writeU16(m_Registers.S - 1, m_Registers.A);
+        m_Membus->writeU16(m_Registers.S - 1, m_Registers.A, cycles);
         m_Registers.S -= 2;
     }
 }
 
-void Cpu65816::handlePHB(uint32_t data)
+void Cpu65816::handlePHB(uint32_t data, int *cycles)
 {
-    m_Membus->writeU8(m_Registers.S, m_Registers.DB);
+    m_Membus->writeU8(m_Registers.S, m_Registers.DB, cycles);
     m_Registers.S--;
 }
 
-void Cpu65816::handlePHD(uint32_t data)
+void Cpu65816::handlePHD(uint32_t data, int *cycles)
 {
-    m_Membus->writeU16(m_Registers.S - 1, m_Registers.D);
+    m_Membus->writeU16(m_Registers.S - 1, m_Registers.D, cycles);
     m_Registers.S -= 2;
 }
 
-void Cpu65816::handlePHK(uint32_t data)
+void Cpu65816::handlePHK(uint32_t data, int *cycles)
 {
-    m_Membus->writeU8(m_Registers.S, m_Registers.PB);
+    m_Membus->writeU8(m_Registers.S, m_Registers.PB, cycles);
     m_Registers.S--;
 }
 
-void Cpu65816::handlePHP(uint32_t data)
+void Cpu65816::handlePHP(uint32_t data, int *cycles)
 {
-    m_Membus->writeU8(m_Registers.S, m_Registers.P);
+    m_Membus->writeU8(m_Registers.S, m_Registers.P, cycles);
     m_Registers.S--;
 }
 
-void Cpu65816::handlePHX(uint32_t data)
+void Cpu65816::handlePHX(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
-        m_Membus->writeU8(m_Registers.S, m_Registers.X);
+        m_Membus->writeU8(m_Registers.S, m_Registers.X, cycles);
         m_Registers.S--;
     } else {
-        m_Membus->writeU16(m_Registers.S - 1, m_Registers.X);
+        m_Membus->writeU16(m_Registers.S - 1, m_Registers.X, cycles);
         m_Registers.S -= 2;
     }
 }
 
-void Cpu65816::handlePHY(uint32_t data)
+void Cpu65816::handlePHY(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
-        m_Membus->writeU8(m_Registers.S, m_Registers.Y);
+        m_Membus->writeU8(m_Registers.S, m_Registers.Y, cycles);
         m_Registers.S--;
     } else {
-        m_Membus->writeU16(m_Registers.S - 1, m_Registers.Y);
+        m_Membus->writeU16(m_Registers.S - 1, m_Registers.Y, cycles);
         m_Registers.S -= 2;
     }
 }
 
-void Cpu65816::handlePLA(uint32_t data)
+void Cpu65816::handlePLA(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        m_Registers.A = (m_Registers.A & 0xFF00) | m_Membus->readU8(m_Registers.S + 1);
+        m_Registers.A = (m_Registers.A & 0xFF00) | m_Membus->readU8(m_Registers.S + 1, cycles);
         m_Registers.S++;
         setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
-        m_Registers.A = m_Membus->readU16(m_Registers.S + 1);
+        m_Registers.A = m_Membus->readU16(m_Registers.S + 1, cycles);
         m_Registers.S += 2;
         setNZFlags(m_Registers.A, 0x8000);
     }
 }
 
-void Cpu65816::handlePLB(uint32_t data)
+void Cpu65816::handlePLB(uint32_t data, int *cycles)
 {
-    m_Registers.DB = m_Membus->readU8(m_Registers.S + 1);
+    m_Registers.DB = m_Membus->readU8(m_Registers.S + 1, cycles);
     m_Registers.S++;
 
     setNZFlags(m_Registers.DB, 0x80);
 }
 
-void Cpu65816::handlePLD(uint32_t data)
+void Cpu65816::handlePLD(uint32_t data, int *cycles)
 {
-    m_Registers.D = m_Membus->readU16(m_Registers.S + 1);
+    m_Registers.D = m_Membus->readU16(m_Registers.S + 1, cycles);
     m_Registers.S += 2;
 
     setNZFlags(m_Registers.D, 0x80);
 }
 
-void Cpu65816::handlePLP(uint32_t data)
+void Cpu65816::handlePLP(uint32_t data, int *cycles)
 {
-    m_Registers.P = m_Membus->readU8(m_Registers.S + 1);
+    m_Registers.P = m_Membus->readU8(m_Registers.S + 1, cycles);
     m_Registers.S++;
 
     if (getBit(m_Registers.P, kPRegister_X)) {
@@ -2466,44 +2470,44 @@ void Cpu65816::handlePLP(uint32_t data)
     }
 }
 
-void Cpu65816::handlePLX(uint32_t data)
+void Cpu65816::handlePLX(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
-        m_Registers.X = m_Membus->readU8(m_Registers.S + 1);
+        m_Registers.X = m_Membus->readU8(m_Registers.S + 1, cycles);
         m_Registers.S++;
         setNZFlags(m_Registers.X & 0xFF, 0x80);
     } else {
-        m_Registers.X = m_Membus->readU16(m_Registers.S + 1);
+        m_Registers.X = m_Membus->readU16(m_Registers.S + 1, cycles);
         m_Registers.S += 2;
         setNZFlags(m_Registers.X, 0x8000);
     }
 }
 
-void Cpu65816::handlePLY(uint32_t data)
+void Cpu65816::handlePLY(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
-        m_Registers.Y = m_Membus->readU8(m_Registers.S + 1);
+        m_Registers.Y = m_Membus->readU8(m_Registers.S + 1, cycles);
         m_Registers.S++;
         setNZFlags(m_Registers.Y & 0xFF, 0x80);
     } else {
-        m_Registers.Y = m_Membus->readU16(m_Registers.S + 1);
+        m_Registers.Y = m_Membus->readU16(m_Registers.S + 1, cycles);
         m_Registers.S += 2;
         setNZFlags(m_Registers.Y, 0x8000);
     }
 }
 
-void Cpu65816::handleREP(uint32_t data)
+void Cpu65816::handleREP(uint32_t data, int *cycles)
 {
     m_Registers.P &= ~data;
 }
 
-void Cpu65816::handleROL_A(uint32_t data)
+void Cpu65816::handleROL_A(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
     uint32_t C = getBit(m_Registers.P, kPRegister_C);
@@ -2534,29 +2538,29 @@ void Cpu65816::handleROL_A(uint32_t data)
     }
 }
 
-void Cpu65816::handleROL(uint32_t data)
+void Cpu65816::handleROL(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
     uint32_t C = getBit(m_Registers.P, kPRegister_C);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint16_t v = m_Membus->readU8(data);
+        uint16_t v = m_Membus->readU8(data, cycles);
 
         v = (v << 1) | C;
         C = v >> 8;
 
         v &= 0xFF;
-        m_Membus->writeU8(data, v);
+        m_Membus->writeU8(data, v, cycles);
         setNZFlags(v, 0x80);
     } else {
-        uint32_t v = m_Membus->readU16(data);
+        uint32_t v = m_Membus->readU16(data, cycles);
 
         v = (v << 1) | C;
         C = v >> 16;
 
         v &= 0xFFFF;
-        m_Membus->writeU16(data, v);
+        m_Membus->writeU16(data, v, cycles);
         setNZFlags(v, 0x8000);
     }
 
@@ -2567,7 +2571,7 @@ void Cpu65816::handleROL(uint32_t data)
     }
 }
 
-void Cpu65816::handleROR_A(uint32_t data)
+void Cpu65816::handleROR_A(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
     uint32_t C = getBit(m_Registers.P, kPRegister_C);
@@ -2599,7 +2603,7 @@ void Cpu65816::handleROR_A(uint32_t data)
     }
 }
 
-void Cpu65816::handleROR(uint32_t data)
+void Cpu65816::handleROR(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
     uint32_t C = getBit(m_Registers.P, kPRegister_C);
@@ -2607,20 +2611,20 @@ void Cpu65816::handleROR(uint32_t data)
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint16_t v = m_Membus->readU8(data);
+        uint16_t v = m_Membus->readU8(data, cycles);
 
         finalC = v & 1;
         v = (C << 7) | (v >> 1);
 
-        m_Membus->writeU8(data, v);
+        m_Membus->writeU8(data, v, cycles);
         setNZFlags(v, 0x80);
     } else {
-        uint32_t v = m_Membus->readU16(data);
+        uint32_t v = m_Membus->readU16(data, cycles);
 
         finalC = v & 1;
         v = (C << 15) | (v >> 1);
 
-        m_Membus->writeU16(data, v);
+        m_Membus->writeU16(data, v, cycles);
         setNZFlags(v, 0x8000);
     }
 
@@ -2631,16 +2635,16 @@ void Cpu65816::handleROR(uint32_t data)
     }
 }
 
-void Cpu65816::handleRTI(uint32_t data)
+void Cpu65816::handleRTI(uint32_t data, int *cycles)
 {
     // Restore registers
-    uint16_t P = m_Membus->readU8(m_Registers.S + 1);
+    uint16_t P = m_Membus->readU8(m_Registers.S + 1, cycles);
     m_Registers.S++;
 
-    uint16_t PC = m_Membus->readU16(m_Registers.S + 1);
+    uint16_t PC = m_Membus->readU16(m_Registers.S + 1, cycles);
     m_Registers.S += 2;
 
-    uint16_t PB = m_Membus->readU8(m_Registers.S + 1);
+    uint16_t PB = m_Membus->readU8(m_Registers.S + 1, cycles);
     m_Registers.S++;
 
 
@@ -2657,25 +2661,25 @@ void Cpu65816::handleRTI(uint32_t data)
     m_State = State::running;
 }
 
-void Cpu65816::handleRTL(uint32_t data)
+void Cpu65816::handleRTL(uint32_t data, int *cycles)
 {
-    uint16_t PC = m_Membus->readU16(m_Registers.S + 1) + 1;
+    uint16_t PC = m_Membus->readU16(m_Registers.S + 1, cycles) + 1;
     m_Registers.S += 2;
 
-    uint16_t PB = m_Membus->readU8(m_Registers.S + 1);
+    uint16_t PB = m_Membus->readU8(m_Registers.S + 1, cycles);
     m_Registers.S++;
 
     m_Registers.PC = PC;
     m_Registers.PB = PB;
 }
 
-void Cpu65816::handleRTS(uint32_t data)
+void Cpu65816::handleRTS(uint32_t data, int *cycles)
 {
-    m_Registers.PC = m_Membus->readU16(m_Registers.S + 1) + 1;
+    m_Registers.PC = m_Membus->readU16(m_Registers.S + 1, cycles) + 1;
     m_Registers.S += 2;
 }
 
-void Cpu65816::handleSBCImmediate(uint32_t rawData)
+void Cpu65816::handleSBCImmediate(uint32_t rawData, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
@@ -2735,7 +2739,7 @@ void Cpu65816::handleSBCImmediate(uint32_t rawData)
     }
 }
 
-void Cpu65816::handleSBC(uint32_t address)
+void Cpu65816::handleSBC(uint32_t address, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
@@ -2743,7 +2747,7 @@ void Cpu65816::handleSBC(uint32_t address)
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint8_t data = m_Membus->readU8(address);
+        uint8_t data = m_Membus->readU8(address, cycles);
         data = ~data;
 
         int result = (m_Registers.A & 0xFF) + data + getBit(m_Registers.P, kPRegister_C);
@@ -2768,7 +2772,7 @@ void Cpu65816::handleSBC(uint32_t address)
 
         m_Registers.A = (m_Registers.A & 0xFF00) | (result & 0xFF);
     } else {
-        uint16_t data = m_Membus->readU16(address);
+        uint16_t data = m_Membus->readU16(address, cycles);
         data = ~data;
 
         int result = m_Registers.A + data + getBit(m_Registers.P, kPRegister_C);
@@ -2795,22 +2799,22 @@ void Cpu65816::handleSBC(uint32_t address)
     }
 }
 
-void Cpu65816::handleSEC(uint32_t data)
+void Cpu65816::handleSEC(uint32_t data, int *cycles)
 {
     m_Registers.P = setBit(m_Registers.P, kPRegister_C);
 }
 
-void Cpu65816::handleSED(uint32_t data)
+void Cpu65816::handleSED(uint32_t data, int *cycles)
 {
     m_Registers.P = setBit(m_Registers.P, kPRegister_D);
 }
 
-void Cpu65816::handleSEI(uint32_t data)
+void Cpu65816::handleSEI(uint32_t data, int *cycles)
 {
     m_Registers.P = setBit(m_Registers.P, kPRegister_I);
 }
 
-void Cpu65816::handleSEP(uint32_t data)
+void Cpu65816::handleSEP(uint32_t data, int *cycles)
 {
     m_Registers.P |= data;
 
@@ -2820,55 +2824,55 @@ void Cpu65816::handleSEP(uint32_t data)
     }
 }
 
-void Cpu65816::handleSTA(uint32_t data)
+void Cpu65816::handleSTA(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        m_Membus->writeU8(data, m_Registers.A & 0xFF);
+        m_Membus->writeU8(data, m_Registers.A & 0xFF, cycles);
     } else {
-        m_Membus->writeU16(data, m_Registers.A);
+        m_Membus->writeU16(data, m_Registers.A, cycles);
     }
 }
 
-void Cpu65816::handleSTX(uint32_t data)
+void Cpu65816::handleSTX(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
-        m_Membus->writeU8(data, m_Registers.X & 0xFF);
+        m_Membus->writeU8(data, m_Registers.X & 0xFF, cycles);
     } else {
-        m_Membus->writeU16(data, m_Registers.X);
+        m_Membus->writeU16(data, m_Registers.X, cycles);
     }
 }
 
-void Cpu65816::handleSTY(uint32_t data)
+void Cpu65816::handleSTY(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
-        m_Membus->writeU8(data, m_Registers.Y & 0xFF);
+        m_Membus->writeU8(data, m_Registers.Y & 0xFF, cycles);
     } else {
-        m_Membus->writeU16(data, m_Registers.Y);
+        m_Membus->writeU16(data, m_Registers.Y, cycles);
     }
 }
 
-void Cpu65816::handleSTZ(uint32_t data)
+void Cpu65816::handleSTZ(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        m_Membus->writeU8(data, 0);
+        m_Membus->writeU8(data, 0, cycles);
     } else {
-        m_Membus->writeU16(data, 0);
+        m_Membus->writeU16(data, 0, cycles);
     }
 }
 
-void Cpu65816::handleTAX(uint32_t data)
+void Cpu65816::handleTAX(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
@@ -2883,7 +2887,7 @@ void Cpu65816::handleTAX(uint32_t data)
     }
 }
 
-void Cpu65816::handleTAY(uint32_t data)
+void Cpu65816::handleTAY(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
@@ -2898,32 +2902,32 @@ void Cpu65816::handleTAY(uint32_t data)
     }
 }
 
-void Cpu65816::handleTCD(uint32_t data)
+void Cpu65816::handleTCD(uint32_t data, int *cycles)
 {
     m_Registers.D = m_Registers.A;
 
     setNZFlags(m_Registers.D, 0x8000);
 }
 
-void Cpu65816::handleTCS(uint32_t data)
+void Cpu65816::handleTCS(uint32_t data, int *cycles)
 {
     m_Registers.S = m_Registers.A;
 }
 
-void Cpu65816::handleTDC(uint32_t data)
+void Cpu65816::handleTDC(uint32_t data, int *cycles)
 {
     m_Registers.A = m_Registers.D;
 
     setNZFlags(m_Registers.A, 0x8000);
 }
 
-void Cpu65816::handleTRB(uint32_t address)
+void Cpu65816::handleTRB(uint32_t address, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint8_t data = m_Membus->readU8(address);
+        uint8_t data = m_Membus->readU8(address, cycles);
 
         // Set Z
         if ((data & (m_Registers.A & 0xFF)) == 0) {
@@ -2933,9 +2937,9 @@ void Cpu65816::handleTRB(uint32_t address)
         }
 
         data &= ~(m_Registers.A & 0xFF);
-        m_Membus->writeU8(address, data);
+        m_Membus->writeU8(address, data, cycles);
     } else {
-        uint16_t data = m_Membus->readU16(address);
+        uint16_t data = m_Membus->readU16(address, cycles);
 
         // Set Z
         if ((data & m_Registers.A) == 0) {
@@ -2945,17 +2949,17 @@ void Cpu65816::handleTRB(uint32_t address)
         }
 
         data &= ~m_Registers.A;
-        m_Membus->writeU16(address, data);
+        m_Membus->writeU16(address, data, cycles);
     }
 }
 
-void Cpu65816::handleTSB(uint32_t address)
+void Cpu65816::handleTSB(uint32_t address, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        uint8_t data = m_Membus->readU8(address);
+        uint8_t data = m_Membus->readU8(address, cycles);
 
         // Set Z
         if ((data & (m_Registers.A & 0xFF)) == 0) {
@@ -2965,9 +2969,9 @@ void Cpu65816::handleTSB(uint32_t address)
         }
 
         data |= (m_Registers.A & 0xFF);
-        m_Membus->writeU8(address, data);
+        m_Membus->writeU8(address, data, cycles);
     } else {
-        uint16_t data = m_Membus->readU16(address);
+        uint16_t data = m_Membus->readU16(address, cycles);
 
         // Set Z
         if ((data & m_Registers.A) == 0) {
@@ -2977,11 +2981,11 @@ void Cpu65816::handleTSB(uint32_t address)
         }
 
         data |= m_Registers.A;
-        m_Membus->writeU16(address, data);
+        m_Membus->writeU16(address, data, cycles);
     }
 }
 
-void Cpu65816::handleTSC(uint32_t data)
+void Cpu65816::handleTSC(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
@@ -2998,7 +3002,7 @@ void Cpu65816::handleTSC(uint32_t data)
     }
 }
 
-void Cpu65816::handleTSX(uint32_t data)
+void Cpu65816::handleTSX(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
@@ -3013,7 +3017,7 @@ void Cpu65816::handleTSX(uint32_t data)
     }
 }
 
-void Cpu65816::handleTXA(uint32_t data)
+void Cpu65816::handleTXA(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
@@ -3028,12 +3032,12 @@ void Cpu65816::handleTXA(uint32_t data)
     }
 }
 
-void Cpu65816::handleTXS(uint32_t data)
+void Cpu65816::handleTXS(uint32_t data, int *cycles)
 {
     m_Registers.S = m_Registers.X;
 }
 
-void Cpu65816::handleTXY(uint32_t data)
+void Cpu65816::handleTXY(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
@@ -3048,7 +3052,7 @@ void Cpu65816::handleTXY(uint32_t data)
     }
 }
 
-void Cpu65816::handleTYA(uint32_t data)
+void Cpu65816::handleTYA(uint32_t data, int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
@@ -3063,7 +3067,7 @@ void Cpu65816::handleTYA(uint32_t data)
     }
 }
 
-void Cpu65816::handleTYX(uint32_t data)
+void Cpu65816::handleTYX(uint32_t data, int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
@@ -3078,14 +3082,14 @@ void Cpu65816::handleTYX(uint32_t data)
     }
 }
 
-void Cpu65816::handleXBA(uint32_t data)
+void Cpu65816::handleXBA(uint32_t data, int *cycles)
 {
     m_Registers.A = ((m_Registers.A & 0xFF) << 8) | (m_Registers.A >> 8);
 
     setNZFlags(m_Registers.A & 0xFF, 0x80);
 }
 
-void Cpu65816::handleXCE(uint32_t data)
+void Cpu65816::handleXCE(uint32_t data, int *cycles)
 {
     uint32_t initialC = getBit(m_Registers.P, kPRegister_C);
     uint32_t initialE = getBit(m_Registers.P, kPRegister_E);
@@ -3108,7 +3112,7 @@ void Cpu65816::handleXCE(uint32_t data)
     }
 }
 
-void Cpu65816::handleWAI(uint32_t data)
+void Cpu65816::handleWAI(uint32_t data, int *cycles)
 {
     m_WaitInterrupt = true;
 }
@@ -3122,7 +3126,8 @@ void Cpu65816::setNMI()
 void Cpu65816::handleImplied(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
     snprintf(strIntruction, kStrInstructionLen, "%s", opcodeDesc.m_Name);
 }
@@ -3130,9 +3135,10 @@ void Cpu65816::handleImplied(
 void Cpu65816::handleImmediate(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    *data = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+    *data = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 1;
     snprintf(strIntruction, kStrInstructionLen, "%s #$%02X", opcodeDesc.m_Name, *data);
 }
@@ -3140,18 +3146,19 @@ void Cpu65816::handleImmediate(
 void Cpu65816::handleImmediateA(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
     auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
 
     // 0: 16 bits, 1: 8 bits
     if (accumulatorSize) {
-        *data = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+        *data = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
         m_Registers.PC += 1;
 
         snprintf(strIntruction, kStrInstructionLen, "%s #$%02X", opcodeDesc.m_Name, *data);
     } else {
-        *data = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+        *data = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
         m_Registers.PC += 2;
 
         snprintf(strIntruction, kStrInstructionLen, "%s #$%04X", opcodeDesc.m_Name, *data);
@@ -3161,18 +3168,19 @@ void Cpu65816::handleImmediateA(
 void Cpu65816::handleImmediateIndex(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
     auto indexSize = getBit(m_Registers.P, kPRegister_X);
 
     // 0: 16 bits, 1: 8 bits
     if (indexSize) {
-        *data = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+        *data = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
         m_Registers.PC += 1;
 
         snprintf(strIntruction, kStrInstructionLen, "%s #$%02X", opcodeDesc.m_Name, *data);
     } else {
-        *data = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+        *data = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
         m_Registers.PC += 2;
 
         snprintf(strIntruction, kStrInstructionLen, "%s #$%04X", opcodeDesc.m_Name, *data);
@@ -3182,9 +3190,10 @@ void Cpu65816::handleImmediateIndex(
 void Cpu65816::handleAbsolute(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 2;
 
     *data = (m_Registers.DB << 16) | rawData;
@@ -3195,9 +3204,10 @@ void Cpu65816::handleAbsolute(
 void Cpu65816::handleAbsoluteJMP(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 2;
 
     *data = (m_Registers.PB << 16) | rawData;
@@ -3208,13 +3218,14 @@ void Cpu65816::handleAbsoluteJMP(
 void Cpu65816::handleAbsoluteJMPIndirectIndexedX(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 2;
 
     uint32_t address = (m_Registers.PB << 16) | rawData;
-    address = (m_Registers.PB << 16) | m_Membus->readU16(address + m_Registers.X);
+    address = (m_Registers.PB << 16) | m_Membus->readU16(address + m_Registers.X, cycles);
 
     *data = address;
 
@@ -3224,9 +3235,10 @@ void Cpu65816::handleAbsoluteJMPIndirectIndexedX(
 void Cpu65816::handleAbsoluteIndexedX(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 2;
 
     *data = (m_Registers.DB << 16) | rawData;
@@ -3238,9 +3250,10 @@ void Cpu65816::handleAbsoluteIndexedX(
 void Cpu65816::handleAbsoluteIndexedY(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 2;
 
     *data = (m_Registers.DB << 16) | rawData;
@@ -3252,9 +3265,10 @@ void Cpu65816::handleAbsoluteIndexedY(
 void Cpu65816::handleAbsoluteLong(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    *data = m_Membus->readU24((m_Registers.PB << 16) | m_Registers.PC);
+    *data = m_Membus->readU24((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 3;
 
     snprintf(strIntruction, kStrInstructionLen, "%s $%06X ", opcodeDesc.m_Name, *data);
@@ -3263,13 +3277,14 @@ void Cpu65816::handleAbsoluteLong(
 void Cpu65816::handleAbsoluteIndirect(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 2;
 
     uint32_t address = (m_Registers.DB << 16) | rawData;
-    address = (m_Registers.DB << 16) | m_Membus->readU16(address);
+    address = (m_Registers.DB << 16) | m_Membus->readU16(address, cycles);
 
     *data = address;
 
@@ -3279,13 +3294,14 @@ void Cpu65816::handleAbsoluteIndirect(
 void Cpu65816::handleAbsoluteIndirectLong(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 2;
 
     uint32_t address = (m_Registers.DB << 16) | rawData;
-    address = m_Membus->readU24(address);
+    address = m_Membus->readU24(address, cycles);
 
     *data = address;
 
@@ -3295,9 +3311,10 @@ void Cpu65816::handleAbsoluteIndirectLong(
 void Cpu65816::handleAbsoluteLongIndexedX(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint32_t rawData = m_Membus->readU24((m_Registers.PB << 16) | m_Registers.PC);
+    uint32_t rawData = m_Membus->readU24((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 3;
 
     *data = rawData + m_Registers.X;
@@ -3308,9 +3325,10 @@ void Cpu65816::handleAbsoluteLongIndexedX(
 void Cpu65816::handleDp(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint32_t rawData =  m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+    uint32_t rawData =  m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC++;
 
     *data = m_Registers.D + rawData;
@@ -3321,9 +3339,10 @@ void Cpu65816::handleDp(
 void Cpu65816::handleDpIndexedX(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint32_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+    uint32_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC++;
 
     *data = m_Registers.D + rawData + m_Registers.X;
@@ -3334,9 +3353,10 @@ void Cpu65816::handleDpIndexedX(
 void Cpu65816::handleDpIndexedY(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint32_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+    uint32_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC++;
 
     *data = m_Registers.D + rawData + m_Registers.Y;
@@ -3347,13 +3367,14 @@ void Cpu65816::handleDpIndexedY(
 void Cpu65816::handleDpIndirect(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC++;
 
     uint32_t address = ((m_Registers.DB << 16) | (m_Registers.D + rawData));
-    address = (m_Registers.DB << 16) | m_Membus->readU16(address);
+    address = (m_Registers.DB << 16) | m_Membus->readU16(address, cycles);
 
     *data = address;
 
@@ -3363,13 +3384,14 @@ void Cpu65816::handleDpIndirect(
 void Cpu65816::handleDpIndirectIndexedX(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC++;
 
     uint32_t address = ((m_Registers.DB << 16) | (m_Registers.D + rawData));
-    address = ((m_Registers.DB << 16) | m_Membus->readU16(address)) + m_Registers.X;
+    address = ((m_Registers.DB << 16) | m_Membus->readU16(address, cycles)) + m_Registers.X;
 
     *data = address;
 
@@ -3379,13 +3401,14 @@ void Cpu65816::handleDpIndirectIndexedX(
 void Cpu65816::handleDpIndirectIndexedY(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC++;
 
     uint32_t address = ((m_Registers.DB << 16) | (m_Registers.D + rawData));
-    address = ((m_Registers.DB << 16) | m_Membus->readU16(address)) + m_Registers.Y;
+    address = ((m_Registers.DB << 16) | m_Membus->readU16(address, cycles)) + m_Registers.Y;
 
     *data = address;
 
@@ -3395,13 +3418,14 @@ void Cpu65816::handleDpIndirectIndexedY(
 void Cpu65816::handleDpIndirectLong(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC++;
 
     uint32_t address = m_Registers.D + rawData;
-    address = m_Membus->readU24(address);
+    address = m_Membus->readU24(address, cycles);
 
     *data = address;
 
@@ -3411,13 +3435,14 @@ void Cpu65816::handleDpIndirectLong(
 void Cpu65816::handleDpIndirectLongIndexedY(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC++;
 
     uint32_t address = m_Registers.D + rawData;
-    address = m_Membus->readU24(address) + m_Registers.Y;
+    address = m_Membus->readU24(address, cycles) + m_Registers.Y;
 
     *data = address;
 
@@ -3427,9 +3452,10 @@ void Cpu65816::handleDpIndirectLongIndexedY(
 void Cpu65816::handlePcRelative(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 1;
 
     *data = m_Registers.PC + static_cast<int8_t>(rawData);
@@ -3441,9 +3467,10 @@ void Cpu65816::handlePcRelative(
 void Cpu65816::handlePcRelativeLong(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC);
+    uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 2;
 
     *data = m_Registers.PC + rawData;
@@ -3455,9 +3482,10 @@ void Cpu65816::handlePcRelativeLong(
 void Cpu65816::handleStackRelative(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 1;
 
     *data = m_Registers.S + static_cast<int8_t>(rawData);
@@ -3468,13 +3496,14 @@ void Cpu65816::handleStackRelative(
 void Cpu65816::handleStackRelativeIndirectIndexedY(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
-    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC);
+    uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 1;
 
     uint32_t address = m_Registers.S + static_cast<int8_t>(rawData);
-    address = m_Membus->readU16(address) + m_Registers.Y;
+    address = m_Membus->readU16(address, cycles) + m_Registers.Y;
 
     *data = address;
 
@@ -3484,10 +3513,11 @@ void Cpu65816::handleStackRelativeIndirectIndexedY(
 void Cpu65816::handleBlockMove(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
-    uint32_t* data)
+    uint32_t* data,
+    int *cycles)
 {
     // PC isn't changed automatically, skip the opcode
-    *data = m_Membus->readU16((m_Registers.PB << 16) | (m_Registers.PC + 1));
+    *data = m_Membus->readU16((m_Registers.PB << 16) | (m_Registers.PC + 1), cycles);
 
     snprintf(strIntruction, kStrInstructionLen, "%s $%02X, $%02X", opcodeDesc.m_Name, *data >> 8, *data & 0xFF);
 }

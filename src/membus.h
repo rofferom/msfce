@@ -19,12 +19,12 @@ public:
 
     int plugComponent(const std::shared_ptr<MemComponent>& component);
 
-    uint8_t readU8(uint32_t addr);
-    uint16_t readU16(uint32_t addr);
-    uint32_t readU24(uint32_t addr);
+    uint8_t readU8(uint32_t addr, int *cycles = nullptr);
+    uint16_t readU16(uint32_t addr, int *cycles = nullptr);
+    uint32_t readU24(uint32_t addr, int *cycles = nullptr);
 
-    void writeU8(uint32_t addr, uint8_t value);
-    void writeU16(uint32_t addr, uint16_t value);
+    void writeU8(uint32_t addr, uint8_t value, int *cycles = nullptr);
+    void writeU16(uint32_t addr, uint16_t value, int *cycles = nullptr);
 
 private:
     enum class BankType {
@@ -42,6 +42,8 @@ private:
 
         MemComponentType type;
         uint32_t access;
+
+        int cycles;
     };
 
     struct MemoryMirror {
@@ -80,10 +82,14 @@ private:
         MemComponentType *type,
         uint8_t *bankId,
         uint16_t *offset,
+        int *cycles,
         uint32_t access);
+
+    int getRomTiming(uint8_t bank);
 
     uint8_t internalReadU8(uint32_t addr);
     void internalWriteU8(uint32_t addr, uint8_t value);
+
 
 private:
     AddressingType m_AddrType;
