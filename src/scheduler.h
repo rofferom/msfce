@@ -10,8 +10,10 @@ class Cpu65816;
 class Dma;
 class Frontend;
 class Ppu;
+class SchedulerTask;
 
-class Scheduler : public MemComponent {
+class Scheduler : public MemComponent,
+                  public std::enable_shared_from_this<Scheduler> {
 public:
     Scheduler(
         const std::shared_ptr<Frontend>& frontend,
@@ -24,6 +26,8 @@ public:
     void writeU8(uint32_t addr, uint8_t value) override;
 
     int run();
+
+    void resumeTask(SchedulerTask* task, int cycles);
 
 private:
     void cpuLoop();
@@ -47,5 +51,8 @@ private:
 
     // Joypad interrupt
     bool m_JoypadAutoread = false;
+
+    // Scheduling
+    uint64_t m_MasterClock = 0;
 
 };

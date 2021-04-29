@@ -38,7 +38,7 @@ constexpr uint32_t clearBit(uint32_t value, uint8_t bit) {
 } // anonymous namespace
 
 Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
-    : m_Membus(membus)
+    : SchedulerTask(), m_Membus(membus)
 {
     // Tweak P register initial value
     m_Registers.P = setBit(m_Registers.P, kPRegister_E);
@@ -1603,7 +1603,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
     }
 }
 
-int  Cpu65816::executeSingle()
+int  Cpu65816::run()
 {
     int cycles = 0;
 

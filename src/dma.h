@@ -5,18 +5,22 @@
 #include <memory>
 
 #include "memcomponent.h"
+#include "schedulertask.h"
 
 class Membus;
+class Scheduler;
 
-class Dma : public MemComponent {
+class Dma : public MemComponent, public SchedulerTask {
 public:
-    Dma(const std::shared_ptr<Membus> membus);
+    Dma(const std::shared_ptr<Membus>& membus);
     ~Dma() = default;
+
+    void setScheduler(const std::shared_ptr<Scheduler>& scheduler);
 
     uint8_t readU8(uint32_t addr) override;
     void writeU8(uint32_t addr, uint8_t value) override;
 
-    int run();
+    int run() override;
 
 private:
     static constexpr int kChannelCount = 8;
@@ -74,6 +78,8 @@ private:
     void incrementABusAddress(const Channel* channel, uint32_t* aBusAddress);
 
 private:
+    std::shared_ptr<Scheduler> m_Scheduler;
+
     Channel m_Channels[kChannelCount];
     std::shared_ptr<Membus> m_Membus;
 

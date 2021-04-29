@@ -39,6 +39,9 @@ add_library(msfe_lib
     scheduler.h
     scheduler.cpp
 
+    schedulertask.h
+    schedulertask.cpp
+
     snes.h
     snes.cpp
 )

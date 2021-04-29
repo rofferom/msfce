@@ -5,15 +5,16 @@
 #include <string>
 
 #include "utils.h"
+#include "schedulertask.h"
 
 class Membus;
 
-class Cpu65816 {
+class Cpu65816 : public SchedulerTask {
 public:
     Cpu65816(const std::shared_ptr<Membus> membus);
     ~Cpu65816() = default;
 
-    int executeSingle();
+    int run() override;
 
     void setNMI();
 

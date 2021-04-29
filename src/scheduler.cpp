@@ -7,6 +7,7 @@
 #include "dma.h"
 #include "log.h"
 #include "ppu.h"
+#include "schedulertask.h"
 #include "scheduler.h"
 
 #define TAG "scheduler"
@@ -76,6 +77,9 @@ void Scheduler::writeU8(uint32_t addr, uint8_t value)
 
 int Scheduler::run()
 {
+    // Register components
+    m_Dma->setScheduler(shared_from_this());
+
     // Start CPU
     m_RunCpu = true;
     m_CpuThread = std::thread(&Scheduler::cpuLoop, this);
@@ -130,13 +134,39 @@ int Scheduler::run()
     return 0;
 }
 
+void Scheduler::resumeTask(SchedulerTask* task, int cycles)
+{
+    task->setNextRunCycle(m_MasterClock + cycles);
+}
+
 void Scheduler::cpuLoop()
 {
     while (m_RunCpu) {
-        int dmaCycles = m_Dma->run();
+        // DMA has priority over CPU
+        if (m_Dma->getState() == SchedulerTask::State::running) {
+            if (m_Dma->getNextRunCycle() == m_MasterClock) {
+                int dmaCycles = m_Dma->run();
 
-        if (dmaCycles == 0) {
-            m_Cpu->executeSingle();
+                if (dmaCycles > 0) {
+                    m_Dma->setNextRunCycle(m_MasterClock + dmaCycles);
+                } else {
+                    m_Dma->setIdle();
+
+                    // Resume CPU at a multiple of 8 cycles. 0 is forbidden
+                    auto cpuSync = m_MasterClock % 8;
+                    if (cpuSync == 0) {
+                        cpuSync = 8;
+                    }
+
+                    m_Cpu->setNextRunCycle(m_MasterClock + cpuSync);
+                }
+            }
+        } else if (m_Cpu->getNextRunCycle() == m_MasterClock) {
+            int cpuCycles = m_Cpu->run();
+
+            m_Cpu->setNextRunCycle(m_MasterClock + cpuCycles);
         }
+
+        m_MasterClock++;
     }
 }

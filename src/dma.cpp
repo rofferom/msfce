@@ -2,15 +2,22 @@
 #include "log.h"
 #include "membus.h"
 #include "registers.h"
+#include "scheduler.h"
 #include "timings.h"
 #include "dma.h"
 
 #define TAG "dma"
 
-Dma::Dma(const std::shared_ptr<Membus> membus)
+Dma::Dma(const std::shared_ptr<Membus>& membus)
     : MemComponent(MemComponentType::dma),
+      SchedulerTask(),
       m_Membus(membus)
 {
+}
+
+void Dma::setScheduler(const std::shared_ptr<Scheduler>& scheduler)
+{
+    m_Scheduler = scheduler;
 }
 
 uint8_t Dma::readU8(uint32_t addr)
@@ -30,6 +37,7 @@ void Dma::writeU8(uint32_t addr, uint8_t value)
     if (addr == kRegisterMDMAEN) {
         LOGD(TAG, "Start DMA: %02X", value);
         m_ActiveDmaChannels = value;
+        m_Scheduler->resumeTask(this, 1);
         return;
     } else if (addr == kRegisterHDMAEN) {
         // Start HDMA
