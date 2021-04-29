@@ -133,7 +133,10 @@ int Scheduler::run()
 void Scheduler::cpuLoop()
 {
     while (m_RunCpu) {
-        m_Dma->run();
-        m_Cpu->executeSingle();
+        int dmaCycles = m_Dma->run();
+
+        if (dmaCycles == 0) {
+            m_Cpu->executeSingle();
+        }
     }
 }

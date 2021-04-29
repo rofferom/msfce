@@ -16,3 +16,7 @@ constexpr int kTimingIvAccess = 8;
 // I/O ports
 constexpr int kTimingIoFastAccess = 6;
 constexpr int kTimingIoSlowAccess = 12;
+
+// DMA
+constexpr int kTimingDmaStart = 8;
+constexpr int kTimingDmaAccess = 8;

@@ -16,7 +16,7 @@ public:
     uint8_t readU8(uint32_t addr) override;
     void writeU8(uint32_t addr, uint8_t value) override;
 
-    void run();
+    int run();
 
 private:
     static constexpr int kChannelCount = 8;
@@ -54,8 +54,23 @@ private:
         uint8_t m_HDMALineCounter;
     };
 
+    static constexpr int kUnknownChannelId = -1;
+
+    struct RunningCtx {
+        int id = kUnknownChannelId;
+        Channel* m_Registers = nullptr;
+
+        uint32_t m_bBaseBusAddress;
+        uint32_t m_SrcAddress;
+        uint32_t m_DestAddress;
+        uint32_t* m_aBusAddress;
+        uint32_t* m_bBusAddress;
+    };
+
 private:
-    void runSingleDmaChannel(Channel* channel);
+    void channelStart(int id, Channel* channel, int *cycles);
+    void channelContinue(int *cycles);
+
     void incrementABusAddress(const Channel* channel, uint32_t* aBusAddress);
 
 private:
@@ -63,4 +78,6 @@ private:
     std::shared_ptr<Membus> m_Membus;
 
     uint8_t m_ActiveDmaChannels = 0;
+
+    RunningCtx m_RunningCtx;
 };
