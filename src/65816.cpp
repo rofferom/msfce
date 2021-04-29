@@ -4,6 +4,7 @@
 #include "log.h"
 #include "membus.h"
 #include "registers.h"
+#include "timings.h"
 #include "65816.h"
 
 #define TAG "65816"
@@ -52,1257 +53,1507 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             "ADC",
             0x69,
             Cpu65816::AddressingMode::ImmediateA,
+            OpcodeFlag_Default,
             &Cpu65816::handleADCImmediate,
         }, {
             "ADC",
             0x65,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleADC,
         }, {
             "ADC",
             0x72,
             Cpu65816::AddressingMode::DpIndirect,
+            OpcodeFlag_Default,
             &Cpu65816::handleADC,
         }, {
             "ADC",
             0x67,
             Cpu65816::AddressingMode::DpIndirectLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleADC,
         }, {
             "ADC",
             0x61,
             Cpu65816::AddressingMode::DpIndirectIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleADC,
         }, {
             "ADC",
             0x71,
             Cpu65816::AddressingMode::DpIndexedIndirectY,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleADC,
         }, {
             "ADC",
             0x77,
             Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleADC,
         }, {
             "ADC",
             0x75,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleADC,
         }, {
             "ADC",
             0x6D,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleADC,
         }, {
             "ADC",
             0x6F,
             Cpu65816::AddressingMode::AbsoluteLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleADC,
         }, {
             "ADC",
             0x7F,
             Cpu65816::AddressingMode::AbsoluteLongIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleADC,
         }, {
             "ADC",
             0x7D,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleADC,
         }, {
             "ADC",
             0x79,
             Cpu65816::AddressingMode::AbsoluteIndexedY,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleADC,
         }, {
             "ADC",
             0x63,
             Cpu65816::AddressingMode::StackRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleADC,
         }, {
             "ADC",
             0x73,
             Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleADC,
         }, {
             "AND",
             0x29,
             Cpu65816::AddressingMode::ImmediateA,
+            OpcodeFlag_Default,
             &Cpu65816::handleANDImmediate,
         }, {
             "AND",
             0x25,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleAND,
         }, {
             "AND",
             0x32,
             Cpu65816::AddressingMode::DpIndirect,
+            OpcodeFlag_Default,
             &Cpu65816::handleAND,
         }, {
             "AND",
             0x27,
             Cpu65816::AddressingMode::DpIndirectLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleAND,
         }, {
             "AND",
             0x35,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleAND,
         }, {
             "AND",
             0x21,
             Cpu65816::AddressingMode::DpIndirectIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleAND,
         }, {
             "AND",
             0x31,
             Cpu65816::AddressingMode::DpIndexedIndirectY,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleAND,
         }, {
             "AND",
             0x37,
             Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleAND,
         }, {
             "AND",
             0x2D,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleAND,
         }, {
             "AND",
             0x2F,
             Cpu65816::AddressingMode::AbsoluteLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleAND,
         }, {
             "AND",
             0x3D,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleAND,
         }, {
             "AND",
             0x39,
             Cpu65816::AddressingMode::AbsoluteIndexedY,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleAND,
         }, {
             "AND",
             0x3F,
             Cpu65816::AddressingMode::AbsoluteLongIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleAND,
         }, {
             "AND",
             0x23,
             Cpu65816::AddressingMode::StackRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleAND,
         }, {
             "AND",
             0x33,
             Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleAND,
         }, {
             "ASL",
             0x0A,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleASL_A,
         }, {
             "ASL",
             0x06,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleASL,
         }, {
             "ASL",
             0x16,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleASL,
         }, {
             "ASL",
             0x0E,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleASL,
         }, {
             "ASL",
             0x1E,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleASL,
         }, {
             "BEQ",
             0xF0,
             Cpu65816::AddressingMode::PcRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleBEQ,
         }, {
             "BCC",
             0x90,
             Cpu65816::AddressingMode::PcRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleBCC,
         }, {
             "BCS",
             0xB0,
             Cpu65816::AddressingMode::PcRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleBCS,
         }, {
             "BIT",
             0x89,
             Cpu65816::AddressingMode::ImmediateA,
+            OpcodeFlag_Default,
             &Cpu65816::handleBITImmediate,
         }, {
             "BIT",
             0x24,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleBIT,
         }, {
             "BIT",
             0x34,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleBIT,
         }, {
             "BIT",
             0x2C,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleBIT,
         }, {
             "BIT",
             0x3C,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleBIT,
         }, {
             "BMI",
             0x30,
             Cpu65816::AddressingMode::PcRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleBMI,
         }, {
             "BNE",
             0xD0,
             Cpu65816::AddressingMode::PcRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleBNE,
         }, {
             "BPL",
             0x10,
             Cpu65816::AddressingMode::PcRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleBPL,
         }, {
             "BRA",
             0x80,
             Cpu65816::AddressingMode::PcRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleBRA,
         }, {
             "BRL",
             0x82,
             Cpu65816::AddressingMode::PcRelativeLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleBRL,
         }, {
             "BVC",
             0x50,
             Cpu65816::AddressingMode::PcRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleBVC,
         }, {
             "BVS",
             0x70,
             Cpu65816::AddressingMode::PcRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleBVS,
         }, {
             "CLC",
             0x18,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleCLC,
         }, {
             "CLD",
             0xD8,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleCLD,
         }, {
             "CLI",
             0x58,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleCLI,
         }, {
             "CLV",
             0xB8,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleCLV,
         }, {
             "CMP",
             0xC9,
             Cpu65816::AddressingMode::ImmediateA,
+            OpcodeFlag_Default,
             &Cpu65816::handleCMPImmediate,
         }, {
             "CMP",
             0xC5,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleCMP,
         }, {
             "CMP",
             0xD2,
             Cpu65816::AddressingMode::DpIndirect,
+            OpcodeFlag_Default,
             &Cpu65816::handleCMP,
         }, {
             "CMP",
             0xC7,
             Cpu65816::AddressingMode::DpIndirectLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleCMP,
         }, {
             "CMP",
             0xC1,
             Cpu65816::AddressingMode::DpIndirectIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleCMP,
         }, {
             "CMP",
             0xD1,
             Cpu65816::AddressingMode::DpIndexedIndirectY,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleCMP,
         }, {
             "CMP",
             0xD5,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleCMP,
         }, {
             "CMP",
             0xD7,
             Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleCMP,
         }, {
             "CMP",
             0xCD,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleCMP,
         }, {
             "CMP",
             0xCF,
             Cpu65816::AddressingMode::AbsoluteLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleCMP,
         }, {
             "CMP",
             0xDD,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleCMP,
         }, {
             "CMP",
             0xD9,
             Cpu65816::AddressingMode::AbsoluteIndexedY,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleCMP,
         }, {
             "CMP",
             0xDF,
             Cpu65816::AddressingMode::AbsoluteLongIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleCMP,
         }, {
             "CMP",
             0xC3,
             Cpu65816::AddressingMode::StackRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleCMP,
         }, {
             "CMP",
             0xD3,
             Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleCMP,
         }, {
             "CPX",
             0xE0,
             Cpu65816::AddressingMode::ImmediateIndex,
+            OpcodeFlag_Default,
             &Cpu65816::handleCPXImmediate,
         }, {
             "CPX",
             0xE4,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleCPX,
         }, {
             "CPX",
             0xEC,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleCPX,
         }, {
             "CPY",
             0xC0,
             Cpu65816::AddressingMode::ImmediateIndex,
+            OpcodeFlag_Default,
             &Cpu65816::handleCPYImmediate,
         }, {
             "CPY",
             0xC4,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleCPY,
         }, {
             "CPY",
             0xCC,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleCPY,
         }, {
             "DEC",
             0x3A,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleDEC_A,
         }, {
             "DEC",
             0xC6,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleDEC,
         }, {
             "DEC",
             0xD6,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleDEC,
         }, {
             "DEC",
             0xCE,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleDEC,
         }, {
             "DEC",
             0xDE,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleDEC,
         }, {
             "DEX",
             0xCA,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleDEX,
         }, {
             "DEY",
             0x88,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleDEY,
         }, {
             "EOR",
             0x45,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
             0x52,
             Cpu65816::AddressingMode::DpIndirect,
+            OpcodeFlag_Default,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
             0x41,
             Cpu65816::AddressingMode::DpIndirectIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
             0x51,
             Cpu65816::AddressingMode::DpIndexedIndirectY,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
             0x47,
             Cpu65816::AddressingMode::DpIndirectLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
             0x57,
             Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
             0x55,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
             0x4D,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
             0x4F,
             Cpu65816::AddressingMode::AbsoluteLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
             0x5F,
             Cpu65816::AddressingMode::AbsoluteLongIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
             0x5D,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
             0x59,
             Cpu65816::AddressingMode::AbsoluteIndexedY,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
             0x43,
             Cpu65816::AddressingMode::StackRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
             0x53,
             Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
             0x49,
             Cpu65816::AddressingMode::ImmediateA,
+            OpcodeFlag_Default,
             &Cpu65816::handleEORImmediate,
         }, {
             "INC",
             0x1A,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleINC_A,
         }, {
             "INC",
             0xE6,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleINC,
         }, {
             "INC",
             0xF6,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleINC,
         }, {
             "INC",
             0xEE,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleINC,
         }, {
             "INC",
             0xFE,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleINC,
         }, {
             "INX",
             0xE8,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleINX,
         }, {
             "INY",
             0xC8,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleINY,
         }, {
             "JMP",
             0x5C,
             Cpu65816::AddressingMode::AbsoluteLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleJMP,
         }, {
             "JMP",
             0x6C,
             Cpu65816::AddressingMode::AbsoluteIndirect,
+            OpcodeFlag_Default,
             &Cpu65816::handleJMP,
         }, {
             "JMP",
             0x7C,
             Cpu65816::AddressingMode::AbsoluteJMPIndirectIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleJMP,
         }, {
             "JMP",
             0xDC,
             Cpu65816::AddressingMode::AbsoluteIndirectLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleJMP,
         }, {
             "JMP",
             0x4C,
             Cpu65816::AddressingMode::AbsoluteJMP,
+            OpcodeFlag_Default,
             &Cpu65816::handleJMP,
         }, {
             "JSL",
             0x22,
             Cpu65816::AddressingMode::AbsoluteLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleJSL,
         }, {
             "JSR",
             0x20,
             Cpu65816::AddressingMode::AbsoluteJMP,
+            OpcodeFlag_Default,
             &Cpu65816::handleJSR,
         }, {
             "JSR",
             0xFC,
             Cpu65816::AddressingMode::AbsoluteJMPIndirectIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleJSR,
         }, {
             "LDA",
             0xA9,
             Cpu65816::AddressingMode::ImmediateA,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDAImmediate,
         }, {
             "LDA",
             0xAD,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDA,
         }, {
             "LDA",
             0xAF,
             Cpu65816::AddressingMode::AbsoluteLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDA,
         }, {
             "LDA",
             0xBD,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleLDA,
         }, {
             "LDA",
             0xB9,
             Cpu65816::AddressingMode::AbsoluteIndexedY,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleLDA,
         }, {
             "LDA",
             0xA5,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDA,
         }, {
             "LDA",
             0xB5,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDA,
         }, {
             "LDA",
             0xB2,
             Cpu65816::AddressingMode::DpIndirect,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDA,
         }, {
             "LDA",
             0xA7,
             Cpu65816::AddressingMode::DpIndirectLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDA,
         }, {
             "LDA",
             0xB7,
             Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDA,
         }, {
             "LDA",
             0xA1,
             Cpu65816::AddressingMode::DpIndirectIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDA,
         }, {
             "LDA",
             0xB1,
             Cpu65816::AddressingMode::DpIndexedIndirectY,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleLDA,
         }, {
             "LDA",
             0xBF,
             Cpu65816::AddressingMode::AbsoluteLongIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDA,
         }, {
             "LDA",
             0xA3,
             Cpu65816::AddressingMode::StackRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDA,
         }, {
             "LDA",
             0xB3,
             Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDA,
         }, {
             "LDX",
             0xA2,
             Cpu65816::AddressingMode::ImmediateIndex,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDXImmediate,
         }, {
             "LDX",
             0xAE,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDX,
         }, {
             "LDX",
             0xBE,
             Cpu65816::AddressingMode::AbsoluteIndexedY,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleLDX,
         }, {
             "LDX",
             0xA6,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDX,
         }, {
             "LDX",
             0xB6,
             Cpu65816::AddressingMode::DpIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDX,
         }, {
             "LDY",
             0xA0,
             Cpu65816::AddressingMode::ImmediateIndex,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDYImmediate,
         }, {
             "LDY",
             0xA4,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDY,
         }, {
             "LDY",
             0xB4,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDY,
         }, {
             "LDY",
             0xAC,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleLDY,
         }, {
             "LDY",
             0xBC,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleLDY,
         }, {
             "LSR",
             0x4A,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleLSR_A,
         }, {
             "LSR",
             0x46,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleLSR,
         }, {
             "LSR",
             0x4E,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleLSR,
         }, {
             "LSR",
             0x56,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleLSR,
         }, {
             "LSR",
             0x5E,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleLSR,
         }, {
             "MVN",
             0x54,
             Cpu65816::AddressingMode::BlockMove,
+            OpcodeFlag_Default & ~OpcodeFlag_AutoIncrementPC,
             &Cpu65816::handleMVN,
-            false,
         }, {
             "NOP",
             0xEA,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleNOP,
         }, {
             "ORA",
             0x09,
             Cpu65816::AddressingMode::ImmediateA,
+            OpcodeFlag_Default,
             &Cpu65816::handleORAImmediate,
         }, {
             "ORA",
             0x05,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleORA,
         }, {
             "ORA",
             0x15,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleORA,
         }, {
             "ORA",
             0x12,
             Cpu65816::AddressingMode::DpIndirect,
+            OpcodeFlag_Default,
             &Cpu65816::handleORA,
         }, {
             "ORA",
             0x01,
             Cpu65816::AddressingMode::DpIndirectIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleORA,
         }, {
             "ORA",
             0x11,
             Cpu65816::AddressingMode::DpIndexedIndirectY,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleORA,
         }, {
             "ORA",
             0x17,
             Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleORA,
         }, {
             "ORA",
             0x0D,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleORA,
         }, {
             "ORA",
             0x0F,
             Cpu65816::AddressingMode::AbsoluteLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleORA,
         }, {
             "ORA",
             0x1F,
             Cpu65816::AddressingMode::AbsoluteLongIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleORA,
         }, {
             "ORA",
             0x19,
             Cpu65816::AddressingMode::AbsoluteIndexedY,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleORA,
         }, {
             "ORA",
             0x07,
             Cpu65816::AddressingMode::DpIndirectLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleORA,
         }, {
             "ORA",
             0x1D,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleORA,
         }, {
             "ORA",
             0x03,
             Cpu65816::AddressingMode::StackRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleORA,
         }, {
             "ORA",
             0x13,
             Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleORA,
         }, {
             "PEA",
             0xF4,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handlePEA,
         }, {
             "PEI",
             0xD4,
             Cpu65816::AddressingMode::DpIndirect,
+            OpcodeFlag_Default,
             &Cpu65816::handlePEA,
         }, {
             "PER",
             0x62,
             Cpu65816::AddressingMode::PcRelativeLong,
+            OpcodeFlag_Default,
             &Cpu65816::handlePER,
         }, {
             "PHA",
             0x48,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handlePHA,
         }, {
             "PHB",
             0x8B,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handlePHB,
         }, {
             "PHD",
             0x0B,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handlePHD,
         }, {
             "PHK",
             0x4B,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handlePHK,
         }, {
             "PHP",
             0x08,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handlePHP,
         }, {
             "PHX",
             0xDA,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handlePHX,
         }, {
             "PHY",
             0x5A,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handlePHY,
         }, {
             "PLA",
             0x68,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handlePLA,
         }, {
             "PLB",
             0xAB,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handlePLB,
         }, {
             "PLD",
             0x2B,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handlePLD,
         }, {
             "PLP",
             0x28,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handlePLP,
         }, {
             "PLX",
             0xFA,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handlePLX,
         }, {
             "PLY",
             0x7A,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handlePLY,
         }, {
             "REP",
             0xC2,
             Cpu65816::AddressingMode::Immediate,
+            OpcodeFlag_Default,
             &Cpu65816::handleREP,
         }, {
             "ROL",
             0x2A,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleROL_A,
         }, {
             "ROL",
             0x26,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleROL,
         }, {
             "ROL",
             0x36,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleROL,
         }, {
             "ROL",
             0x2E,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleROL,
         }, {
             "ROL",
             0x3E,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleROL,
         }, {
             "ROR",
             0x6A,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleROR_A,
         }, {
             "ROR",
             0x6E,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleROR,
         }, {
             "ROR",
             0x7E,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleROR,
         }, {
             "ROR",
             0x66,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleROR,
         }, {
             "ROR",
             0x76,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleROR,
         }, {
             "RTI",
             0x40,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleRTI,
         }, {
             "RTL",
             0x6B,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleRTL,
         }, {
             "RTS",
             0x60,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleRTS,
         }, {
             "SBC",
             0xE9,
             Cpu65816::AddressingMode::ImmediateA,
+            OpcodeFlag_Default,
             &Cpu65816::handleSBCImmediate,
         }, {
             "SBC",
             0xE5,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleSBC,
         }, {
             "SBC",
             0xF2,
             Cpu65816::AddressingMode::DpIndirect,
+            OpcodeFlag_Default,
             &Cpu65816::handleSBC,
         }, {
             "SBC",
             0xE7,
             Cpu65816::AddressingMode::DpIndirectLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleSBC,
         }, {
             "SBC",
             0xF7,
             Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleSBC,
         }, {
             "SBC",
             0xE1,
             Cpu65816::AddressingMode::DpIndirectIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleSBC,
         }, {
             "SBC",
             0xF1,
             Cpu65816::AddressingMode::DpIndexedIndirectY,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleSBC,
         }, {
             "SBC",
             0xF5,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleSBC,
         }, {
             "SBC",
             0xED,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleSBC,
         }, {
             "SBC",
             0xFD,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleSBC,
         }, {
             "SBC",
             0xF9,
             Cpu65816::AddressingMode::AbsoluteIndexedY,
+            OpcodeFlag_Default | OpcodeFlag_CheckIndexCross,
             &Cpu65816::handleSBC,
         }, {
             "SBC",
             0xEF,
             Cpu65816::AddressingMode::AbsoluteLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleSBC,
         }, {
             "SBC",
             0xFF,
             Cpu65816::AddressingMode::AbsoluteLongIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleSBC,
         }, {
             "SBC",
             0xE3,
             Cpu65816::AddressingMode::StackRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleSBC,
         }, {
             "SBC",
             0xF3,
             Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleSBC,
         }, {
             "SEC",
             0x38,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleSEC,
         }, {
             "SED",
             0xF8,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleSED,
         }, {
             "SEI",
             0x78,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleSEI,
         }, {
             "SEP",
             0xE2,
             Cpu65816::AddressingMode::Immediate,
+            OpcodeFlag_Default,
             &Cpu65816::handleSEP,
         }, {
             "STA",
             0x8D,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTA,
         }, {
             "STA",
             0x85,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTA,
         }, {
             "STA",
             0x95,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTA,
         }, {
             "STA",
             0x81,
             Cpu65816::AddressingMode::DpIndirectIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTA,
         }, {
             "STA",
             0x91,
             Cpu65816::AddressingMode::DpIndexedIndirectY,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTA,
         }, {
             "STA",
             0x9D,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTA,
         }, {
             "STA",
             0x99,
             Cpu65816::AddressingMode::AbsoluteIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTA,
         }, {
             "STA",
             0x8F,
             Cpu65816::AddressingMode::AbsoluteLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTA,
         }, {
             "STA",
             0x9F,
             Cpu65816::AddressingMode::AbsoluteLongIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTA,
         }, {
             "STA",
             0x92,
             Cpu65816::AddressingMode::DpIndirect,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTA,
         }, {
             "STA",
             0x87,
             Cpu65816::AddressingMode::DpIndirectLong,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTA,
         }, {
             "STA",
             0x97,
             Cpu65816::AddressingMode::DpIndirectLongIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTA,
         }, {
             "STA",
             0x83,
             Cpu65816::AddressingMode::StackRelative,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTA,
         }, {
             "STA",
             0x93,
             Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTA,
         }, {
             "STX",
             0x86,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTX,
         }, {
             "STX",
             0x96,
             Cpu65816::AddressingMode::DpIndexedY,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTX,
         }, {
             "STX",
             0x8E,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTX,
         }, {
             "STY",
             0x84,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTY,
         }, {
             "STY",
             0x94,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTY,
         }, {
             "STY",
             0x8C,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTY,
         }, {
             "STZ",
             0x74,
             Cpu65816::AddressingMode::DpIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTZ,
         }, {
             "STZ",
             0x64,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTZ,
         }, {
             "STZ",
             0x9C,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTZ,
         }, {
             "STZ",
             0x9E,
             Cpu65816::AddressingMode::AbsoluteIndexedX,
+            OpcodeFlag_Default,
             &Cpu65816::handleSTZ,
         }, {
             "TAX",
             0xAA,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleTAX,
         }, {
             "TAY",
             0xA8,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleTAY,
         }, {
             "TCD",
             0x5B,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleTCD,
         }, {
             "TCS",
             0x1B,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleTCS,
         }, {
             "TDC",
             0x7B,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleTDC,
         }, {
             "TRB",
             0x14,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleTRB,
         }, {
             "TRB",
             0x1C,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleTRB,
         }, {
             "TSB",
             0x04,
             Cpu65816::AddressingMode::Dp,
+            OpcodeFlag_Default,
             &Cpu65816::handleTSB,
         }, {
             "TSB",
             0x0C,
             Cpu65816::AddressingMode::Absolute,
+            OpcodeFlag_Default,
             &Cpu65816::handleTSB,
         }, {
             "TSC",
             0x3B,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleTSC,
         }, {
             "TSX",
             0xBA,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleTSX,
         }, {
             "TXA",
             0x8A,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleTXA,
         }, {
             "TXS",
             0x9A,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleTXS,
         }, {
             "TXY",
             0x9B,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleTXY,
         }, {
             "TYA",
             0x98,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleTYA,
         }, {
             "TYX",
             0xBB,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleTYX,
         }, {
             "XBA",
             0xEB,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleXBA,
         }, {
             "XCE",
             0xFB,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleXCE,
         }, {
             "WAI",
             0xCB,
             Cpu65816::AddressingMode::Implied,
+            OpcodeFlag_Default,
             &Cpu65816::handleWAI,
         },
     };
@@ -1383,7 +1634,7 @@ int  Cpu65816::executeSingle()
         assert(false);
     }
 
-    if (opcodeDesc.m_AutoStepPC) {
+    if (opcodeDesc.m_Flags & OpcodeFlag_AutoIncrementPC) {
         m_Registers.PC++;
     }
 
@@ -1695,12 +1946,16 @@ void Cpu65816::handleASL(uint32_t data, int *cycles)
     } else {
         m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
     }
+
+    *cycles += kTimingCpuOneCycle;
 }
 
 void Cpu65816::handleBCC(uint32_t data, int *cycles)
 {
     if (!getBit(m_Registers.P, kPRegister_C)) {
         m_Registers.PC = data;
+
+        *cycles += kTimingCpuOneCycle;
     }
 }
 
@@ -1708,6 +1963,8 @@ void Cpu65816::handleBCS(uint32_t data, int *cycles)
 {
     if (getBit(m_Registers.P, kPRegister_C)) {
         m_Registers.PC = data;
+
+        *cycles += kTimingCpuOneCycle;
     }
 }
 
@@ -1715,6 +1972,8 @@ void Cpu65816::handleBEQ(uint32_t data, int *cycles)
 {
     if (getBit(m_Registers.P, kPRegister_Z)) {
         m_Registers.PC = data;
+
+        *cycles += kTimingCpuOneCycle;
     }
 }
 
@@ -1781,6 +2040,8 @@ void Cpu65816::handleBMI(uint32_t data, int *cycles)
 {
     if (getBit(m_Registers.P, kPRegister_N)) {
         m_Registers.PC = data;
+
+        *cycles += kTimingCpuOneCycle;
     }
 }
 
@@ -1788,6 +2049,8 @@ void Cpu65816::handleBNE(uint32_t data, int *cycles)
 {
     if (!getBit(m_Registers.P, kPRegister_Z)) {
         m_Registers.PC = data;
+
+        *cycles += kTimingCpuOneCycle;
     }
 }
 
@@ -1795,6 +2058,8 @@ void Cpu65816::handleBPL(uint32_t data, int *cycles)
 {
     if (!getBit(m_Registers.P, kPRegister_N)) {
         m_Registers.PC = data;
+
+        *cycles += kTimingCpuOneCycle;
     }
 }
 
@@ -1813,6 +2078,8 @@ void Cpu65816::handleBVC(uint32_t data, int *cycles)
 {
     if (!getBit(m_Registers.P, kPRegister_V)) {
         m_Registers.PC = data;
+
+        *cycles += kTimingCpuOneCycle;
     }
 }
 
@@ -1820,6 +2087,8 @@ void Cpu65816::handleBVS(uint32_t data, int *cycles)
 {
     if (getBit(m_Registers.P, kPRegister_V)) {
         m_Registers.PC = data;
+
+        *cycles += kTimingCpuOneCycle;
     }
 }
 
@@ -1990,6 +2259,8 @@ void Cpu65816::handleDEC(uint32_t data, int *cycles)
         negativeMask = 0x8000;
         setNZFlags(value, negativeMask);
     }
+
+    *cycles += kTimingCpuOneCycle;
 }
 
 void Cpu65816::handleDEX(uint32_t data, int *cycles)
@@ -2085,6 +2356,8 @@ void Cpu65816::handleINC(uint32_t data, int *cycles)
         negativeMask = 0x8000;
         setNZFlags(value, negativeMask);
     }
+
+    *cycles += kTimingCpuOneCycle;
 }
 
 void Cpu65816::handleINX(uint32_t data, int *cycles)
@@ -2288,6 +2561,8 @@ void Cpu65816::handleLSR(uint32_t data, int *cycles)
     } else {
         m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
     }
+
+    *cycles += kTimingCpuOneCycle;
 }
 
 void Cpu65816::handleMVN(uint32_t data, int *cycles)
@@ -2569,6 +2844,8 @@ void Cpu65816::handleROL(uint32_t data, int *cycles)
     } else {
         m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
     }
+
+    *cycles += kTimingCpuOneCycle;
 }
 
 void Cpu65816::handleROR_A(uint32_t data, int *cycles)
@@ -2633,6 +2910,8 @@ void Cpu65816::handleROR(uint32_t data, int *cycles)
     } else {
         m_Registers.P = clearBit(m_Registers.P, kPRegister_C);
     }
+
+    *cycles += kTimingCpuOneCycle;
 }
 
 void Cpu65816::handleRTI(uint32_t data, int *cycles)
@@ -2659,6 +2938,8 @@ void Cpu65816::handleRTI(uint32_t data, int *cycles)
     }
 
     m_State = State::running;
+
+    *cycles += kTimingCpuOneCycle * 2;
 }
 
 void Cpu65816::handleRTL(uint32_t data, int *cycles)
@@ -2671,12 +2952,16 @@ void Cpu65816::handleRTL(uint32_t data, int *cycles)
 
     m_Registers.PC = PC;
     m_Registers.PB = PB;
+
+    *cycles += kTimingCpuOneCycle * 2;
 }
 
 void Cpu65816::handleRTS(uint32_t data, int *cycles)
 {
     m_Registers.PC = m_Membus->readU16(m_Registers.S + 1, cycles) + 1;
     m_Registers.S += 2;
+
+    *cycles += kTimingCpuOneCycle * 3;
 }
 
 void Cpu65816::handleSBCImmediate(uint32_t rawData, int *cycles)
@@ -2951,6 +3236,8 @@ void Cpu65816::handleTRB(uint32_t address, int *cycles)
         data &= ~m_Registers.A;
         m_Membus->writeU16(address, data, cycles);
     }
+
+    *cycles += kTimingCpuOneCycle;
 }
 
 void Cpu65816::handleTSB(uint32_t address, int *cycles)
@@ -2983,6 +3270,8 @@ void Cpu65816::handleTSB(uint32_t address, int *cycles)
         data |= m_Registers.A;
         m_Membus->writeU16(address, data, cycles);
     }
+
+    *cycles += kTimingCpuOneCycle;
 }
 
 void Cpu65816::handleTSC(uint32_t data, int *cycles)
@@ -3122,7 +3411,6 @@ void Cpu65816::setNMI()
     m_NMI = true;
 }
 
-
 void Cpu65816::handleImplied(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
@@ -3212,6 +3500,8 @@ void Cpu65816::handleAbsoluteJMP(
 
     *data = (m_Registers.PB << 16) | rawData;
 
+    *cycles += kTimingCpuOneCycle;
+
     snprintf(strIntruction, kStrInstructionLen, "%s $%04X [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
 
@@ -3229,6 +3519,9 @@ void Cpu65816::handleAbsoluteJMPIndirectIndexedX(
 
     *data = address;
 
+    *cycles += kTimingCpuOneCycle;
+    addCyclesIndexed(cycles);
+
     snprintf(strIntruction, kStrInstructionLen, "%s ($%04X,X) [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
 
@@ -3241,8 +3534,14 @@ void Cpu65816::handleAbsoluteIndexedX(
     uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 2;
 
-    *data = (m_Registers.DB << 16) | rawData;
-    *data += m_Registers.X;
+    uint32_t address = (m_Registers.DB << 16) | rawData;
+    *data = address + m_Registers.X;
+
+    addCyclesIndexed(cycles);
+
+    if (opcodeDesc.m_Flags & OpcodeFlag_CheckIndexCross) {
+        addCyclesIndexCross(cycles, address, *data);
+    }
 
     snprintf(strIntruction, kStrInstructionLen, "%s $%04X,X [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
@@ -3256,8 +3555,14 @@ void Cpu65816::handleAbsoluteIndexedY(
     uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 2;
 
-    *data = (m_Registers.DB << 16) | rawData;
-    *data += m_Registers.Y;
+    uint32_t address = (m_Registers.DB << 16) | rawData;
+    *data = address + m_Registers.Y;
+
+    addCyclesIndexed(cycles);
+
+    if (opcodeDesc.m_Flags & OpcodeFlag_CheckIndexCross) {
+        addCyclesIndexCross(cycles, address, *data);
+    }
 
     snprintf(strIntruction, kStrInstructionLen, "%s $%04X,Y [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
@@ -3319,6 +3624,8 @@ void Cpu65816::handleAbsoluteLongIndexedX(
 
     *data = rawData + m_Registers.X;
 
+    addCyclesIndexed(cycles);
+
     snprintf(strIntruction, kStrInstructionLen, "%s $%06X,X [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
 
@@ -3332,6 +3639,8 @@ void Cpu65816::handleDp(
     m_Registers.PC++;
 
     *data = m_Registers.D + rawData;
+
+    addCyclesDp(cycles);
 
     snprintf(strIntruction, kStrInstructionLen, "%s $%02X [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
@@ -3347,6 +3656,9 @@ void Cpu65816::handleDpIndexedX(
 
     *data = m_Registers.D + rawData + m_Registers.X;
 
+    addCyclesDp(cycles);
+    addCyclesIndexed(cycles);
+
     snprintf(strIntruction, kStrInstructionLen, "%s $%02X,X [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
 
@@ -3360,6 +3672,9 @@ void Cpu65816::handleDpIndexedY(
     m_Registers.PC++;
 
     *data = m_Registers.D + rawData + m_Registers.Y;
+
+    addCyclesDp(cycles);
+    addCyclesIndexed(cycles);
 
     snprintf(strIntruction, kStrInstructionLen, "%s $%02X,Y [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
@@ -3378,6 +3693,8 @@ void Cpu65816::handleDpIndirect(
 
     *data = address;
 
+    addCyclesDp(cycles);
+
     snprintf(strIntruction, kStrInstructionLen, "%s ($%02X) [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
 
@@ -3394,6 +3711,9 @@ void Cpu65816::handleDpIndirectIndexedX(
     address = ((m_Registers.DB << 16) | m_Membus->readU16(address, cycles));
 
     *data = address;
+
+    addCyclesDp(cycles);
+    addCyclesIndexed(cycles);
 
     snprintf(strIntruction, kStrInstructionLen, "%s ($%02X,X) [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
@@ -3412,6 +3732,11 @@ void Cpu65816::handleDpIndexedIndirectY(
 
     *data = address;
 
+    addCyclesDp(cycles);
+
+    if (opcodeDesc.m_Flags & OpcodeFlag_CheckIndexCross) {
+        addCyclesIndexCross(cycles, address, *data);
+    }
 
     snprintf(strIntruction, kStrInstructionLen, "%s ($%02X),Y [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
@@ -3430,6 +3755,8 @@ void Cpu65816::handleDpIndirectLong(
 
     *data = address;
 
+    addCyclesDp(cycles);
+
     snprintf(strIntruction, kStrInstructionLen, "%s [$%02X] [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
 
@@ -3446,6 +3773,9 @@ void Cpu65816::handleDpIndirectLongIndexedY(
     address = m_Membus->readU24(address, cycles) + m_Registers.Y;
 
     *data = address;
+
+    addCyclesDp(cycles);
+    addCyclesIndexed(cycles);
 
     snprintf(strIntruction, kStrInstructionLen, "%s [$%02X],Y [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
@@ -3491,6 +3821,8 @@ void Cpu65816::handleStackRelative(
 
     *data = m_Registers.S + static_cast<int8_t>(rawData);
 
+    *cycles += kTimingCpuOneCycle;
+
     snprintf(strIntruction, kStrInstructionLen, "%s $%02X,S [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
 
@@ -3508,6 +3840,9 @@ void Cpu65816::handleStackRelativeIndirectIndexedY(
 
     *data = address;
 
+    *cycles += kTimingCpuOneCycle;
+    addCyclesIndexed(cycles);
+
     snprintf(strIntruction, kStrInstructionLen, "%s ($%02X,S),Y [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
 
@@ -3521,4 +3856,26 @@ void Cpu65816::handleBlockMove(
     *data = m_Membus->readU16((m_Registers.PB << 16) | (m_Registers.PC + 1), cycles);
 
     snprintf(strIntruction, kStrInstructionLen, "%s $%02X, $%02X", opcodeDesc.m_Name, *data >> 8, *data & 0xFF);
+}
+
+void Cpu65816::addCyclesDp(int *cycles)
+{
+    if (m_Registers.D & 0xFF) {
+        *cycles += kTimingCpuOneCycle;
+    }
+}
+
+void Cpu65816::addCyclesIndexed(int *cycles)
+{
+    *cycles += kTimingCpuOneCycle;
+}
+
+void Cpu65816::addCyclesIndexCross(int *cycles, uint32_t addr, uint32_t shiftedAddr)
+{
+    auto indexSize = getBit(m_Registers.P, kPRegister_X);
+
+    // 0: 16 bits, 1: 8 bits
+    if (!indexSize || addr >> 8 != shiftedAddr) {
+        *cycles += kTimingCpuOneCycle;
+    }
 }

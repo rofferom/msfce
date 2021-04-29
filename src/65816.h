@@ -185,6 +185,13 @@ private:
         Count,
     };
 
+    enum {
+        OpcodeFlag_AutoIncrementPC = (1 << 1),
+        OpcodeFlag_CheckIndexCross = (1 << 2),
+
+        OpcodeFlag_Default = OpcodeFlag_AutoIncrementPC,
+    };
+
     static constexpr uint8_t kAddressingMode = enumToInt(AddressingMode::Count);
 
     typedef void (Cpu65816::*OpcodeHandler)(uint32_t data, int *cycles);
@@ -193,8 +200,8 @@ private:
         const char* m_Name = nullptr;
         uint8_t m_Value = 0;
         AddressingMode m_AddressingMode = AddressingMode::Count;
+        uint32_t m_Flags = OpcodeFlag_Default;
         OpcodeHandler m_OpcodeHandler = nullptr;
-        bool m_AutoStepPC = true;
     };
 
     static constexpr int kStrInstructionLen = 32;
@@ -361,6 +368,10 @@ private:
         char strIntruction[kStrInstructionLen],
         uint32_t* data,
         int *cycles);
+
+    void addCyclesDp(int *cycles);
+    void addCyclesIndexed(int *cycles);
+    void addCyclesIndexCross(int *cycles, uint32_t addr, uint32_t shiftedAddr);
 
 private:
     std::shared_ptr<Membus> m_Membus;
