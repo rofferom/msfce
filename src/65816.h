@@ -173,7 +173,7 @@ private:
         DpIndexedY,
         DpIndirect,
         DpIndirectIndexedX,
-        DpIndirectIndexedY,
+        DpIndexedIndirectY,
         DpIndirectLong,
         DpIndirectLongIndexedY,
         PcRelative,
@@ -314,7 +314,7 @@ private:
         uint32_t* data,
         int *cycles);
 
-    void handleDpIndirectIndexedY(
+    void handleDpIndexedIndirectY(
         const OpcodeDesc& opcodeDesc,
         char strIntruction[kStrInstructionLen],
         uint32_t* data,

@@ -76,7 +76,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
         }, {
             "ADC",
             0x71,
-            Cpu65816::AddressingMode::DpIndirectIndexedY,
+            Cpu65816::AddressingMode::DpIndexedIndirectY,
             &Cpu65816::handleADC,
         }, {
             "ADC",
@@ -156,7 +156,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
         }, {
             "AND",
             0x31,
-            Cpu65816::AddressingMode::DpIndirectIndexedY,
+            Cpu65816::AddressingMode::DpIndexedIndirectY,
             &Cpu65816::handleAND,
         }, {
             "AND",
@@ -346,7 +346,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
         }, {
             "CMP",
             0xD1,
-            Cpu65816::AddressingMode::DpIndirectIndexedY,
+            Cpu65816::AddressingMode::DpIndexedIndirectY,
             &Cpu65816::handleCMP,
         }, {
             "CMP",
@@ -476,7 +476,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
         }, {
             "EOR",
             0x51,
-            Cpu65816::AddressingMode::DpIndirectIndexedY,
+            Cpu65816::AddressingMode::DpIndexedIndirectY,
             &Cpu65816::handleEOR,
         }, {
             "EOR",
@@ -666,7 +666,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
         }, {
             "LDA",
             0xB1,
-            Cpu65816::AddressingMode::DpIndirectIndexedY,
+            Cpu65816::AddressingMode::DpIndexedIndirectY,
             &Cpu65816::handleLDA,
         }, {
             "LDA",
@@ -797,7 +797,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
         }, {
             "ORA",
             0x11,
-            Cpu65816::AddressingMode::DpIndirectIndexedY,
+            Cpu65816::AddressingMode::DpIndexedIndirectY,
             &Cpu65816::handleORA,
         }, {
             "ORA",
@@ -1027,7 +1027,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
         }, {
             "SBC",
             0xF1,
-            Cpu65816::AddressingMode::DpIndirectIndexedY,
+            Cpu65816::AddressingMode::DpIndexedIndirectY,
             &Cpu65816::handleSBC,
         }, {
             "SBC",
@@ -1112,7 +1112,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
         }, {
             "STA",
             0x91,
-            Cpu65816::AddressingMode::DpIndirectIndexedY,
+            Cpu65816::AddressingMode::DpIndexedIndirectY,
             &Cpu65816::handleSTA,
         }, {
             "STA",
@@ -1336,7 +1336,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
         { AddressingMode::DpIndexedY, &Cpu65816::handleDpIndexedY },
         { AddressingMode::DpIndirect, &Cpu65816::handleDpIndirect },
         { AddressingMode::DpIndirectIndexedX, &Cpu65816::handleDpIndirectIndexedX },
-        { AddressingMode::DpIndirectIndexedY, &Cpu65816::handleDpIndirectIndexedY },
+        { AddressingMode::DpIndexedIndirectY, &Cpu65816::handleDpIndexedIndirectY },
         { AddressingMode::DpIndirectLong, &Cpu65816::handleDpIndirectLong },
         { AddressingMode::DpIndirectLongIndexedY, &Cpu65816::handleDpIndirectLongIndexedY },
         { AddressingMode::PcRelative, &Cpu65816::handlePcRelative },
@@ -3390,15 +3390,15 @@ void Cpu65816::handleDpIndirectIndexedX(
     uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC++;
 
-    uint32_t address = ((m_Registers.DB << 16) | (m_Registers.D + rawData));
-    address = ((m_Registers.DB << 16) | m_Membus->readU16(address, cycles)) + m_Registers.X;
+    uint32_t address = ((m_Registers.DB << 16) | (m_Registers.D + rawData)) + m_Registers.X;
+    address = ((m_Registers.DB << 16) | m_Membus->readU16(address, cycles));
 
     *data = address;
 
-    snprintf(strIntruction, kStrInstructionLen, "%s ($%02X),X [%06X] ", opcodeDesc.m_Name, rawData, *data);
+    snprintf(strIntruction, kStrInstructionLen, "%s ($%02X,X) [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
 
-void Cpu65816::handleDpIndirectIndexedY(
+void Cpu65816::handleDpIndexedIndirectY(
     const OpcodeDesc& opcodeDesc,
     char strIntruction[kStrInstructionLen],
     uint32_t* data,
@@ -3411,6 +3411,7 @@ void Cpu65816::handleDpIndirectIndexedY(
     address = ((m_Registers.DB << 16) | m_Membus->readU16(address, cycles)) + m_Registers.Y;
 
     *data = address;
+
 
     snprintf(strIntruction, kStrInstructionLen, "%s ($%02X),Y [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
