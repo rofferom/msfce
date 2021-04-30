@@ -153,7 +153,6 @@ private:
     bool getBackgroundCurrentPixel(RendererBgInfo* renderBg, int priority, Color* color);
     bool getSpriteCurrentPixel(int x, int y, int priority, Color* color);
     void moveToNextPixel(RendererBgInfo* renderBg);
-    void renderLine(int y, const Ppu::LayerPriority* layerPriority);
     void incrementVramAddress();
 
     void loadObjs();
@@ -163,6 +162,11 @@ private:
     uint32_t getObjColorFromCgram(int palette, int color);
     bool getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int screen_y, Color* c, int* priority);
     bool getPixelFromObj(int screen_x, int screen_y, Color* c, int* priority);
+
+    void initScreenRender();
+    void initLineRender(int y);
+    void renderDot(int x, int y);
+    void renderStep();
 
 private:
     std::shared_ptr<Frontend> m_Frontend;
@@ -210,6 +214,10 @@ private:
     static const Ppu::LayerPriority s_LayerPriorityMode1_BG3_Off[];
 
     // Rendering
+    int m_RenderX = 0;
+    int m_RenderY = 0;
+
     RendererBgInfo m_RenderBgInfo[kBackgroundCount];
     RenderObjInfo m_RenderObjInfo[kPpuDisplayHeight];
+    const Ppu::LayerPriority* m_RenderLayerPriority = nullptr;
 };

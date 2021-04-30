@@ -10,6 +10,9 @@
 
 namespace {
 
+constexpr int kPpuScanWidth = 340;
+constexpr int kPpuScanHeight = 262;
+
 constexpr int kPpuTileInfoSize = 2;
 constexpr int kPpuTilemapWidth = 32;
 constexpr int kPpuTilemapHeight = 32;
@@ -868,72 +871,44 @@ void Ppu::moveToNextPixel(RendererBgInfo* renderBg)
     }
 }
 
-void Ppu::renderLine(int y, const Ppu::LayerPriority* layerPriority)
+void Ppu::renderStep()
 {
-    const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
+    if (m_RenderX == 0) {
+        if (m_RenderY == 0) {
+            // Start of screen
+            initScreenRender();
+        }
 
-    // Prepare background rendering for the current line.
-    // At the very end, the RendererBgInfo will provide the correct data to
-    // display pixel (0, y)
-    for (size_t i = 0; i < bgCount; i++) {
-        RendererBgInfo* renderBg = &m_RenderBgInfo[i];
-        Background* bg = &m_Backgrounds[i];;
-
-        // Compute background start coordinates in pixels at first
-        int bgX = bg->m_HOffset % renderBg->tilemapWidthPixel;
-        int bgY = (bg->m_VOffset + y) % renderBg->tilemapHeightPixel;
-
-        // Get the tile coordinates inside the tilemap
-        renderBg->tilemapX = bgX / renderBg->tileWidthPixel;
-        renderBg->tilemapY = bgY / renderBg->tileHeightPixel;
-
-        // Get the pixel coordinates inside the tile.
-        // Doesn't take account of horizontal/vertical flip (info unknown at this point)
-        renderBg->tilePixelX = bgX % renderBg->tileWidthPixel;
-        renderBg->tilePixelY = bgY % renderBg->tileHeightPixel;
-
-        // Prepare work info
-        updateTileData(bg, renderBg);
-        updateSubtileData(bg, renderBg);
+        // New line
+        initLineRender(m_RenderY);
+        renderDot(m_RenderX, m_RenderY);
+    } else if (m_RenderX >= kPpuDisplayWidth) {
+        // H-Blank
+    } else if (m_RenderY >= kPpuDisplayHeight) {
+        // V-Blank
+    } else {
+        renderDot(m_RenderX, m_RenderY);
     }
 
-    for (int x = 0; x < kPpuDisplayWidth; x++) {
-        Color color;
-        bool colorValid = false;
+    m_RenderX++;
 
-        for (size_t prioIdx = 0; !colorValid && layerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
-            const auto& layer = layerPriority[prioIdx];
-
-            if (layer.m_Layer == Layer::background) {
-                RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
-                colorValid = getBackgroundCurrentPixel(renderBg, layer.m_Priority, &color);
-            } else if (layer.m_Layer == Layer::sprite) {
-                colorValid = getSpriteCurrentPixel(x, y, layer.m_Priority, &color);
-            }
-        }
-
-        if (colorValid) {
-            m_Frontend->drawPoint(x, y, color);
-        } else {
-            m_Frontend->drawPoint(x, y, {0, 0, 0});
-        }
-
-        for (size_t i = 0; i < bgCount; i++) {
-            moveToNextPixel(&m_RenderBgInfo[i]);
-        }
+    if (m_RenderX == kPpuScanWidth) {
+        m_RenderX = 0;
+        m_RenderY = (m_RenderY + 1) % kPpuScanHeight;
     }
 }
 
 void Ppu::render()
 {
-    const Ppu::LayerPriority* layerPriority;
+    const auto cycles = kPpuScanWidth * kPpuScanHeight;
 
-    if (m_Bgmode == 1) {
-        layerPriority = m_Bg3Priority ? s_LayerPriorityMode1_BG3_On : s_LayerPriorityMode1_BG3_Off;
-    } else {
-        return;
+    for (int i = 0; i < cycles; i++) {
+        renderStep();
     }
+}
 
+void Ppu::initScreenRender()
+{
     // Prepare background rendering
     const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
     static_assert(SIZEOF_ARRAY(m_Backgrounds) == SIZEOF_ARRAY(m_RenderBgInfo));
@@ -969,10 +944,74 @@ void Ppu::render()
     }
 
     loadObjs();
+}
 
-    // Start rendering. Draw each line at a time
-    for (int y = 0; y < kPpuDisplayHeight; y++) {
-        renderLine(y, layerPriority);
+void Ppu::initLineRender(int y)
+{
+    const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
+
+    // Prepare background rendering for the current line.
+    // At the very end, the RendererBgInfo will provide the correct data to
+    // display pixel (0, y)
+    for (size_t i = 0; i < bgCount; i++) {
+        RendererBgInfo* renderBg = &m_RenderBgInfo[i];
+        Background* bg = &m_Backgrounds[i];;
+
+        // Compute background start coordinates in pixels at first
+        int bgX = bg->m_HOffset % renderBg->tilemapWidthPixel;
+        int bgY = (bg->m_VOffset + y) % renderBg->tilemapHeightPixel;
+
+        // Get the tile coordinates inside the tilemap
+        renderBg->tilemapX = bgX / renderBg->tileWidthPixel;
+        renderBg->tilemapY = bgY / renderBg->tileHeightPixel;
+
+        // Get the pixel coordinates inside the tile.
+        // Doesn't take account of horizontal/vertical flip (info unknown at this point)
+        renderBg->tilePixelX = bgX % renderBg->tileWidthPixel;
+        renderBg->tilePixelY = bgY % renderBg->tileHeightPixel;
+
+        // Prepare work info
+        updateTileData(bg, renderBg);
+        updateSubtileData(bg, renderBg);
+    }
+
+    if (m_Bgmode == 1) {
+        m_RenderLayerPriority = m_Bg3Priority ? s_LayerPriorityMode1_BG3_On : s_LayerPriorityMode1_BG3_Off;
+    } else {
+        m_RenderLayerPriority = nullptr;
+    }
+}
+
+void Ppu::renderDot(int x, int y)
+{
+    Color color;
+    bool colorValid = false;
+
+    // Mode not supported
+    if (!m_RenderLayerPriority) {
+        return;
+    }
+
+    for (size_t prioIdx = 0; !colorValid && m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
+        const auto& layer = m_RenderLayerPriority[prioIdx];
+
+        if (layer.m_Layer == Layer::background) {
+            RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
+            colorValid = getBackgroundCurrentPixel(renderBg, layer.m_Priority, &color);
+        } else if (layer.m_Layer == Layer::sprite) {
+            colorValid = getSpriteCurrentPixel(x, y, layer.m_Priority, &color);
+        }
+    }
+
+    if (colorValid) {
+        m_Frontend->drawPoint(x, y, color);
+    } else {
+        m_Frontend->drawPoint(x, y, {0, 0, 0});
+    }
+
+    const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
+    for (size_t i = 0; i < bgCount; i++) {
+        moveToNextPixel(&m_RenderBgInfo[i]);
     }
 }
 
