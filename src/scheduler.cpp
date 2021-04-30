@@ -60,7 +60,7 @@ void Scheduler::writeU8(uint32_t addr, uint8_t value)
         bool enableNMI = value & (1 << 7);
         if (m_NMIEnabled != enableNMI) {
             m_NMIEnabled = enableNMI;
-            LOGD(TAG, "NMI is now %s", m_NMIEnabled ? "enabled" : "disabled");
+            LOGI(TAG, "NMI is now %s", m_NMIEnabled ? "enabled" : "disabled");
         }
 
         // Joypad
@@ -77,71 +77,12 @@ void Scheduler::writeU8(uint32_t addr, uint8_t value)
 
 int Scheduler::run()
 {
+    auto nextPresent = Clock::now() + kRenderPeriod;
+
     // Register components
     m_Dma->setScheduler(shared_from_this());
 
-    // Start CPU
-    m_RunCpu = true;
-    m_CpuThread = std::thread(&Scheduler::cpuLoop, this);
-
-    // Main loop
-    auto nextRender = Clock::now() + kRenderPeriod;
-    auto nextVblank = nextRender - kVblankDuration;
-
     while (true) {
-        // Run frontend
-        bool frontendContinue = m_Frontend->runOnce();
-        if (!frontendContinue) {
-            break;
-        }
-
-        // Display
-        auto now = Clock::now();
-
-        if (now >= nextRender) {
-            auto beginRender = Clock::now();
-            m_Ppu->render();
-            m_Frontend->present();
-            auto endRender = Clock::now();
-
-            auto renderDuration = std::chrono::duration_cast<std::chrono::milliseconds>(endRender - beginRender);
-
-            if (renderDuration < kRenderPeriod) {
-                nextRender += kRenderPeriod;
-            } else {
-                nextRender = Clock::now() + kRenderPeriod;
-            }
-
-            nextVblank = nextRender - kVblankDuration;
-        } else if (now >= nextVblank) {
-            if (m_JoypadAutoread) {
-                m_ControllerPorts->readController();
-            }
-
-            // Dirty hack to avoid vblank to be retriggered
-            if (m_NMIEnabled) {
-                m_Cpu->setNMI();
-            }
-
-            nextVblank += kRenderPeriod;
-        }
-    }
-
-    // Stop CPU
-    m_RunCpu = false;
-    m_CpuThread.join();
-
-    return 0;
-}
-
-void Scheduler::resumeTask(SchedulerTask* task, int cycles)
-{
-    task->setNextRunCycle(m_MasterClock + cycles);
-}
-
-void Scheduler::cpuLoop()
-{
-    while (m_RunCpu) {
         // DMA has priority over CPU
         if (m_Dma->getState() == SchedulerTask::State::running) {
             if (m_Dma->getNextRunCycle() == m_MasterClock) {
@@ -167,6 +108,45 @@ void Scheduler::cpuLoop()
             m_Cpu->setNextRunCycle(m_MasterClock + cpuCycles);
         }
 
+        // Always run PPU
+        if (m_Ppu->getNextRunCycle() == m_MasterClock) {
+            int ppuCycles = m_Ppu->run();
+            m_Ppu->setNextRunCycle(m_MasterClock + ppuCycles);
+
+            auto ppuEvents = m_Ppu->getEvents();
+            if (ppuEvents & Ppu::Event_VBlankStart) {
+                if (m_JoypadAutoread) {
+                    m_ControllerPorts->readController();
+                }
+
+                // Dirty hack to avoid vblank to be retriggered
+                if (m_NMIEnabled) {
+                    m_Cpu->setNMI();
+                }
+            }
+
+            if (ppuEvents & Ppu::Event_ScanEnded) {
+                std::this_thread::sleep_until(nextPresent);
+
+                //LOGE(TAG, "Present");
+                m_Frontend->present();
+                nextPresent += kRenderPeriod;
+
+                // Run frontend after present
+                bool frontendContinue = m_Frontend->runOnce();
+                if (!frontendContinue) {
+                    break;
+                }
+            }
+        }
+
         m_MasterClock++;
     }
+
+    return 0;
+}
+
+void Scheduler::resumeTask(SchedulerTask* task, int cycles)
+{
+    task->setNextRunCycle(m_MasterClock + cycles);
 }

@@ -7,8 +7,15 @@
 #include "frontend.h"
 #include "memcomponent.h"
 #include "registers.h"
+#include "schedulertask.h"
 
-class Ppu : public MemComponent {
+class Ppu : public MemComponent, public SchedulerTask {
+public:
+    enum : uint32_t {
+        Event_VBlankStart = (1 << 0),
+        Event_ScanEnded = (1 << 1),
+    };
+
 public:
     Ppu(const std::shared_ptr<Frontend>& frontend);
     ~Ppu() = default;
@@ -18,7 +25,9 @@ public:
     uint8_t readU8(uint32_t addr) override;
     void writeU8(uint32_t addr, uint8_t value) override;
 
-    void render();
+    int run() override;
+
+    uint32_t getEvents() const;
 
 private:
     typedef uint32_t (*TilemapMapper)(uint16_t tilemapBase, int x, int y);
@@ -170,6 +179,7 @@ private:
 
 private:
     std::shared_ptr<Frontend> m_Frontend;
+    uint32_t m_Events = 0;
 
     bool m_ForcedBlanking = false;
     uint8_t m_Brightness = 0;

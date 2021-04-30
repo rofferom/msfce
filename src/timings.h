@@ -20,3 +20,6 @@ constexpr int kTimingIoSlowAccess = 12;
 // DMA
 constexpr int kTimingDmaStart = 8;
 constexpr int kTimingDmaAccess = 8;
+
+// PPU
+constexpr int kTimingPpuDot = 4;

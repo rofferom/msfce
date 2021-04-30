@@ -30,9 +30,6 @@ public:
     void resumeTask(SchedulerTask* task, int cycles);
 
 private:
-    void cpuLoop();
-
-private:
     // Frontend and controller variables
     std::shared_ptr<Frontend> m_Frontend;
     std::shared_ptr<ControllerPorts> m_ControllerPorts;
@@ -40,8 +37,6 @@ private:
     // Components
     std::shared_ptr<Cpu65816> m_Cpu;
     std::shared_ptr<Dma> m_Dma;
-    bool m_RunCpu = false;
-    std::thread m_CpuThread;
 
     std::shared_ptr<Ppu> m_Ppu;
 

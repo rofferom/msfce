@@ -3,6 +3,7 @@
 #include "frontend.h"
 #include "log.h"
 #include "registers.h"
+#include "timings.h"
 #include "utils.h"
 #include "ppu.h"
 
@@ -332,6 +333,7 @@ const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_Off[] = {
 
 Ppu::Ppu(const std::shared_ptr<Frontend>& frontend)
     : MemComponent(MemComponentType::ppu),
+      SchedulerTask(),
       m_Frontend(frontend)
 {
 }
@@ -597,6 +599,11 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         assert(false);
         break;
     }
+}
+
+uint32_t Ppu::getEvents() const
+{
+    return m_Events;
 }
 
 void Ppu::incrementVramAddress()
@@ -871,17 +878,22 @@ void Ppu::moveToNextPixel(RendererBgInfo* renderBg)
     }
 }
 
-void Ppu::renderStep()
+int Ppu::run()
 {
+    m_Events = 0;
+
     if (m_RenderX == 0) {
         if (m_RenderY == 0) {
             // Start of screen
             initScreenRender();
+        } else if (m_RenderY == kPpuDisplayHeight) {
+            // V-Blank
+            m_Events |= Event_VBlankStart;
+        } else if (m_RenderY < kPpuDisplayHeight) {
+            // New line
+            initLineRender(m_RenderY);
+            renderDot(m_RenderX, m_RenderY);
         }
-
-        // New line
-        initLineRender(m_RenderY);
-        renderDot(m_RenderX, m_RenderY);
     } else if (m_RenderX >= kPpuDisplayWidth) {
         // H-Blank
     } else if (m_RenderY >= kPpuDisplayHeight) {
@@ -895,16 +907,13 @@ void Ppu::renderStep()
     if (m_RenderX == kPpuScanWidth) {
         m_RenderX = 0;
         m_RenderY = (m_RenderY + 1) % kPpuScanHeight;
-    }
-}
 
-void Ppu::render()
-{
-    const auto cycles = kPpuScanWidth * kPpuScanHeight;
-
-    for (int i = 0; i < cycles; i++) {
-        renderStep();
+        if (m_RenderY == 0) {
+            m_Events |= Event_ScanEnded;
+        }
     }
+
+    return kTimingPpuDot;
 }
 
 void Ppu::initScreenRender()
