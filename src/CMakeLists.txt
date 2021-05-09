@@ -18,6 +18,9 @@ add_library(msfe_lib
 
     frontend.h
 
+    frontend_dummy.h
+    frontend_dummy.cpp
+
     frontend_sdl2.h
     frontend_sdl2.cpp
 
