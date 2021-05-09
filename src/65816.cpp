@@ -11,6 +11,8 @@
 
 namespace {
 
+constexpr bool kLogAllInstructions = false;
+constexpr bool kLogLastInstructions = true;
 constexpr size_t kInstructionsLogSize = 10;
 
 constexpr uint32_t kPRegister_C = 0;
@@ -1619,18 +1621,17 @@ int  Cpu65816::run()
     }
 
     // Debug stuff
-    char strIntruction[32];
-    uint32_t opcodePC = (m_Registers.PB << 16) | m_Registers.PC;
+    m_CurrentOpcodePC = (m_Registers.PB << 16) | m_Registers.PC;
 
     // Load opcode
-    uint8_t opcode = m_Membus->readU8(opcodePC, &cycles);
+    uint8_t opcode = m_Membus->readU8(m_CurrentOpcodePC, &cycles);
     const auto& opcodeDesc = m_Opcodes[opcode];
 
     if (!opcodeDesc.m_Name) {
         LOGC(TAG, "Unknown instruction detected");
         LOGC(TAG, "Last %zu executed instructions", kInstructionsLogSize);
         printInstructionsLog();
-        LOGC(TAG, "Unknown opcode 0x%02X (Address %06X)", opcode, opcodePC);
+        LOGC(TAG, "Unknown opcode 0x%02X (Address %06X)", opcode, m_CurrentOpcodePC);
         assert(false);
     }
 
@@ -1641,10 +1642,7 @@ int  Cpu65816::run()
     // Load data
     uint32_t data = 0;
     const auto addressingModeHandler = m_AddressingModes[enumToInt(opcodeDesc.m_AddressingMode)];
-    (this->*addressingModeHandler)(opcodeDesc, strIntruction, &data, &cycles);
-
-    // Log instruction
-    logInstruction(opcodePC, strIntruction);
+    (this->*addressingModeHandler)(opcodeDesc, &data, &cycles);
 
     // Execute instruction
     assert(opcodeDesc.m_OpcodeHandler);
@@ -1653,33 +1651,57 @@ int  Cpu65816::run()
     return cycles;
 }
 
-void Cpu65816::logInstruction(uint32_t opcodePC, const char* strIntruction)
+template <typename... Args>
+void Cpu65816::logInstruction(const char* format, Args... args)
 {
-    char s[256];
-
-    snprintf(s, sizeof(s), "%06X %-32s A:%04X X:%04X Y:%04X S:%04X D:%04X DB:%02X P:%02X",
-        opcodePC,
-        strIntruction,
-        m_Registers.A,
-        m_Registers.X,
-        m_Registers.Y,
-        m_Registers.S,
-        m_Registers.D,
-        m_Registers.DB,
-        m_Registers.P);
-
-    m_InstructionsLog.push_back(s);
-
-    while (m_InstructionsLog.size() > kInstructionsLogSize) {
-        m_InstructionsLog.pop_front();
+    if (!kLogLastInstructions && !kLogAllInstructions) {
+        return;
     }
 
-    //LOGC(TAG, "%s", s);
+    auto argsTuple = std::make_tuple(std::forward<Args>(args)...);
+
+    auto logBuilder = [opcodePC=m_CurrentOpcodePC, regs=m_Registers, format, argsTuple]() -> std::string {
+        char opcodeLog[32];
+
+        auto opcodeLogger = [&opcodeLog, format](auto... args) {
+            snprintf(opcodeLog, sizeof(opcodeLog), format, args...);
+        };
+
+        std::apply(opcodeLogger, argsTuple);
+
+        char instructionLog[256];
+        snprintf(instructionLog, sizeof(instructionLog),
+            "%06X %-32s A:%04X X:%04X Y:%04X S:%04X D:%04X DB:%02X P:%02X",
+            opcodePC,
+            opcodeLog,
+            regs.A,
+            regs.X,
+            regs.Y,
+            regs.S,
+            regs.D,
+            regs.DB,
+            regs.P);
+
+        return instructionLog;
+    };
+
+    if (kLogAllInstructions) {
+        LOGC(TAG, "%s", logBuilder().c_str());
+    }
+
+    if (kLogLastInstructions) {
+        m_InstructionsLog.push_back(logBuilder);
+
+        while (m_InstructionsLog.size() > kInstructionsLogSize) {
+            m_InstructionsLog.pop_front();
+        }
+    }
 }
 
 void Cpu65816::printInstructionsLog() const
 {
-    for (const auto& s: m_InstructionsLog) {
+    for (const auto& builder: m_InstructionsLog) {
+        auto s = builder();
         LOGE(TAG, "\t%s", s.c_str());
     }
 }
@@ -3413,27 +3435,24 @@ void Cpu65816::setNMI()
 
 void Cpu65816::handleImplied(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
-    snprintf(strIntruction, kStrInstructionLen, "%s", opcodeDesc.m_Name);
+    logInstruction("%s", opcodeDesc.m_Name);
 }
 
 void Cpu65816::handleImmediate(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
     *data = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 1;
-    snprintf(strIntruction, kStrInstructionLen, "%s #$%02X", opcodeDesc.m_Name, *data);
+    logInstruction("%s #$%02X", opcodeDesc.m_Name, *data);
 }
 
 void Cpu65816::handleImmediateA(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3444,18 +3463,17 @@ void Cpu65816::handleImmediateA(
         *data = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
         m_Registers.PC += 1;
 
-        snprintf(strIntruction, kStrInstructionLen, "%s #$%02X", opcodeDesc.m_Name, *data);
+        logInstruction("%s #$%02X", opcodeDesc.m_Name, *data);
     } else {
         *data = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
         m_Registers.PC += 2;
 
-        snprintf(strIntruction, kStrInstructionLen, "%s #$%04X", opcodeDesc.m_Name, *data);
+        logInstruction("%s #$%04X", opcodeDesc.m_Name, *data);
     }
 }
 
 void Cpu65816::handleImmediateIndex(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3466,18 +3484,17 @@ void Cpu65816::handleImmediateIndex(
         *data = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
         m_Registers.PC += 1;
 
-        snprintf(strIntruction, kStrInstructionLen, "%s #$%02X", opcodeDesc.m_Name, *data);
+        logInstruction("%s #$%02X", opcodeDesc.m_Name, *data);
     } else {
         *data = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
         m_Registers.PC += 2;
 
-        snprintf(strIntruction, kStrInstructionLen, "%s #$%04X", opcodeDesc.m_Name, *data);
+        logInstruction("%s #$%04X", opcodeDesc.m_Name, *data);
     }
 }
 
 void Cpu65816::handleAbsolute(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3486,12 +3503,11 @@ void Cpu65816::handleAbsolute(
 
     *data = (m_Registers.DB << 16) | rawData;
 
-    snprintf(strIntruction, kStrInstructionLen, "%s $%04X [%06X]", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s $%04X [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleAbsoluteJMP(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3502,12 +3518,11 @@ void Cpu65816::handleAbsoluteJMP(
 
     *cycles += kTimingCpuOneCycle;
 
-    snprintf(strIntruction, kStrInstructionLen, "%s $%04X [%06X]", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s $%04X [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleAbsoluteJMPIndirectIndexedX(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3522,12 +3537,11 @@ void Cpu65816::handleAbsoluteJMPIndirectIndexedX(
     *cycles += kTimingCpuOneCycle;
     addCyclesIndexed(cycles);
 
-    snprintf(strIntruction, kStrInstructionLen, "%s ($%04X,X) [%06X]", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s ($%04X,X) [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleAbsoluteIndexedX(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3543,12 +3557,11 @@ void Cpu65816::handleAbsoluteIndexedX(
         addCyclesIndexCross(cycles, address, *data);
     }
 
-    snprintf(strIntruction, kStrInstructionLen, "%s $%04X,X [%06X]", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s $%04X,X [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleAbsoluteIndexedY(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3564,24 +3577,22 @@ void Cpu65816::handleAbsoluteIndexedY(
         addCyclesIndexCross(cycles, address, *data);
     }
 
-    snprintf(strIntruction, kStrInstructionLen, "%s $%04X,Y [%06X]", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s $%04X,Y [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleAbsoluteLong(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
     *data = m_Membus->readU24((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 3;
 
-    snprintf(strIntruction, kStrInstructionLen, "%s $%06X ", opcodeDesc.m_Name, *data);
+    logInstruction("%s $%06X ", opcodeDesc.m_Name, *data);
 }
 
 void Cpu65816::handleAbsoluteIndirect(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3593,12 +3604,11 @@ void Cpu65816::handleAbsoluteIndirect(
 
     *data = address;
 
-    snprintf(strIntruction, kStrInstructionLen, "%s [$%04X] [%06X]", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s [$%04X] [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleAbsoluteIndirectLong(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3610,12 +3620,11 @@ void Cpu65816::handleAbsoluteIndirectLong(
 
     *data = address;
 
-    snprintf(strIntruction, kStrInstructionLen, "%s [$%04X] [%06X]", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s [$%04X] [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleAbsoluteLongIndexedX(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3626,12 +3635,11 @@ void Cpu65816::handleAbsoluteLongIndexedX(
 
     addCyclesIndexed(cycles);
 
-    snprintf(strIntruction, kStrInstructionLen, "%s $%06X,X [%06X] ", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s $%06X,X [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleDp(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3642,12 +3650,11 @@ void Cpu65816::handleDp(
 
     addCyclesDp(cycles);
 
-    snprintf(strIntruction, kStrInstructionLen, "%s $%02X [%06X] ", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s $%02X [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleDpIndexedX(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3659,12 +3666,11 @@ void Cpu65816::handleDpIndexedX(
     addCyclesDp(cycles);
     addCyclesIndexed(cycles);
 
-    snprintf(strIntruction, kStrInstructionLen, "%s $%02X,X [%06X] ", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s $%02X,X [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleDpIndexedY(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3676,12 +3682,11 @@ void Cpu65816::handleDpIndexedY(
     addCyclesDp(cycles);
     addCyclesIndexed(cycles);
 
-    snprintf(strIntruction, kStrInstructionLen, "%s $%02X,Y [%06X] ", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s $%02X,Y [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleDpIndirect(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3695,12 +3700,11 @@ void Cpu65816::handleDpIndirect(
 
     addCyclesDp(cycles);
 
-    snprintf(strIntruction, kStrInstructionLen, "%s ($%02X) [%06X] ", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s ($%02X) [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleDpIndirectIndexedX(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3715,12 +3719,11 @@ void Cpu65816::handleDpIndirectIndexedX(
     addCyclesDp(cycles);
     addCyclesIndexed(cycles);
 
-    snprintf(strIntruction, kStrInstructionLen, "%s ($%02X,X) [%06X] ", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s ($%02X,X) [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleDpIndexedIndirectY(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3738,12 +3741,11 @@ void Cpu65816::handleDpIndexedIndirectY(
         addCyclesIndexCross(cycles, address, *data);
     }
 
-    snprintf(strIntruction, kStrInstructionLen, "%s ($%02X),Y [%06X] ", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s ($%02X),Y [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleDpIndirectLong(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3757,12 +3759,11 @@ void Cpu65816::handleDpIndirectLong(
 
     addCyclesDp(cycles);
 
-    snprintf(strIntruction, kStrInstructionLen, "%s [$%02X] [%06X] ", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s [$%02X] [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleDpIndirectLongIndexedY(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3777,12 +3778,11 @@ void Cpu65816::handleDpIndirectLongIndexedY(
     addCyclesDp(cycles);
     addCyclesIndexed(cycles);
 
-    snprintf(strIntruction, kStrInstructionLen, "%s [$%02X],Y [%06X] ", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s [$%02X],Y [%06X] ", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handlePcRelative(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3792,12 +3792,11 @@ void Cpu65816::handlePcRelative(
     *data = m_Registers.PC + static_cast<int8_t>(rawData);
     *data |= m_Registers.PB << 16;
 
-    snprintf(strIntruction, kStrInstructionLen, "%s $%02X [%06X]", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s $%02X [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handlePcRelativeLong(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3807,12 +3806,11 @@ void Cpu65816::handlePcRelativeLong(
     *data = m_Registers.PC + rawData;
     *data |= m_Registers.PB << 16;
 
-    snprintf(strIntruction, kStrInstructionLen, "%s $%02X [%06X]", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s $%02X [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleStackRelative(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3823,12 +3821,11 @@ void Cpu65816::handleStackRelative(
 
     *cycles += kTimingCpuOneCycle;
 
-    snprintf(strIntruction, kStrInstructionLen, "%s $%02X,S [%06X]", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s $%02X,S [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleStackRelativeIndirectIndexedY(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
@@ -3843,19 +3840,18 @@ void Cpu65816::handleStackRelativeIndirectIndexedY(
     *cycles += kTimingCpuOneCycle;
     addCyclesIndexed(cycles);
 
-    snprintf(strIntruction, kStrInstructionLen, "%s ($%02X,S),Y [%06X]", opcodeDesc.m_Name, rawData, *data);
+    logInstruction("%s ($%02X,S),Y [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
 
 void Cpu65816::handleBlockMove(
     const OpcodeDesc& opcodeDesc,
-    char strIntruction[kStrInstructionLen],
     uint32_t* data,
     int *cycles)
 {
     // PC isn't changed automatically, skip the opcode
     *data = m_Membus->readU16((m_Registers.PB << 16) | (m_Registers.PC + 1), cycles);
 
-    snprintf(strIntruction, kStrInstructionLen, "%s $%02X, $%02X", opcodeDesc.m_Name, *data >> 8, *data & 0xFF);
+    logInstruction("%s $%02X, $%02X", opcodeDesc.m_Name, *data >> 8, *data & 0xFF);
 }
 
 void Cpu65816::addCyclesDp(int *cycles)

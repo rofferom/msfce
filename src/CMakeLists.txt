@@ -46,6 +46,8 @@ add_library(msfe_lib
     snes.cpp
 )
 
+set_property(TARGET msfe_lib PROPERTY CXX_STANDARD 17)
+
 target_include_directories(msfe_lib PUBLIC
     ${PKG_SDL2_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}
