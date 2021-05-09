@@ -49,6 +49,13 @@ void Membus::initLowRom()
             }
 
             m_Banks[i].ranges.push_back(&component);
+
+            // Fill SystemArea LUT
+            if (i <= 0x3F && component.offsetEnd <= 0x7FFF) {
+                for (int offset = component.offsetStart; offset <= component.offsetEnd; offset++) {
+                    m_SystemArea[offset] = &component;
+                }
+            }
         }
     }
 
@@ -91,7 +98,6 @@ Membus::ComponentHandler *Membus::getComponentFromAddr(
     int *cycles,
     uint32_t access)
 {
-    Bank* bank;
     const MemoryRange* range = nullptr;
 
     uint8_t bankId = addr >> 16;
@@ -105,13 +111,18 @@ Membus::ComponentHandler *Membus::getComponentFromAddr(
         targetBank = bankId;
     }
 
-    bank = &m_Banks[targetBank];
+    if (targetBank <= 0x3F && offset <= 0x7FFF) {
+        // System area
+        range = m_SystemArea[offset];
+    } else {
+        Bank* bank = &m_Banks[targetBank];
 
-    // Find target component
-    for (auto& i: bank->ranges) {
-        if (i->offsetStart <= offset && offset <= i->offsetEnd) {
-            range = i;
-            break;
+        // Find target component
+        for (auto& i: bank->ranges) {
+            if (i->offsetStart <= offset && offset <= i->offsetEnd) {
+                range = i;
+                break;
+            }
         }
     }
 

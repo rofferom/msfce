@@ -96,5 +96,8 @@ private:
     Bank m_Banks[0x100];
     ComponentHandler m_Components[kComponentTypeCount];
 
+    // LUT for system area (often accessed)
+    const MemoryRange * m_SystemArea[0x8000];
+
     static const MemoryMap s_LowRomMap;
 };
