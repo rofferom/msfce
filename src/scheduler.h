@@ -15,6 +15,9 @@ class SchedulerTask;
 class Scheduler : public MemComponent,
                   public std::enable_shared_from_this<Scheduler> {
 public:
+    using Clock = std::chrono::high_resolution_clock;
+
+public:
     Scheduler(
         const std::shared_ptr<Frontend>& frontend,
         const std::shared_ptr<Cpu65816>& cpu,

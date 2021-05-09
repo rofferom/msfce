@@ -12,10 +12,56 @@
 
 #define TAG "scheduler"
 
-using Clock = std::chrono::high_resolution_clock;
+namespace {
+
+constexpr bool kLogTimings = true;
+
+struct DurationTool {
+    // Current measure
+    Scheduler::Clock::time_point begin_tp;
+    Scheduler::Clock::time_point end_tp;
+
+    // Total measure
+    Scheduler::Clock::duration total_duration;
+
+    void reset()
+    {
+        total_duration = Scheduler::Clock::duration::zero();
+    }
+
+    void begin()
+    {
+        if (!kLogTimings) {
+            return;
+        }
+
+        begin_tp = Scheduler::Clock::now();
+    }
+
+    void end()
+    {
+        if (!kLogTimings) {
+            return;
+        }
+
+        end_tp = Scheduler::Clock::now();
+        total_duration += end_tp - begin_tp;
+    }
+
+    template <typename Duration>
+    int64_t total()
+    {
+        if (!kLogTimings) {
+            return 0;
+        }
+
+        return std::chrono::duration_cast<Duration>(total_duration).count();
+    }
+};
 
 constexpr auto kRenderPeriod = std::chrono::microseconds(16666);
-constexpr auto kVblankDuration = std::chrono::microseconds(2400);
+
+} // anonymous namespace
 
 Scheduler::Scheduler(
     const std::shared_ptr<Frontend>& frontend,
@@ -77,6 +123,9 @@ void Scheduler::writeU8(uint32_t addr, uint8_t value)
 
 int Scheduler::run()
 {
+    DurationTool cpuTime;
+    DurationTool ppuTime;
+
     auto nextPresent = Clock::now() + kRenderPeriod;
 
     // Register components
@@ -103,14 +152,19 @@ int Scheduler::run()
                 }
             }
         } else if (m_Cpu->getNextRunCycle() == m_MasterClock) {
+            cpuTime.begin();
             int cpuCycles = m_Cpu->run();
+            cpuTime.end();
 
             m_Cpu->setNextRunCycle(m_MasterClock + cpuCycles);
         }
 
         // Always run PPU
         if (m_Ppu->getNextRunCycle() == m_MasterClock) {
+            ppuTime.begin();
             int ppuCycles = m_Ppu->run();
+            ppuTime.end();
+
             m_Ppu->setNextRunCycle(m_MasterClock + ppuCycles);
 
             auto ppuEvents = m_Ppu->getEvents();
@@ -126,9 +180,17 @@ int Scheduler::run()
             }
 
             if (ppuEvents & Ppu::Event_ScanEnded) {
+                if (kLogTimings) {
+                    LOGI(TAG, "CPU: %lu ms - PPU: %lu ms",
+                         cpuTime.total<std::chrono::milliseconds>(),
+                         ppuTime.total<std::chrono::milliseconds>());
+
+                    cpuTime.reset();
+                    ppuTime.reset();
+                }
+
                 std::this_thread::sleep_until(nextPresent);
 
-                //LOGE(TAG, "Present");
                 m_Frontend->present();
                 nextPresent += kRenderPeriod;
 
