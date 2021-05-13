@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <assert.h>
 #include <stdint.h>
 #include "log.h"
