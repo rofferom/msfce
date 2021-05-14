@@ -750,6 +750,11 @@ bool Ppu::getBackgroundCurrentPixel(RendererBgInfo* renderBg, int priority, Colo
     tilePixelColor |= ((renderBg->tileDataPlane0[1] >> renderBg->subtilePixelX) & 1) << 1;
 
     if (renderBg->tileBpp == 4) {
+        if (!renderBg->tileDataPlane1) {
+            LOGW(TAG, "%s(): renderBg->tileDataPlane1 == nullptr", __func__);
+            return false;
+        }
+
         assert(renderBg->tileDataPlane1);
         tilePixelColor |= ((renderBg->tileDataPlane1[0] >> renderBg->subtilePixelX) & 1) << 2;
         tilePixelColor |= ((renderBg->tileDataPlane1[1] >> renderBg->subtilePixelX) & 1) << 3;
