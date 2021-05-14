@@ -47,6 +47,9 @@ add_library(msfe_lib
 
     snes.h
     snes.cpp
+
+    wram.h
+    wram.cpp
 )
 
 set_property(TARGET msfe_lib PROPERTY CXX_STANDARD 17)
