@@ -182,7 +182,9 @@ void Dma::channelStart(int id, Channel* channel, int *cycles)
     LOGD(TAG, "\tA-Bus address: 0x%06X", channel->m_ABusAddress);
     LOGD(TAG, "\tBytes: 0x%04X", channel->m_DMAByteCounter);
 
-    assert(channel->m_DMAByteCounter);
+    if (!channel->m_DMAByteCounter) {
+        return;
+    }
 
     switch (channel->m_Direction) {
     case Direction::aToB:
