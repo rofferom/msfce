@@ -604,6 +604,16 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegW34SEL:
     case kRegWOBJSEL:
     case kRegCOLDATA:
+    case kRegM7A:
+    case kRegM7B:
+    case kRegM7C:
+    case kRegM7D:
+    case kRegM7X:
+    case kRegM7Y:
+    case kRegWH0:
+    case kRegWH1:
+    case kRegWH2:
+    case kRegWH3:
         break;
 
     case kRegRDCGRAM:

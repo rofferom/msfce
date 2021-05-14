@@ -66,6 +66,17 @@ constexpr size_t kRegTSW = 0x212F;
 constexpr size_t kRegCOLDATA = 0x2132;
 
 constexpr size_t kRegM7SEL = 0x211A;
+constexpr size_t kRegM7A = 0x211B;
+constexpr size_t kRegM7B = 0x211C;
+constexpr size_t kRegM7C = 0x211D;
+constexpr size_t kRegM7D = 0x211E;
+constexpr size_t kRegM7X = 0x211F;
+constexpr size_t kRegM7Y = 0x2120;
+
+constexpr size_t kRegWH0 = 0x2126;
+constexpr size_t kRegWH1 = 0x2127;
+constexpr size_t kRegWH2 = 0x2128;
+constexpr size_t kRegWH3 = 0x2129;
 
 constexpr size_t kRegCGADD = 0x2121;
 constexpr size_t kRegCGDATA = 0x2122;
