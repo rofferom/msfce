@@ -302,6 +302,19 @@ void getSpriteSize(uint8_t obselSize, uint8_t objSize, int* width, int* height)
 } // anonymous namespace
 
 // Background priority charts
+const Ppu::LayerPriority Ppu::s_LayerPriorityMode0[] = {
+    {Layer::background, 0, 1},
+    {Layer::background, 1, 1},
+    {Layer::background, 0, 0},
+    {Layer::background, 1, 0},
+    {Layer::background, 2, 1},
+    {Layer::background, 3, 1},
+    {Layer::background, 2, 1},
+    {Layer::background, 3, 0},
+
+    {Layer::none, 0, 0},
+};
+
 const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_On[] = {
     {Layer::background, 2,   1},
     {Layer::sprite,    -1,   3},
@@ -984,7 +997,9 @@ void Ppu::initLineRender(int y)
         updateSubtileData(bg, renderBg);
     }
 
-    if (m_Bgmode == 1) {
+    if (m_Bgmode == 0) {
+	m_RenderLayerPriority = s_LayerPriorityMode0;
+    } else if (m_Bgmode == 1) {
         m_RenderLayerPriority = m_Bg3Priority ? s_LayerPriorityMode1_BG3_On : s_LayerPriorityMode1_BG3_Off;
     } else {
         m_RenderLayerPriority = nullptr;
