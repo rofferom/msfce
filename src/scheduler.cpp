@@ -81,7 +81,10 @@ Scheduler::Scheduler(
 uint8_t Scheduler::readU8(uint32_t addr)
 {
     switch (addr) {
-    case kRegRDNMI:
+    case kRegRDNMI: {
+        return (m_Vblank << 7) | (1 << 6);
+    }
+
     case kRegTIMEUP:
         // Ack interrupt
         return 0;
@@ -169,6 +172,8 @@ int Scheduler::run()
 
             auto ppuEvents = m_Ppu->getEvents();
             if (ppuEvents & Ppu::Event_VBlankStart) {
+                m_Vblank = true;
+
                 if (m_JoypadAutoread) {
                     m_ControllerPorts->readController();
                 }
@@ -180,6 +185,8 @@ int Scheduler::run()
             }
 
             if (ppuEvents & Ppu::Event_ScanEnded) {
+                m_Vblank = false;
+
                 if (kLogTimings) {
                     LOGI(TAG, "CPU: %lu ms - PPU: %lu ms",
                          cpuTime.total<std::chrono::milliseconds>(),
