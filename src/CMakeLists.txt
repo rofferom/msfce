@@ -18,6 +18,9 @@ add_library(msfe_lib
 
     frontend.h
 
+    frontend_dummy.h
+    frontend_dummy.cpp
+
     frontend_sdl2.h
     frontend_sdl2.cpp
 
@@ -39,9 +42,14 @@ add_library(msfe_lib
     scheduler.h
     scheduler.cpp
 
+    schedulertask.h
+    schedulertask.cpp
+
     snes.h
     snes.cpp
 )
+
+set_property(TARGET msfe_lib PROPERTY CXX_STANDARD 17)
 
 target_include_directories(msfe_lib PUBLIC
     ${PKG_SDL2_INCLUDE_DIRS}

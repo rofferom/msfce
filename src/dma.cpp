@@ -2,14 +2,22 @@
 #include "log.h"
 #include "membus.h"
 #include "registers.h"
+#include "scheduler.h"
+#include "timings.h"
 #include "dma.h"
 
 #define TAG "dma"
 
-Dma::Dma(const std::shared_ptr<Membus> membus)
+Dma::Dma(const std::shared_ptr<Membus>& membus)
     : MemComponent(MemComponentType::dma),
+      SchedulerTask(),
       m_Membus(membus)
 {
+}
+
+void Dma::setScheduler(const std::shared_ptr<Scheduler>& scheduler)
+{
+    m_Scheduler = scheduler;
 }
 
 uint8_t Dma::readU8(uint32_t addr)
@@ -29,6 +37,7 @@ void Dma::writeU8(uint32_t addr, uint8_t value)
     if (addr == kRegisterMDMAEN) {
         LOGD(TAG, "Start DMA: %02X", value);
         m_ActiveDmaChannels = value;
+        m_Scheduler->resumeTask(this, 1);
         return;
     } else if (addr == kRegisterHDMAEN) {
         // Start HDMA
@@ -122,34 +131,54 @@ void Dma::writeU8(uint32_t addr, uint8_t value)
     }
 }
 
-void Dma::run()
+int Dma::run()
 {
     if (!m_ActiveDmaChannels) {
-        return;
+        return 0;
     }
 
-    for (int i = 0; i < kChannelCount; i++) {
-        if (m_ActiveDmaChannels & (1 << i)) {
-            LOGD(TAG, "Start DMA channel %d", i);
-            runSingleDmaChannel(&m_Channels[i]);
+    if (m_RunningCtx.id != kUnknownChannelId) {
+        if (m_RunningCtx.m_Registers->m_DMAByteCounter) {
+            int cycles = 0;
+
+            channelContinue(&cycles);
+
+            return cycles;
+        } else {
+            m_ActiveDmaChannels &= ~(1 << m_RunningCtx.id);
+
+            m_RunningCtx.id = kUnknownChannelId;
+            m_RunningCtx.m_Registers = nullptr;
         }
     }
 
-    m_ActiveDmaChannels = 0;
+    // Look for the next channel to run
+    for (int i = 0; i < kChannelCount; i++) {
+        if (m_ActiveDmaChannels & (1 << i)) {
+            int cycles = 0;
+
+            LOGD(TAG, "Start DMA channel %d", i);
+
+            m_RunningCtx.id = i;
+            m_RunningCtx.m_Registers = &m_Channels[i];
+
+            channelStart(i, &m_Channels[i], &cycles);
+
+            return cycles;
+        }
+    }
+
+    return 0;
 }
 
-void Dma::runSingleDmaChannel(Channel* channel)
+void Dma::channelStart(int id, Channel* channel, int *cycles)
 {
-    const uint32_t bBaseBusAddress = 0x2100 | channel->m_BBusAddress;
-    uint32_t srcAddress;
-    uint32_t destAddress;
-    uint32_t* aBusAddress;
-    uint32_t* bBusAddress;
+    m_RunningCtx.m_bBaseBusAddress = 0x2100 | channel->m_BBusAddress;
 
     LOGD(TAG, "\tDirection: %d", static_cast<int>(channel->m_Direction));
     LOGD(TAG, "\tABusStep: %d", static_cast<int>(channel->m_ABusStep));
     LOGD(TAG, "\tMode: %d", static_cast<int>(channel->m_Mode));
-    LOGD(TAG, "\tB-Bus address: 0x%04X", bBaseBusAddress);
+    LOGD(TAG, "\tB-Bus address: 0x%04X", m_RunningCtx.m_bBaseBusAddress);
     LOGD(TAG, "\tA-Bus address: 0x%06X", channel->m_ABusAddress);
     LOGD(TAG, "\tBytes: 0x%04X", channel->m_DMAByteCounter);
 
@@ -157,77 +186,93 @@ void Dma::runSingleDmaChannel(Channel* channel)
 
     switch (channel->m_Direction) {
     case Direction::aToB:
-        srcAddress = channel->m_ABusAddress;
-        aBusAddress = &srcAddress;
-        destAddress = bBaseBusAddress;
-        bBusAddress = &destAddress;
+        m_RunningCtx.m_SrcAddress = channel->m_ABusAddress;
+        m_RunningCtx.m_aBusAddress = &m_RunningCtx.m_SrcAddress;
+        m_RunningCtx.m_DestAddress = m_RunningCtx.m_bBaseBusAddress;
+        m_RunningCtx.m_bBusAddress = &m_RunningCtx.m_DestAddress;
         break;
 
     case Direction::bToA:
-        srcAddress = bBaseBusAddress;
-        bBusAddress = &srcAddress;
-        destAddress = channel->m_ABusAddress;
-        aBusAddress = &destAddress;
+        m_RunningCtx.m_SrcAddress = m_RunningCtx.m_bBaseBusAddress;
+        m_RunningCtx.m_bBusAddress = &m_RunningCtx.m_SrcAddress;
+        m_RunningCtx.m_DestAddress = channel->m_ABusAddress;
+        m_RunningCtx.m_aBusAddress = &m_RunningCtx.m_DestAddress;
         break;
 
     default:
-        aBusAddress = nullptr;
-        bBusAddress = nullptr;
+        m_RunningCtx.m_aBusAddress = nullptr;
+        m_RunningCtx.m_bBusAddress = nullptr;
         assert(false);
         break;
     }
 
-    while (channel->m_DMAByteCounter) {
-        switch (channel->m_Mode) {
-        case 0:
-            m_Membus->writeU8(destAddress, m_Membus->readU8(srcAddress));
-            incrementABusAddress(channel, aBusAddress);
-            channel->m_DMAByteCounter--;
-            break;
+    m_RunningCtx.id = id;
+    m_RunningCtx.m_Registers = channel;
 
-        case 1:
-            m_Membus->writeU8(destAddress, m_Membus->readU8(srcAddress));
-            incrementABusAddress(channel, aBusAddress);
-            (*bBusAddress)++;
+    *cycles += kTimingDmaStart;
+}
 
-            m_Membus->writeU8(destAddress, m_Membus->readU8(srcAddress));
-            incrementABusAddress(channel, aBusAddress);
-            *bBusAddress = bBaseBusAddress;
+void Dma::channelContinue(int *cycles)
+{
+    auto channel = m_RunningCtx.m_Registers;
 
-            if (channel->m_DMAByteCounter >= 2) {
-                channel->m_DMAByteCounter -=2;
-            } else {
-                m_Membus->writeU8(destAddress, m_Membus->readU8(srcAddress));
-                incrementABusAddress(channel, aBusAddress);
-                (*bBusAddress)++;
+    switch (channel->m_Mode) {
+    case 0:
+        m_Membus->writeU8(m_RunningCtx.m_DestAddress, m_Membus->readU8(m_RunningCtx.m_SrcAddress));
+        incrementABusAddress(channel, m_RunningCtx.m_aBusAddress);
+        channel->m_DMAByteCounter--;
 
-                channel->m_DMAByteCounter = 0;
-            }
-            break;
+        *cycles += kTimingDmaAccess;
+        break;
 
-        case 2:
-        case 6:
-            m_Membus->writeU8(destAddress, m_Membus->readU8(srcAddress));
-            incrementABusAddress(channel, aBusAddress);
+    case 1:
+        m_Membus->writeU8(m_RunningCtx.m_DestAddress, m_Membus->readU8(m_RunningCtx.m_SrcAddress));
+        incrementABusAddress(channel, m_RunningCtx.m_aBusAddress);
+        (*m_RunningCtx.m_bBusAddress)++;
+        *cycles += kTimingDmaAccess;
 
-            m_Membus->writeU8(destAddress, m_Membus->readU8(srcAddress));
-            incrementABusAddress(channel, aBusAddress);
+        m_Membus->writeU8(m_RunningCtx.m_DestAddress, m_Membus->readU8(m_RunningCtx.m_SrcAddress));
+        incrementABusAddress(channel, m_RunningCtx.m_aBusAddress);
+        *m_RunningCtx.m_bBusAddress = m_RunningCtx.m_bBaseBusAddress;
+        *cycles += kTimingDmaAccess;
 
-            if (channel->m_DMAByteCounter >= 2) {
-                channel->m_DMAByteCounter -=2;
-            } else {
-                m_Membus->writeU8(destAddress, m_Membus->readU8(srcAddress));
-                incrementABusAddress(channel, aBusAddress);
+        if (channel->m_DMAByteCounter >= 2) {
+            channel->m_DMAByteCounter -=2;
+        } else {
+            m_Membus->writeU8(m_RunningCtx.m_DestAddress, m_Membus->readU8(m_RunningCtx.m_SrcAddress));
+            incrementABusAddress(channel, m_RunningCtx.m_aBusAddress);
+            (*m_RunningCtx.m_bBusAddress)++;
+            *cycles += kTimingDmaAccess;
 
-                channel->m_DMAByteCounter = 0;
-            }
-            break;
-
-        default:
-            LOGC(TAG, "Unimplemented mode %d", channel->m_Mode);
-            assert(false);
-            break;
+            channel->m_DMAByteCounter = 0;
         }
+        break;
+
+    case 2:
+    case 6:
+        m_Membus->writeU8(m_RunningCtx.m_DestAddress, m_Membus->readU8(m_RunningCtx.m_SrcAddress));
+        incrementABusAddress(channel, m_RunningCtx.m_aBusAddress);
+        *cycles += kTimingDmaAccess;
+
+        m_Membus->writeU8(m_RunningCtx.m_DestAddress, m_Membus->readU8(m_RunningCtx.m_SrcAddress));
+        incrementABusAddress(channel, m_RunningCtx.m_aBusAddress);
+        *cycles += kTimingDmaAccess;
+
+        if (channel->m_DMAByteCounter >= 2) {
+            channel->m_DMAByteCounter -=2;
+        } else {
+            m_Membus->writeU8(m_RunningCtx.m_DestAddress, m_Membus->readU8(m_RunningCtx.m_SrcAddress));
+            incrementABusAddress(channel, m_RunningCtx.m_aBusAddress);
+            *cycles += kTimingDmaAccess;
+
+            channel->m_DMAByteCounter = 0;
+        }
+        break;
+
+    default:
+        LOGC(TAG, "Unimplemented mode %d", channel->m_Mode);
+        assert(false);
+        break;
     }
 }
 

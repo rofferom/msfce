@@ -7,8 +7,15 @@
 #include "frontend.h"
 #include "memcomponent.h"
 #include "registers.h"
+#include "schedulertask.h"
 
-class Ppu : public MemComponent {
+class Ppu : public MemComponent, public SchedulerTask {
+public:
+    enum : uint32_t {
+        Event_VBlankStart = (1 << 0),
+        Event_ScanEnded = (1 << 1),
+    };
+
 public:
     Ppu(const std::shared_ptr<Frontend>& frontend);
     ~Ppu() = default;
@@ -18,7 +25,9 @@ public:
     uint8_t readU8(uint32_t addr) override;
     void writeU8(uint32_t addr, uint8_t value) override;
 
-    void render();
+    int run() override;
+
+    uint32_t getEvents() const;
 
 private:
     typedef uint32_t (*TilemapMapper)(uint16_t tilemapBase, int x, int y);
@@ -153,7 +162,6 @@ private:
     bool getBackgroundCurrentPixel(RendererBgInfo* renderBg, int priority, Color* color);
     bool getSpriteCurrentPixel(int x, int y, int priority, Color* color);
     void moveToNextPixel(RendererBgInfo* renderBg);
-    void renderLine(int y, const Ppu::LayerPriority* layerPriority);
     void incrementVramAddress();
 
     void loadObjs();
@@ -164,8 +172,14 @@ private:
     bool getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int screen_y, Color* c, int* priority);
     bool getPixelFromObj(int screen_x, int screen_y, Color* c, int* priority);
 
+    void initScreenRender();
+    void initLineRender(int y);
+    void renderDot(int x, int y);
+    void renderStep();
+
 private:
     std::shared_ptr<Frontend> m_Frontend;
+    uint32_t m_Events = 0;
 
     bool m_ForcedBlanking = false;
     uint8_t m_Brightness = 0;
@@ -210,6 +224,10 @@ private:
     static const Ppu::LayerPriority s_LayerPriorityMode1_BG3_Off[];
 
     // Rendering
+    int m_RenderX = 0;
+    int m_RenderY = 0;
+
     RendererBgInfo m_RenderBgInfo[kBackgroundCount];
     RenderObjInfo m_RenderObjInfo[kPpuDisplayHeight];
+    const Ppu::LayerPriority* m_RenderLayerPriority = nullptr;
 };
