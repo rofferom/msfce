@@ -328,7 +328,8 @@ const Membus::MemoryMap Membus::s_LowRomMap = {
         { 0x7E, 0x7F, 0x0000, 0xFFFF, MemComponentType::ram, kComponentAccessRW, kTimingRamAccess },
 
         // WRAM indirect access
-        //{ 0x00, 0x3F, 0x2180, 0x2183, MemComponentType::indirectRam, kComponentAccessRW },
+        { 0x00, 0x3F, 0x2180, 0x2180, MemComponentType::indirectRam, kComponentAccessRW, kTimingRamAccess },
+        { 0x00, 0x3F, 0x2181, 0x2183, MemComponentType::indirectRam, kComponentAccessW, kTimingRamAccess },
 
         // PPU
         { 0x00, 0x3F, 0x2100, 0x2133, MemComponentType::ppu, kComponentAccessW, kTimingIoFastAccess },

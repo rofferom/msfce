@@ -302,6 +302,19 @@ void getSpriteSize(uint8_t obselSize, uint8_t objSize, int* width, int* height)
 } // anonymous namespace
 
 // Background priority charts
+const Ppu::LayerPriority Ppu::s_LayerPriorityMode0[] = {
+    {Layer::background, 0, 1},
+    {Layer::background, 1, 1},
+    {Layer::background, 0, 0},
+    {Layer::background, 1, 0},
+    {Layer::background, 2, 1},
+    {Layer::background, 3, 1},
+    {Layer::background, 2, 1},
+    {Layer::background, 3, 0},
+
+    {Layer::none, 0, 0},
+};
+
 const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_On[] = {
     {Layer::background, 2,   1},
     {Layer::sprite,    -1,   3},
@@ -591,6 +604,16 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegW34SEL:
     case kRegWOBJSEL:
     case kRegCOLDATA:
+    case kRegM7A:
+    case kRegM7B:
+    case kRegM7C:
+    case kRegM7D:
+    case kRegM7X:
+    case kRegM7Y:
+    case kRegWH0:
+    case kRegWH1:
+    case kRegWH2:
+    case kRegWH3:
         break;
 
     case kRegRDCGRAM:
@@ -727,6 +750,11 @@ bool Ppu::getBackgroundCurrentPixel(RendererBgInfo* renderBg, int priority, Colo
     tilePixelColor |= ((renderBg->tileDataPlane0[1] >> renderBg->subtilePixelX) & 1) << 1;
 
     if (renderBg->tileBpp == 4) {
+        if (!renderBg->tileDataPlane1) {
+            LOGW(TAG, "%s(): renderBg->tileDataPlane1 == nullptr", __func__);
+            return false;
+        }
+
         assert(renderBg->tileDataPlane1);
         tilePixelColor |= ((renderBg->tileDataPlane1[0] >> renderBg->subtilePixelX) & 1) << 2;
         tilePixelColor |= ((renderBg->tileDataPlane1[1] >> renderBg->subtilePixelX) & 1) << 3;
@@ -984,7 +1012,9 @@ void Ppu::initLineRender(int y)
         updateSubtileData(bg, renderBg);
     }
 
-    if (m_Bgmode == 1) {
+    if (m_Bgmode == 0) {
+	m_RenderLayerPriority = s_LayerPriorityMode0;
+    } else if (m_Bgmode == 1) {
         m_RenderLayerPriority = m_Bg3Priority ? s_LayerPriorityMode1_BG3_On : s_LayerPriorityMode1_BG3_Off;
     } else {
         m_RenderLayerPriority = nullptr;

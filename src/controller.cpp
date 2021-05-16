@@ -71,7 +71,7 @@ uint8_t ControllerPorts::readU8(uint32_t addr)
 
 void ControllerPorts::writeU8(uint32_t addr, uint8_t value)
 {
-    assert(false);
+    LOGW(TAG, "Ignore WriteU8 %02X at %06X", value, addr);
 }
 
 void ControllerPorts::readController()

@@ -11,6 +11,7 @@
 #include "ppu.h"
 #include "registers.h"
 #include "scheduler.h"
+#include "wram.h"
 
 #include "snes.h"
 
@@ -85,10 +86,11 @@ void Snes::run()
         std::move(romData));
     membus->plugComponent(rom);
 
-    auto ram = std::make_shared<BufferMemComponent>(
-        MemComponentType::ram,
-        kWramSize);
+    auto ram = std::make_shared<Wram>();
     membus->plugComponent(ram);
+
+    auto indirectWram = std::make_shared<IndirectWram>(ram);
+    membus->plugComponent(indirectWram);
 
     auto sram = std::make_shared<BufferMemComponent>(
         MemComponentType::sram,

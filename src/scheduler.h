@@ -50,6 +50,9 @@ private:
     // Joypad interrupt
     bool m_JoypadAutoread = false;
 
+    // IRQ
+    bool m_Vblank = false;
+
     // Scheduling
     uint64_t m_MasterClock = 0;
 
