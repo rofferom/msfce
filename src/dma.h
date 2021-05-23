@@ -83,6 +83,8 @@ private:
 private:
     std::shared_ptr<Scheduler> m_Scheduler;
 
+    static constexpr int kChannelCfgLen = 0x10;
+    uint8_t m_ChannelRegisters[kChannelCount * kChannelCfgLen];
     Channel m_Channels[kChannelCount];
     std::shared_ptr<Membus> m_Membus;
 

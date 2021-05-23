@@ -43,92 +43,13 @@ void Dma::writeU8(uint32_t addr, uint8_t value)
         // Start HDMA
         LOGD(TAG, "Start HDMA: %02X", value);
         return;
+    } else {
+        addr -= kRegDmaStart;
+        m_ChannelRegisters[addr] = value;
+        return;
     }
 
-    assert(kRegDmaStart <= addr && addr <= kRegDmaEnd);
-
-    // Address format: 0x43XY => X: Channel, Y: ChannelRegister
-    int channelIdx = (addr >> 4) & 0xF;
-    Channel& channel = m_Channels[channelIdx];
-    int reg = addr & 0xF;
-
-    LOGD(TAG, "Configuring Channel %d, Register 0x%X (%02X)", channelIdx, reg, value);
-
-    switch (reg) {
-    case kRegDmaP:
-        if (value & (1 << 7)) {
-            channel.m_Direction = Direction::bToA;
-        } else {
-            channel.m_Direction = Direction::aToB;
-        }
-        if (value & (1 << 6)) {
-            channel.m_AddressingMode = AddressingMode::indirect;
-        } else {
-            channel.m_AddressingMode = AddressingMode::direct;
-        }
-
-        switch ((value >> 3) & 0b11) {
-        case 0:
-            channel.m_ABusStep = ABusStep::increment;
-            break;
-
-        case 2:
-            channel.m_ABusStep = ABusStep::decrement;
-            break;
-
-        case 1:
-        case 3:
-            channel.m_ABusStep = ABusStep::fixed;
-            break;
-
-        default:
-            break;
-        }
-
-        channel.m_Mode = value & 0b111;
-
-        break;
-
-    case kRegDmaBBAD:
-        channel.m_BBusAddress = value;
-        break;
-
-    case kRegDmaA1TL:
-        channel.m_ABusAddress = (channel.m_ABusAddress & 0xFFFF00) | value;
-        break;
-
-    case kRegDmaA1TH:
-        channel.m_ABusAddress = (channel.m_ABusAddress & 0xFF00FF) | (value << 8);
-        break;
-
-    case kRegDmaA1B:
-        channel.m_ABusAddress = (channel.m_ABusAddress & 0xFFFF) | (value << 16);
-        break;
-
-    case kRegDmaDASL:
-        channel.m_DMAByteCounter = (channel.m_DMAByteCounter & 0xFFFF00) | value;
-        break;
-
-    case kRegDmaDASH:
-        channel.m_DMAByteCounter = (channel.m_DMAByteCounter & 0xFF00FF) | (value << 8);
-        break;
-
-    case kRegDmaDASB:
-        break;
-
-    case kRegDmaA2AL:
-        break;
-
-    case kRegDmaA2AH:
-        break;
-
-    case kRegDmaNTRL:
-        break;
-
-    default:
-        LOGW(TAG, "Unsupported writeU8 %04X", static_cast<uint32_t>(addr));
-        break;
-    }
+    LOGW(TAG, "Unsupported writeU8 %04X", static_cast<uint32_t>(addr));
 }
 
 int Dma::run()
@@ -173,6 +94,55 @@ int Dma::run()
 
 void Dma::channelStart(int id, Channel* channel, int *cycles)
 {
+    // Configure channel: read channel configuration
+    const uint8_t* channelCfg = &m_ChannelRegisters[id * kChannelCfgLen];
+
+    // kRegDmaP
+    if (channelCfg[kRegDmaP] & (1 << 7)) {
+        channel->m_Direction = Direction::bToA;
+    } else {
+        channel->m_Direction = Direction::aToB;
+    }
+    if (channelCfg[kRegDmaP] & (1 << 6)) {
+        channel->m_AddressingMode = AddressingMode::indirect;
+    } else {
+        channel->m_AddressingMode = AddressingMode::direct;
+    }
+
+    switch ((channelCfg[kRegDmaP] >> 3) & 0b11) {
+    case 0:
+        channel->m_ABusStep = ABusStep::increment;
+        break;
+
+    case 2:
+        channel->m_ABusStep = ABusStep::decrement;
+        break;
+
+    case 1:
+    case 3:
+        channel->m_ABusStep = ABusStep::fixed;
+        break;
+
+    default:
+        break;
+    }
+
+    channel->m_Mode = channelCfg[kRegDmaP] & 0b111;
+
+    // Addresses
+    channel->m_BBusAddress = channelCfg[kRegDmaBBAD];
+
+    channel->m_ABusAddress =
+        channelCfg[kRegDmaA1TL] |
+       (channelCfg[kRegDmaA1TH] << 8) |
+       (channelCfg[kRegDmaA1B] << 16);
+
+    channel->m_DMAByteCounter =
+        channelCfg[kRegDmaDASL] |
+       (channelCfg[kRegDmaDASH] << 8);
+
+
+    // Setup m_RunningCtx
     m_RunningCtx.m_bBaseBusAddress = 0x2100 | channel->m_BBusAddress;
 
     LOGD(TAG, "\tDirection: %d", static_cast<int>(channel->m_Direction));
@@ -302,11 +272,13 @@ void Dma::incrementABusAddress(const Channel* channel, uint32_t* aBusAddress)
 void Dma::dumpToFile(FILE* f)
 {
     fwrite(&m_Channels, sizeof(m_Channels), 1, f);
+    fwrite(&m_ChannelRegisters, sizeof(m_ChannelRegisters), 1, f);
     fwrite(&m_ActiveDmaChannels, sizeof(m_ActiveDmaChannels), 1, f);
 }
 
 void Dma::loadFromFile(FILE* f)
 {
     fread(&m_Channels, sizeof(m_Channels), 1, f);
+    fread(&m_ChannelRegisters, sizeof(m_ChannelRegisters), 1, f);
     fread(&m_ActiveDmaChannels, sizeof(m_ActiveDmaChannels), 1, f);
 }
