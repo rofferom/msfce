@@ -178,6 +178,8 @@ private:
 
     uint32_t getColorFromCgram(int bgIdx, int bpp, int palette, int colorIdx);
     uint32_t getObjColorFromCgram(int palette, int color);
+    uint32_t getMainBackdropColor();
+
     bool getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int screen_y, Color* c, int* priority);
     bool getPixelFromObj(int screen_x, int screen_y, Color* c, int* priority);
 

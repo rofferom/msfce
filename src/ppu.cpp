@@ -1062,7 +1062,10 @@ void Ppu::renderDot(int x, int y)
     if (colorValid) {
         m_Frontend->drawPoint(x, y, color);
     } else {
-        m_Frontend->drawPoint(x, y, {0, 0, 0});
+        uint32_t rawColor = getMainBackdropColor();
+        color = rawColorToRgb(rawColor);
+
+        m_Frontend->drawPoint(x, y, color);
     }
 
     const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
@@ -1178,6 +1181,11 @@ uint32_t Ppu::getColorFromCgram(int bgIdx, int tileBpp, int palette, int color)
 uint32_t Ppu::getObjColorFromCgram(int palette, int color)
 {
     return m_Cgram[kPpuObjPaletteOffset + palette * (1 << kPpuObjBpp) + color];
+}
+
+uint32_t Ppu::getMainBackdropColor()
+{
+    return m_Cgram[0];
 }
 
 bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int screen_y, Color* c, int* out_priority)
