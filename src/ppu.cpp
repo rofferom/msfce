@@ -961,13 +961,13 @@ void Ppu::initScreenRender()
 
     for (size_t bgIdx = 0; bgIdx < bgCount; bgIdx++) {
         RendererBgInfo* renderBg = &m_RenderBgInfo[bgIdx];
-        Background* bg = &m_Backgrounds[bgIdx];;
+        Background* bg = &m_Backgrounds[bgIdx];
 
         renderBg->bgIdx = bgIdx;
         renderBg->background = bg;
 
         // Compute some dimensions that will be ready for future use
-        getTilemapDimension(bg->m_TilemapSize, &renderBg->tilemapWidth, &renderBg->tilemapHeight);;
+        getTilemapDimension(bg->m_TilemapSize, &renderBg->tilemapWidth, &renderBg->tilemapHeight);
         renderBg->tilemapWidthPixel = renderBg->tilemapWidth * kPpuBaseTileWidth;
         renderBg->tilemapHeightPixel = renderBg->tilemapHeight * kPpuBaseTileHeight;
 
@@ -1005,7 +1005,7 @@ void Ppu::initLineRender(int y)
     // display pixel (0, y)
     for (size_t i = 0; i < bgCount; i++) {
         RendererBgInfo* renderBg = &m_RenderBgInfo[i];
-        Background* bg = &m_Backgrounds[i];;
+        Background* bg = &m_Backgrounds[i];
 
         // Compute background start coordinates in pixels at first
         int bgX = bg->m_HOffset % renderBg->tilemapWidthPixel;
@@ -1026,7 +1026,7 @@ void Ppu::initLineRender(int y)
     }
 
     if (m_Bgmode == 0) {
-	m_RenderLayerPriority = s_LayerPriorityMode0;
+        m_RenderLayerPriority = s_LayerPriorityMode0;
     } else if (m_Bgmode == 1) {
         m_RenderLayerPriority = m_Bg3Priority ? s_LayerPriorityMode1_BG3_On : s_LayerPriorityMode1_BG3_Off;
     } else {
@@ -1185,7 +1185,7 @@ bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int scre
     // Compute some dimensions that will be ready for future use
     int tilemapWidth;
     int tilemapHeight;
-    getTilemapDimension(bg->m_TilemapSize, &tilemapWidth, &tilemapHeight);;
+    getTilemapDimension(bg->m_TilemapSize, &tilemapWidth, &tilemapHeight);
     LOGD(TAG, "Tilemap is %dx%d", tilemapWidth, tilemapHeight);
 
     int tileWidth;

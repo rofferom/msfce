@@ -2462,7 +2462,7 @@ void Cpu65816::handleLDA(uint32_t data, int *cycles)
         m_Registers.A |= value & 0xFF;
         setNZFlags(m_Registers.A & 0xFF, 0x80);
     } else {
-        m_Registers.A = m_Membus->readU16(data, cycles);;
+        m_Registers.A = m_Membus->readU16(data, cycles);
         setNZFlags(m_Registers.A, 0x8000);
     }
 }
