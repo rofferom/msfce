@@ -22,14 +22,12 @@ void Dma::setScheduler(const std::shared_ptr<Scheduler>& scheduler)
 
 uint8_t Dma::readU8(uint32_t addr)
 {
-    switch (addr) {
-    default:
-        LOGW(TAG, "Unsupported readU8 %04X", addr);
-        assert(false);
-        break;
+    if (addr == kRegisterMDMAEN || addr == kRegisterHDMAEN) {
+        return 0;
+    } else {
+        addr -= kRegDmaStart;
+        return m_ChannelRegisters[addr];
     }
-
-    return 0;
 }
 
 void Dma::writeU8(uint32_t addr, uint8_t value)
