@@ -44,28 +44,27 @@ private:
         fixed,
     };
 
-    struct Channel {
+    struct DmaChannelParams {
         Direction m_Direction;
         AddressingMode m_AddressingMode;
-        ABusStep m_ABusStep;
         int m_Mode;
+    };
+
+    struct DmaChannel {
+        DmaChannelParams m_Params;
+        ABusStep m_ABusStep;
 
         uint8_t m_BBusAddress;
         uint32_t m_ABusAddress;
 
         uint16_t m_DMAByteCounter;
-
-        uint16_t& m_HDMATableOffset = m_DMAByteCounter;
-        uint16_t m_HDMATableBank;
-        uint16_t m_HDMACurrentAddress;
-        uint8_t m_HDMALineCounter;
     };
 
     static constexpr int kUnknownChannelId = -1;
 
-    struct RunningCtx {
+    struct DmaRunningCtx {
         int id = kUnknownChannelId;
-        Channel* m_Registers = nullptr;
+        DmaChannel* m_Registers = nullptr;
 
         uint32_t m_bBaseBusAddress;
         uint32_t m_SrcAddress;
@@ -75,20 +74,21 @@ private:
     };
 
 private:
-    void channelStart(int id, Channel* channel, int *cycles);
-    void channelContinue(int *cycles);
+    void dmaChannelStart(int id, DmaChannel* channel, int *cycles);
+    void dmaChannelContinue(int *cycles);
 
-    void incrementABusAddress(const Channel* channel, uint32_t* aBusAddress);
+    void incrementABusAddress(const DmaChannel* channel, uint32_t* aBusAddress);
 
 private:
     std::shared_ptr<Scheduler> m_Scheduler;
 
     static constexpr int kChannelCfgLen = 0x10;
     uint8_t m_ChannelRegisters[kChannelCount * kChannelCfgLen];
-    Channel m_Channels[kChannelCount];
+    DmaChannel m_DmaChannels[kChannelCount];
     std::shared_ptr<Membus> m_Membus;
 
+    uint8_t m_ActiveHdmaChannels = 0;
     uint8_t m_ActiveDmaChannels = 0;
 
-    RunningCtx m_RunningCtx;
+    DmaRunningCtx m_DmaRunningCtx;
 };
