@@ -281,3 +281,203 @@ void Dma::loadFromFile(FILE* f)
     fread(&m_ChannelRegisters, sizeof(m_ChannelRegisters), 1, f);
     fread(&m_ActiveDmaChannels, sizeof(m_ActiveDmaChannels), 1, f);
 }
+
+void Dma::onScanStarted()
+{
+    m_Vblank = false;
+
+    // Look for the next channel to run
+    for (int i = 0; i < kChannelCount; i++) {
+        if (m_ActiveHdmaChannels & (1 << i)) {
+            auto channel = &m_HdmaChannels[i];
+            const uint8_t* channelCfg = &m_ChannelRegisters[i * kChannelCfgLen];
+
+            // kRegDmaP
+            if (channelCfg[kRegDmaP] & (1 << 7)) {
+                channel->m_Params.m_Direction = Direction::bToA;
+            } else {
+                channel->m_Params.m_Direction = Direction::aToB;
+            }
+
+            if (channelCfg[kRegDmaP] & (1 << 6)) {
+                channel->m_Params.m_AddressingMode = AddressingMode::indirect;
+            } else {
+                channel->m_Params.m_AddressingMode = AddressingMode::direct;
+            }
+
+            channel->m_IndirectTable = channelCfg[kRegDmaP] & (1 << 6);
+            channel->m_Params.m_Mode = channelCfg[kRegDmaP] & 0b111;
+
+            channel->m_TableAddressStart =
+                channelCfg[kRegDmaA1TL] |
+               (channelCfg[kRegDmaA1TH] << 8) |
+               (channelCfg[kRegDmaA1B] << 16);
+
+            channel->m_bBaseBusAddress = 0x2100 | channelCfg[kRegDmaBBAD];
+
+            channel->m_Running = true;
+
+            // Preload first table entry
+            channel->m_TableAddress = channel->m_TableAddressStart;
+            uint8_t b = m_Membus->readU8(channel->m_TableAddress);
+            channel->m_TableAddress++;
+
+            if (channel->m_IndirectTable) {
+                channel->m_NextDataAddress =
+                        m_Membus->readU16(channel->m_TableAddress) |
+                        (channelCfg[kRegDmaDASB] << 16);
+            } else {
+                channel->m_NextDataAddress = channel->m_TableAddress;
+            }
+
+            channel->m_Repeat = b & (1 << 7);
+            channel->m_Lines = b & 0b1111111;
+            channel->m_RemainingLines = channel->m_Lines;
+
+            channel->m_FirstLine = true;
+        }
+    }
+}
+
+void Dma::onHblank()
+{
+    if (m_Vblank) {
+        return;
+    }
+
+    // Look for the next channel to run
+    for (int i = 0; i < kChannelCount; i++) {
+        if (m_ActiveHdmaChannels & (1 << i)) {
+            auto channel = &m_HdmaChannels[i];
+            const uint8_t* channelCfg = &m_ChannelRegisters[i * kChannelCfgLen];
+            bool doTransfer = false;
+            uint32_t tableAddress;
+
+            if (!channel->m_Running) {
+                continue;
+            }
+
+            if (channel->m_FirstLine) {
+                doTransfer = true;
+                channel->m_FirstLine = false;
+            } else {
+                doTransfer = channel->m_Repeat;
+            }
+
+            if (doTransfer) {
+                switch (channel->m_Params.m_Mode) {
+                case 1:
+                    m_Membus->writeU16(channel->m_bBaseBusAddress,
+                        m_Membus->readU16(channel->m_NextDataAddress));
+
+                    channel->m_NextDataAddress += 2;
+
+                    break;
+
+                case 2:
+                    m_Membus->writeU8(channel->m_bBaseBusAddress,
+                        m_Membus->readU8(channel->m_NextDataAddress));
+
+                    m_Membus->writeU8(channel->m_bBaseBusAddress,
+                        m_Membus->readU8(channel->m_NextDataAddress + 1));
+
+                    channel->m_NextDataAddress += 2;
+
+                    break;
+
+                case 3:
+                    m_Membus->writeU8(channel->m_bBaseBusAddress,
+                        m_Membus->readU8(channel->m_NextDataAddress));
+
+                    m_Membus->writeU8(channel->m_bBaseBusAddress,
+                        m_Membus->readU8(channel->m_NextDataAddress + 1));
+
+                    m_Membus->writeU8(channel->m_bBaseBusAddress + 1,
+                        m_Membus->readU8(channel->m_NextDataAddress + 2));
+
+                    m_Membus->writeU8(channel->m_bBaseBusAddress + 1,
+                        m_Membus->readU8(channel->m_NextDataAddress + 3));
+
+                    channel->m_NextDataAddress += 4;
+
+                    break;
+
+                case 4:
+                    for (int i = 0; i < 4; i++) {
+                        m_Membus->writeU8(channel->m_bBaseBusAddress + i,
+                            m_Membus->readU8(channel->m_NextDataAddress));
+
+                        channel->m_NextDataAddress++;
+                    }
+                    break;
+
+                default:
+                    LOGE(TAG, "Unimplemented HDMA mode %d", channel->m_Params.m_Mode);
+                    break;
+                }
+            }
+
+            channel->m_RemainingLines--;
+
+            if (channel->m_RemainingLines == 0) {
+                // Skip data of current line
+                if (channel->m_IndirectTable) {
+                    // Indirect HDMA has a fixed data size
+                    channel->m_TableAddress += 2;
+                } else {
+                    uint32_t dataSize = 0;
+
+                    switch (channel->m_Params.m_Mode) {
+                    case 1:
+                    case 2:
+                        dataSize = 2;
+                        break;
+
+                    case 3:
+                    case 4:
+                        dataSize = 4;
+                        break;
+
+                    default:
+                        LOGI(TAG, "Unknown data size for mode %d", channel->m_Params.m_Mode);
+                        assert(false);
+                        break;
+                    }
+
+                    if (channel->m_Repeat) {
+                        channel->m_TableAddress += dataSize * channel->m_Lines;
+                    } else {
+                        channel->m_TableAddress += dataSize;
+                    }
+                }
+
+                // Load data for next line
+                uint8_t b = m_Membus->readU8(channel->m_TableAddress);
+                channel->m_TableAddress++;
+
+                if (channel->m_IndirectTable) {
+                    channel->m_NextDataAddress =
+                            m_Membus->readU16(channel->m_TableAddress) |
+                            (channelCfg[kRegDmaDASB] << 16);
+                } else {
+                    channel->m_NextDataAddress = channel->m_TableAddress;
+                }
+
+                channel->m_Repeat = b & (1 << 7);
+                channel->m_Lines = b & 0b1111111;
+                channel->m_RemainingLines = channel->m_Lines;
+
+                if (channel->m_RemainingLines == 0) {
+                    channel->m_Running = false;
+                } else {
+                    channel->m_FirstLine = true;
+                }
+            }
+        }
+    }
+}
+
+void Dma::onVblank()
+{
+    m_Vblank = true;
+}

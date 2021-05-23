@@ -919,6 +919,7 @@ int Ppu::run()
         if (m_RenderY == 0) {
             // Start of screen
             initScreenRender();
+            m_Events |= Event_ScanStarted;
         } else if (m_RenderY == kPpuDisplayHeight) {
             // V-Blank
             m_Events |= Event_VBlankStart;
@@ -929,6 +930,10 @@ int Ppu::run()
         }
     } else if (m_RenderX >= kPpuDisplayWidth) {
         // H-Blank
+        if (m_RenderX == kPpuDisplayWidth) {
+            m_Events |= Event_HBlankStart;
+        }
+
     } else if (m_RenderY >= kPpuDisplayHeight) {
         // V-Blank
     } else {

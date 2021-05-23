@@ -25,6 +25,10 @@ public:
 
     int run() override;
 
+    void onScanStarted();
+    void onHblank();
+    void onVblank();
+
 private:
     static constexpr int kChannelCount = 8;
 
@@ -73,6 +77,22 @@ private:
         uint32_t* m_bBusAddress;
     };
 
+    struct HdmaChannel {
+        bool m_Running;
+
+        DmaChannelParams m_Params;
+        bool m_IndirectTable;
+        uint32_t m_bBaseBusAddress;
+        uint32_t m_TableAddressStart;
+
+        uint32_t m_TableAddress;
+        uint32_t m_NextDataAddress;
+        bool m_FirstLine;
+        bool m_Repeat;
+        uint8_t m_Lines;
+        uint8_t m_RemainingLines;
+    };
+
 private:
     void dmaChannelStart(int id, DmaChannel* channel, int *cycles);
     void dmaChannelContinue(int *cycles);
@@ -81,10 +101,12 @@ private:
 
 private:
     std::shared_ptr<Scheduler> m_Scheduler;
+    bool m_Vblank = false;
 
     static constexpr int kChannelCfgLen = 0x10;
     uint8_t m_ChannelRegisters[kChannelCount * kChannelCfgLen];
     DmaChannel m_DmaChannels[kChannelCount];
+    HdmaChannel m_HdmaChannels[kChannelCount];
     std::shared_ptr<Membus> m_Membus;
 
     uint8_t m_ActiveHdmaChannels = 0;

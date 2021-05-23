@@ -183,8 +183,19 @@ bool Scheduler::runRunning()
 
         m_Ppu->setNextRunCycle(m_MasterClock + ppuCycles);
         auto ppuEvents = m_Ppu->getEvents();
+
+        if (ppuEvents & Ppu::Event_ScanStarted) {
+            m_Dma->onScanStarted();
+        }
+
+        if (ppuEvents & Ppu::Event_HBlankStart) {
+            m_Dma->onHblank();
+        }
+
         if (ppuEvents & Ppu::Event_VBlankStart) {
             m_Vblank = true;
+
+            m_Dma->onVblank();
 
             if (m_JoypadAutoread) {
                 m_ControllerPorts->readController();

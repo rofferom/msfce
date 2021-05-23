@@ -13,7 +13,9 @@ class Ppu : public MemComponent, public SchedulerTask {
 public:
     enum : uint32_t {
         Event_VBlankStart = (1 << 0),
-        Event_ScanEnded = (1 << 1),
+        Event_HBlankStart = (1 << 1),
+        Event_ScanStarted = (1 << 2),
+        Event_ScanEnded = (1 << 3),
     };
 
     enum class DrawConfig {
