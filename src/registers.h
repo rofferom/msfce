@@ -20,6 +20,7 @@ constexpr size_t kRegVTIMEL = 0x4209;
 constexpr size_t kRegVTIMEH = 0x420A;
 constexpr size_t kRegRDNMI = 0x4210;
 constexpr size_t kRegTIMEUP = 0x4211;
+constexpr size_t kRegHVBJOY = 0x4212;
 
 constexpr size_t kRegVMAIN = 0x2115;
 constexpr size_t kRegVMADDL = 0x2116;

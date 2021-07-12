@@ -81,6 +81,10 @@ uint8_t Scheduler::readU8(uint32_t addr)
     case kRegTIMEUP:
         // Ack interrupt
         return 0;
+
+    case kRegHVBJOY:
+        // TODO: To be implemented
+        return 0;
     }
 
     LOGW(TAG, "Ignore ReadU8 at %06X", addr);
