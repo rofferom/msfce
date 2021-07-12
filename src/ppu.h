@@ -157,6 +157,8 @@ private:
         // Tile data
         const uint8_t* tileDataPlane0; // 2 first bits
         const uint8_t* tileDataPlane1; // 2 next bits
+        const uint8_t* tileDataPlane2; // 2 next bits
+        const uint8_t* tileDataPlane3; // 2 next bits
     };
 
     struct RenderObjInfo {
@@ -237,6 +239,7 @@ private:
     static const Ppu::LayerPriority s_LayerPriorityMode0[];
     static const Ppu::LayerPriority s_LayerPriorityMode1_BG3_On[];
     static const Ppu::LayerPriority s_LayerPriorityMode1_BG3_Off[];
+    static const Ppu::LayerPriority s_LayerPriorityMode3[];
 
     // Rendering
     int m_RenderX = 0;

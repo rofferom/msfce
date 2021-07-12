@@ -104,12 +104,17 @@ void getTileDimension(int tileSize, int* width, int* height)
  */
 size_t getBackgroundCountFromMode(int mode)
 {
+    constexpr int kInvalidBgCount = -1;
+
     static const int bgCount[] = {
         4,
         3,
+        kInvalidBgCount,
+        2,
     };
 
     assert(static_cast<size_t>(mode) < SIZEOF_ARRAY(bgCount));
+    assert(bgCount[mode] != kInvalidBgCount);
     return bgCount[mode];
 }
 
@@ -139,6 +144,16 @@ int getTileBppFromMode(int mode, size_t bgIdx)
         static_assert(SIZEOF_ARRAY(colorCount) == 3);
         assert(bgIdx < SIZEOF_ARRAY(colorCount));
         return colorCount[bgIdx];
+    } else if (mode == 3) {
+        static const int colorCount[] = {
+              8,
+              4,
+          };
+
+          static_assert(SIZEOF_ARRAY(colorCount) == 2);
+          assert(bgIdx < SIZEOF_ARRAY(colorCount));
+          return colorCount[bgIdx];
+
     } else {
         assert(false);
         return 0;
@@ -341,6 +356,18 @@ const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_Off[] = {
     {Layer::background, 2,   1},
     {Layer::sprite,    -1,   0},
     {Layer::background, 2,   0},
+    {Layer::none, 0, 0},
+};
+
+const Ppu::LayerPriority Ppu::s_LayerPriorityMode3[] = {
+    {Layer::sprite,    -1,   3},
+    {Layer::background, 0,   1},
+    {Layer::sprite,    -1,   2},
+    {Layer::background, 1,   1},
+    {Layer::sprite,    -1,   1},
+    {Layer::background, 0,   0},
+    {Layer::sprite,    -1,   0},
+    {Layer::background, 1,   0},
     {Layer::none, 0, 0},
 };
 
@@ -737,7 +764,17 @@ void Ppu::updateSubtileData(const Background* bg, RendererBgInfo* renderBg)
         renderBg->tileDataPlane0 = tileData + renderBg->subtilePixelY * 2;
         // 2-3 bits are stored in the second plane
         renderBg->tileDataPlane1 = renderBg->tileDataPlane0 + renderBg->tileSize / 2;
+    } else if (renderBg->tileBpp == 8) {
+        // 0-1 bits are stored in a 8 words chunk, in the first plane
+        renderBg->tileDataPlane0 = tileData + renderBg->subtilePixelY * 2;
+        // 2-3 bits are stored in the second plane
+        renderBg->tileDataPlane1 = renderBg->tileDataPlane0 + 0x10;
+        // 4-5 bits are stored in the third plane
+        renderBg->tileDataPlane2 = renderBg->tileDataPlane1 + 0x10;
+        // 6-7 bits are stored in the forth plane
+        renderBg->tileDataPlane3 = renderBg->tileDataPlane2 + 0x10;
     } else {
+        LOGE(TAG, "Unsupported %d bpp", renderBg->tileBpp);
         assert(false);
     }
 }
@@ -763,6 +800,33 @@ bool Ppu::getBackgroundCurrentPixel(RendererBgInfo* renderBg, int priority, Colo
         assert(renderBg->tileDataPlane1);
         tilePixelColor |= ((renderBg->tileDataPlane1[0] >> renderBg->subtilePixelX) & 1) << 2;
         tilePixelColor |= ((renderBg->tileDataPlane1[1] >> renderBg->subtilePixelX) & 1) << 3;
+    } else if (renderBg->tileBpp == 8) {
+        if (!renderBg->tileDataPlane1) {
+            LOGW(TAG, "%s(): renderBg->tileDataPlane1 == nullptr", __func__);
+            return false;
+        }
+
+        if (!renderBg->tileDataPlane2) {
+            LOGW(TAG, "%s(): renderBg->tileDataPlane2 == nullptr", __func__);
+            return false;
+        }
+
+        if (!renderBg->tileDataPlane3) {
+            LOGW(TAG, "%s(): renderBg->tileDataPlane3 == nullptr", __func__);
+            return false;
+        }
+
+        assert(renderBg->tileDataPlane1);
+        tilePixelColor |= ((renderBg->tileDataPlane1[0] >> renderBg->subtilePixelX) & 1) << 2;
+        tilePixelColor |= ((renderBg->tileDataPlane1[1] >> renderBg->subtilePixelX) & 1) << 3;
+
+        assert(renderBg->tileDataPlane2);
+        tilePixelColor |= ((renderBg->tileDataPlane2[0] >> renderBg->subtilePixelX) & 1) << 4;
+        tilePixelColor |= ((renderBg->tileDataPlane2[1] >> renderBg->subtilePixelX) & 1) << 5;
+
+        assert(renderBg->tileDataPlane3);
+        tilePixelColor |= ((renderBg->tileDataPlane3[0] >> renderBg->subtilePixelX) & 1) << 6;
+        tilePixelColor |= ((renderBg->tileDataPlane3[1] >> renderBg->subtilePixelX) & 1) << 7;
     }
 
     if (tilePixelColor == 0) {
@@ -1034,6 +1098,8 @@ void Ppu::initLineRender(int y)
         m_RenderLayerPriority = s_LayerPriorityMode0;
     } else if (m_Bgmode == 1) {
         m_RenderLayerPriority = m_Bg3Priority ? s_LayerPriorityMode1_BG3_On : s_LayerPriorityMode1_BG3_Off;
+    } else if (m_Bgmode == 3) {
+        m_RenderLayerPriority = s_LayerPriorityMode3;
     } else {
         m_RenderLayerPriority = nullptr;
     }
@@ -1177,6 +1243,15 @@ uint32_t Ppu::getColorFromCgram(int bgIdx, int tileBpp, int palette, int color)
         return m_Cgram[bgIdx * 0x20 + palette * 4 + color];
     } else if (m_Bgmode == 1) {
         return m_Cgram[palette * (1 << tileBpp) + color];
+    } else if (m_Bgmode == 3) {
+        if (bgIdx == 0) {
+            return m_Cgram[color];
+        } else if (bgIdx == 1) {
+            return m_Cgram[palette * (1 << tileBpp) + color];
+        } else {
+            assert(false);
+            return 0;
+        }
     } else {
         assert(false);
         return 0;
