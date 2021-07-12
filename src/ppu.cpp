@@ -1107,6 +1107,11 @@ void Ppu::initLineRender(int y)
 
 void Ppu::renderDot(int x, int y)
 {
+    if (m_ForcedBlanking) {
+        m_Frontend->drawPoint(x, y, {0, 0, 0});
+        return;
+    }
+
     if (m_DrawConfig != DrawConfig::Draw) {
         return;
     }
