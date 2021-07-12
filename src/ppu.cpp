@@ -610,6 +610,70 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         m_OldBgByte = value;
         break;
 
+    case kRegTM:
+        for (int i = 0; i < kBackgroundCount; i++) {
+            m_Backgrounds[i].m_MainScreenEnabled = value & (1 << i);
+        }
+
+        m_MainScreenOBJ_Enabled = value & (1 << 4);
+
+        break;
+
+    case kRegWH0:
+        m_Window1Config.m_Left = value;
+        break;
+
+    case kRegWH1:
+        m_Window1Config.m_Right = value;
+        break;
+
+    case kRegWH2:
+        m_Window2Config.m_Left = value;
+        break;
+
+    case kRegWH3:
+        m_Window2Config.m_Right = value;
+        break;
+
+    case kRegW12SEL: {
+        // BG1
+        m_Window1Config.m_BackgroundConfig[0] = getWindowConfig(value & 0b11);
+        m_Window2Config.m_BackgroundConfig[0] = getWindowConfig((value >> 2) & 0b11);
+
+        // BG2
+        m_Window1Config.m_BackgroundConfig[1] = getWindowConfig((value >> 4) & 0b11);
+        m_Window2Config.m_BackgroundConfig[1] = getWindowConfig((value >> 6) & 0b11);
+        break;
+    }
+
+    case kRegW34SEL:
+        // BG3
+        m_Window1Config.m_BackgroundConfig[2] = getWindowConfig(value & 0b11);
+        m_Window2Config.m_BackgroundConfig[2] = getWindowConfig((value >> 2) & 0b11);
+
+        // BG4
+        m_Window1Config.m_BackgroundConfig[3] = getWindowConfig((value >> 4) & 0b11);
+        m_Window2Config.m_BackgroundConfig[3] = getWindowConfig((value >> 6) & 0b11);
+        break;
+
+    case kRegWBGLOG:
+        for (int i = 0; i < kBackgroundCount; i++) {
+            m_WindowLogicBackground[i] = static_cast<WindowLogic>((value >> (2 * i)) & 0b11);
+        }
+
+        break;
+
+    case kRegTMW:
+        for (int i = 0; i < kBackgroundCount; i++) {
+            m_WindowBackgroundEnabled[i] = !((value >> i) & 1);
+        }
+
+        break;
+
+    case kRegWOBJSEL:
+    case kRegWOBJLOG:
+        break;
+
     case kRegVTIMEL:
     case kRegVTIMEH:
         // To be implemented
@@ -618,18 +682,11 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     // To be implemented
     case kRegSETINI:
     case kRegMOSAIC:
-    case kRegWBGLOG:
-    case kRegWOBJLOG:
-    case kRegTMW:
     case kRegTSW:
     case kRegM7SEL:
     case kRegCGWSEL:
     case kRegCGADSUB:
-    case kRegTM:
     case kRegTS:
-    case kRegW12SEL:
-    case kRegW34SEL:
-    case kRegWOBJSEL:
     case kRegCOLDATA:
     case kRegM7A:
     case kRegM7B:
@@ -637,10 +694,6 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegM7D:
     case kRegM7X:
     case kRegM7Y:
-    case kRegWH0:
-    case kRegWH1:
-    case kRegWH2:
-    case kRegWH3:
         break;
 
     case kRegRDCGRAM:
@@ -779,10 +832,92 @@ void Ppu::updateSubtileData(const Background* bg, RendererBgInfo* renderBg)
     }
 }
 
-bool Ppu::getBackgroundCurrentPixel(RendererBgInfo* renderBg, int priority, Color* color)
+bool Ppu::getBackgroundCurrentPixel(int x, RendererBgInfo* renderBg, int priority, Color* color)
 {
+    auto background = renderBg->background;
+
     if (renderBg->priority != priority) {
         return false;
+    }
+
+    // Check if background is enabled
+    if (!background->m_MainScreenEnabled) {
+        return false;
+    }
+
+    // Check if background is inside window
+    bool pixelValid = true;
+
+    if (!m_WindowBackgroundEnabled[renderBg->bgIdx]) {
+        auto isInsideWindow = [](int x, int bgIdx, const WindowConfig& config, bool* enabled) -> bool {
+            bool insideWindow = config.m_Left <= x && x <= config.m_Right;
+
+            auto bgConfig = config.m_BackgroundConfig[bgIdx];
+            if (bgConfig == WindowConfig::Config::outside) {
+                *enabled = true;
+                insideWindow = !insideWindow;
+            } else if (bgConfig == WindowConfig::Config::disabled) {
+                *enabled = false;
+                insideWindow = true;
+            } else {
+                *enabled = true;
+            }
+
+            return insideWindow;
+        };
+
+        bool insideWindow1, window1Enabled;
+        insideWindow1 = isInsideWindow(x, renderBg->bgIdx, m_Window1Config, &window1Enabled);
+
+        bool insideWindow2, window2Enabled;
+        insideWindow2 = isInsideWindow(x, renderBg->bgIdx, m_Window2Config, &window2Enabled);
+
+        if (window1Enabled && window2Enabled) {
+            const auto logic = m_WindowLogicBackground[renderBg->bgIdx];
+            bool outsideFinalWindow;
+
+            /**
+             * Logic applies to disabled area.
+             * It means that a pixel is disabled if it is disabled by both windows.
+             */
+
+            switch (logic) {
+            case WindowLogic::OR:
+                outsideFinalWindow = !insideWindow1 || !insideWindow2;
+                break;
+
+            case WindowLogic::AND:
+                outsideFinalWindow = !insideWindow1 && !insideWindow2;
+                break;
+
+            case WindowLogic::XOR:
+                outsideFinalWindow = !insideWindow1 != !insideWindow2;
+                break;
+
+            case WindowLogic::XNOR:
+                outsideFinalWindow = !insideWindow1 == !insideWindow2;
+                break;
+
+            default:
+                LOGE(TAG, "Unknown logic %d", static_cast<int>(logic));
+                outsideFinalWindow = false;
+                assert(false);
+                break;
+            }
+
+            pixelValid = !outsideFinalWindow;
+        } else if (window1Enabled) {
+            pixelValid = insideWindow1;
+        } else if (window2Enabled) {
+            pixelValid = insideWindow2;
+        } else {
+            pixelValid = true;
+        }
+    }
+
+    if (!pixelValid) {
+        *color = { 0, 0, 0 };
+        return true;
     }
 
     // Get pixel and draw it
@@ -1129,7 +1264,7 @@ void Ppu::renderDot(int x, int y)
 
         if (layer.m_Layer == Layer::background) {
             RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
-            colorValid = getBackgroundCurrentPixel(renderBg, layer.m_Priority, &color);
+            colorValid = getBackgroundCurrentPixel(x, renderBg, layer.m_Priority, &color);
         } else if (layer.m_Layer == Layer::sprite) {
             colorValid = getSpriteCurrentPixel(x, y, layer.m_Priority, &color);
         }
@@ -1532,3 +1667,13 @@ void Ppu::loadFromFile(FILE* f)
     fread(&m_Bgmode, sizeof(m_Bgmode), 1, f);
     fread(&m_Bg3Priority, sizeof(m_Bg3Priority), 1, f);
 }
+
+Ppu::WindowConfig::Config Ppu::getWindowConfig(uint32_t value) {
+  if ((value & 0b10) == 0) {
+      return WindowConfig::Config::disabled;
+  } else if (value & 1) {
+      return WindowConfig::Config::inside;
+  } else {
+      return WindowConfig::Config::outside;
+  }
+};
