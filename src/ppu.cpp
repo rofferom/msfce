@@ -674,6 +674,31 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegWOBJLOG:
         break;
 
+    case kRegCOLDATA: {
+        const uint8_t intensity = value & 0b11111;
+
+        if (value & (1 << 7)) {
+            // Blue
+            m_SubscreenBackdrop &= 0b1111111111;
+            m_SubscreenBackdrop |= intensity << 10;
+
+        }
+
+        if (value & (1 << 6)) {
+            // Green
+            m_SubscreenBackdrop &= 0b111110000011111;
+            m_SubscreenBackdrop |= intensity << 5;
+        }
+
+        if (value & (1 << 5)) {
+            // Red
+            m_SubscreenBackdrop &= 0b111111111100000;
+            m_SubscreenBackdrop |= intensity;
+        }
+
+        break;
+    }
+
     case kRegVTIMEL:
     case kRegVTIMEH:
         // To be implemented
@@ -687,7 +712,6 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegCGWSEL:
     case kRegCGADSUB:
     case kRegTS:
-    case kRegCOLDATA:
     case kRegM7A:
     case kRegM7B:
     case kRegM7C:
@@ -1274,6 +1298,10 @@ void Ppu::renderDot(int x, int y)
         m_Frontend->drawPoint(x, y, color);
     } else {
         uint32_t rawColor = getMainBackdropColor();
+        if (rawColor == 0) {
+            rawColor = m_SubscreenBackdrop;
+        }
+
         color = rawColorToRgb(rawColor);
 
         m_Frontend->drawPoint(x, y, color);

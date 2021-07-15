@@ -215,6 +215,8 @@ private:
     bool m_CgramLsbSet = false;
     uint8_t m_CgramLsb = 0;
 
+    uint32_t m_SubscreenBackdrop = 0;
+
     // OAM (sprites)
     uint8_t m_Oam[2 * 256 + 32];
     uint16_t m_OamAddress = 0;
