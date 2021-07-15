@@ -883,6 +883,7 @@ bool Ppu::getScreenCurrentPixel(
     int x,
     int y,
     const ScreenConfig& screenConfig,
+    uint32_t backdropColor,
     uint32_t* color)
 {
     bool colorValid = false;
@@ -892,7 +893,7 @@ bool Ppu::getScreenCurrentPixel(
 
         if (layer.m_Layer == Layer::background) {
             RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
-            colorValid = getBackgroundCurrentPixel(x, screenConfig, renderBg, layer.m_Priority, color);
+            colorValid = getBackgroundCurrentPixel(x, screenConfig, renderBg, layer.m_Priority, backdropColor, color);
         } else if (layer.m_Layer == Layer::sprite) {
             colorValid = getSpriteCurrentPixel(x, y, layer.m_Priority, color);
         }
@@ -906,6 +907,7 @@ bool Ppu::getBackgroundCurrentPixel(
     const ScreenConfig& screenConfig,
     RendererBgInfo* renderBg,
     int priority,
+    uint32_t backdropColor,
     uint32_t* color)
 {
     auto background = renderBg->background;
@@ -990,7 +992,7 @@ bool Ppu::getBackgroundCurrentPixel(
     }
 
     if (!pixelInWindow) {
-        *color = 0;
+        *color = backdropColor;
         return true;
     }
 
@@ -1332,10 +1334,13 @@ void Ppu::renderDot(int x, int y)
     uint32_t rawColor;
     bool colorValid;
 
+    const uint32_t mainBackdropColor = getMainBackdropColor();
+
     colorValid = getScreenCurrentPixel(
         x,
         y,
         m_MainScreenConfig,
+        mainBackdropColor,
         &rawColor);
 
     // Render SubScreen
@@ -1344,6 +1349,7 @@ void Ppu::renderDot(int x, int y)
             x,
             y,
             m_SubScreenConfig,
+            m_SubscreenBackdrop,
             &rawColor);
     }
 
@@ -1351,7 +1357,7 @@ void Ppu::renderDot(int x, int y)
     // 1. MainScreen
     // 2. SubScreen
     if (!colorValid) {
-        rawColor = getMainBackdropColor();
+        rawColor = mainBackdropColor;
 
         if (!rawColor) {
             rawColor = m_SubscreenBackdrop;

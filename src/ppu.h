@@ -208,6 +208,7 @@ private:
         int x,
         int y,
         const ScreenConfig& screenConfig,
+        uint32_t backdropColor,
         uint32_t* color);
 
     bool getBackgroundCurrentPixel(
@@ -215,6 +216,7 @@ private:
         const ScreenConfig& screenConfig,
         RendererBgInfo* renderBg,
         int priority,
+        uint32_t backdropColor,
         uint32_t* color);
 
     bool getSpriteCurrentPixel(int x, int y, int priority, uint32_t* color);
