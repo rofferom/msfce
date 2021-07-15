@@ -288,6 +288,13 @@ constexpr Color rawColorToRgb(uint32_t raw_color)
     return {red, green, blue};
 }
 
+constexpr void applyBrightness(Color* color, uint8_t brightness)
+{
+    color->r = color->r * (brightness + 1) / 16;
+    color->g = color->g * (brightness + 1) / 16;
+    color->b = color->b * (brightness + 1) / 16;
+}
+
 // Return the size (in 8x8 tiles) of a sprite from its attributes
 void getSpriteSize(uint8_t obselSize, uint8_t objSize, int* width, int* height)
 {
@@ -418,7 +425,7 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
             LOGD(TAG, "ForcedBlanking is now %s", m_ForcedBlanking ? "enabled" : "disabled");
         }
 
-        uint8_t brightness = value & 0b111;
+        uint8_t brightness = value & 0b1111;
         if (m_Brightness != brightness) {
             m_Brightness = brightness;
             LOGD(TAG, "Brightness is now %d", m_Brightness);
@@ -1353,6 +1360,8 @@ void Ppu::renderDot(int x, int y)
 
     // Compute final color
     Color color = rawColorToRgb(rawColor);
+    applyBrightness(&color, m_Brightness);
+
     m_Frontend->drawPoint(x, y, color);
 
     // Move to next pixel
