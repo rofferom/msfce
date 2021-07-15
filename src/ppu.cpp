@@ -612,11 +612,18 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
 
     case kRegTM:
         for (int i = 0; i < kBackgroundCount; i++) {
-            m_Backgrounds[i].m_MainScreenEnabled = value & (1 << i);
+            m_MainScreenConfig.m_BgEnabled[i] = value & (1 << i);
         }
 
-        m_MainScreenOBJ_Enabled = value & (1 << 4);
+        m_MainScreenConfig.m_ObjEnabled = value & (1 << 4);
+        break;
 
+    case kRegTS:
+        for (int i = 0; i < kBackgroundCount; i++) {
+            m_SubScreenConfig.m_BgEnabled[i] = value & (1 << i);
+        }
+
+        m_SubScreenConfig.m_ObjEnabled = value & (1 << 4);
         break;
 
     case kRegWH0:
@@ -665,13 +672,25 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
 
     case kRegTMW:
         for (int i = 0; i < kBackgroundCount; i++) {
-            m_WindowBackgroundEnabled[i] = !((value >> i) & 1);
+            m_MainScreenConfig.m_Window_BgDisable[i] = (value >> i) & 1;
+        }
+
+        break;
+
+    case kRegTSW:
+        for (int i = 0; i < kBackgroundCount; i++) {
+            m_SubScreenConfig.m_Window_BgDisable[i] = (value >> i) & 1;
         }
 
         break;
 
     case kRegWOBJSEL:
     case kRegWOBJLOG:
+        break;
+
+    case kRegCGWSEL:
+        // Other parts To be implemented
+        m_SubscreenEnabled = value & (1 << 1);
         break;
 
     case kRegCOLDATA: {
@@ -707,11 +726,8 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     // To be implemented
     case kRegSETINI:
     case kRegMOSAIC:
-    case kRegTSW:
     case kRegM7SEL:
-    case kRegCGWSEL:
     case kRegCGADSUB:
-    case kRegTS:
     case kRegM7A:
     case kRegM7B:
     case kRegM7C:
@@ -856,7 +872,34 @@ void Ppu::updateSubtileData(const Background* bg, RendererBgInfo* renderBg)
     }
 }
 
-bool Ppu::getBackgroundCurrentPixel(int x, RendererBgInfo* renderBg, int priority, Color* color)
+bool Ppu::getScreenCurrentPixel(
+    int x,
+    int y,
+    const ScreenConfig& screenConfig,
+    uint32_t* color)
+{
+    bool colorValid = false;
+
+    for (size_t prioIdx = 0; !colorValid && m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
+        const auto& layer = m_RenderLayerPriority[prioIdx];
+
+        if (layer.m_Layer == Layer::background) {
+            RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
+            colorValid = getBackgroundCurrentPixel(x, screenConfig, renderBg, layer.m_Priority, color);
+        } else if (layer.m_Layer == Layer::sprite) {
+            colorValid = getSpriteCurrentPixel(x, y, layer.m_Priority, color);
+        }
+    }
+
+    return colorValid;
+}
+
+bool Ppu::getBackgroundCurrentPixel(
+    int x,
+    const ScreenConfig& screenConfig,
+    RendererBgInfo* renderBg,
+    int priority,
+    uint32_t* color)
 {
     auto background = renderBg->background;
 
@@ -865,14 +908,14 @@ bool Ppu::getBackgroundCurrentPixel(int x, RendererBgInfo* renderBg, int priorit
     }
 
     // Check if background is enabled
-    if (!background->m_MainScreenEnabled) {
+    if (!screenConfig.m_BgEnabled[renderBg->bgIdx]) {
         return false;
     }
 
     // Check if background is inside window
-    bool pixelValid = true;
+    bool pixelInWindow = true;
 
-    if (!m_WindowBackgroundEnabled[renderBg->bgIdx]) {
+    if (screenConfig.m_Window_BgDisable[renderBg->bgIdx]) {
         auto isInsideWindow = [](int x, int bgIdx, const WindowConfig& config, bool* enabled) -> bool {
             bool insideWindow = config.m_Left <= x && x <= config.m_Right;
 
@@ -929,18 +972,18 @@ bool Ppu::getBackgroundCurrentPixel(int x, RendererBgInfo* renderBg, int priorit
                 break;
             }
 
-            pixelValid = !outsideFinalWindow;
+            pixelInWindow = !outsideFinalWindow;
         } else if (window1Enabled) {
-            pixelValid = insideWindow1;
+            pixelInWindow = insideWindow1;
         } else if (window2Enabled) {
-            pixelValid = insideWindow2;
+            pixelInWindow = insideWindow2;
         } else {
-            pixelValid = true;
+            pixelInWindow = true;
         }
     }
 
-    if (!pixelValid) {
-        *color = { 0, 0, 0 };
+    if (!pixelInWindow) {
+        *color = 0;
         return true;
     }
 
@@ -992,13 +1035,12 @@ bool Ppu::getBackgroundCurrentPixel(int x, RendererBgInfo* renderBg, int priorit
         return false;
     }
 
-    uint32_t rawColor = getColorFromCgram(renderBg->bgIdx, renderBg->tileBpp, renderBg->palette, tilePixelColor);
-    *color = rawColorToRgb(rawColor);
+    *color = getColorFromCgram(renderBg->bgIdx, renderBg->tileBpp, renderBg->palette, tilePixelColor);
 
     return true;
 }
 
-bool Ppu::getSpriteCurrentPixel(int x, int y, int priority, Color* c)
+bool Ppu::getSpriteCurrentPixel(int x, int y, int priority, uint32_t* c)
 {
     if (!m_RenderObjInfo[y].m_ObjCount) {
         return false;
@@ -1079,8 +1121,7 @@ bool Ppu::getSpriteCurrentPixel(int x, int y, int priority, Color* c)
             continue;
         }
 
-        uint32_t rawColor = getObjColorFromCgram(prop->m_Palette, color);
-        *c = rawColorToRgb(rawColor);
+        *c = getObjColorFromCgram(prop->m_Palette, color);
 
         return true;
     }
@@ -1275,38 +1316,46 @@ void Ppu::renderDot(int x, int y)
         return;
     }
 
-    Color color;
-    bool colorValid = false;
-
     // Mode not supported
     if (!m_RenderLayerPriority) {
         return;
     }
 
-    for (size_t prioIdx = 0; !colorValid && m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
-        const auto& layer = m_RenderLayerPriority[prioIdx];
+    // Render MainScreen
+    uint32_t rawColor;
+    bool colorValid;
 
-        if (layer.m_Layer == Layer::background) {
-            RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
-            colorValid = getBackgroundCurrentPixel(x, renderBg, layer.m_Priority, &color);
-        } else if (layer.m_Layer == Layer::sprite) {
-            colorValid = getSpriteCurrentPixel(x, y, layer.m_Priority, &color);
-        }
+    colorValid = getScreenCurrentPixel(
+        x,
+        y,
+        m_MainScreenConfig,
+        &rawColor);
+
+    // Render SubScreen
+    if (!colorValid && m_SubscreenEnabled) {
+        colorValid = getScreenCurrentPixel(
+            x,
+            y,
+            m_SubScreenConfig,
+            &rawColor);
     }
 
-    if (colorValid) {
-        m_Frontend->drawPoint(x, y, color);
-    } else {
-        uint32_t rawColor = getMainBackdropColor();
-        if (rawColor == 0) {
+    // Use backdrop colors if required
+    // 1. MainScreen
+    // 2. SubScreen
+    if (!colorValid) {
+        rawColor = getMainBackdropColor();
+
+        if (!rawColor) {
             rawColor = m_SubscreenBackdrop;
         }
-
-        color = rawColorToRgb(rawColor);
-
-        m_Frontend->drawPoint(x, y, color);
     }
 
+    // Compute final color
+    Color color = rawColorToRgb(rawColor);
+    m_Frontend->drawPoint(x, y, color);
+
+    // Move to next pixel
     const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
     for (size_t i = 0; i < bgCount; i++) {
         moveToNextPixel(&m_RenderBgInfo[i]);

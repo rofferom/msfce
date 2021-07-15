@@ -48,8 +48,6 @@ private:
 
 private:
     struct Background {
-        bool m_MainScreenEnabled = false;
-
         uint16_t m_TilemapBase = 0;
         uint16_t m_TilemapSize = 0;
         uint16_t m_TileBase = 0;
@@ -168,14 +166,58 @@ private:
         int m_ObjCount;
     };
 
+    // Window
+    struct WindowConfig {
+        enum class Config {
+            disabled,
+            outside,
+            inside,
+        };
+
+        // Position
+        int m_Left;
+        int m_Right;
+
+        // Configuration
+        Config m_BackgroundConfig[kBackgroundCount];
+        Config m_ObjConfig;
+    };
+
+
+    enum class WindowLogic : uint32_t {
+        OR = 0,
+        AND = 1,
+        XOR = 2,
+        XNOR = 3,
+    };
+
+    struct ScreenConfig {
+        bool m_BgEnabled[kBackgroundCount];
+        bool m_ObjEnabled;
+
+        bool m_Window_BgDisable[kBackgroundCount];
+    };
+
 private:
     TilemapMapper getTilemapMapper(uint16_t tilemapSize) const;
 
     void updateTileData(const Background* bg, RendererBgInfo* renderBg);
     void updateSubtileData(const Background* bg, RendererBgInfo* renderBg);
 
-    bool getBackgroundCurrentPixel(int x, RendererBgInfo* renderBg, int priority, Color* color);
-    bool getSpriteCurrentPixel(int x, int y, int priority, Color* color);
+    bool getScreenCurrentPixel(
+        int x,
+        int y,
+        const ScreenConfig& screenConfig,
+        uint32_t* color);
+
+    bool getBackgroundCurrentPixel(
+        int x,
+        const ScreenConfig& screenConfig,
+        RendererBgInfo* renderBg,
+        int priority,
+        uint32_t* color);
+
+    bool getSpriteCurrentPixel(int x, int y, int priority, uint32_t* color);
     void moveToNextPixel(RendererBgInfo* renderBg);
     void incrementVramAddress();
 
@@ -193,6 +235,8 @@ private:
     void initLineRender(int y);
     void renderDot(int x, int y);
     void renderStep();
+
+    static WindowConfig::Config getWindowConfig(uint32_t value);
 
 private:
     std::shared_ptr<Frontend> m_Frontend;
@@ -239,41 +283,18 @@ private:
     int m_Bgmode = 0;
     bool m_Bg3Priority = 0;
 
-    bool m_MainScreenOBJ_Enabled = true;
-
     // Window
-    struct WindowConfig {
-        enum class Config {
-            disabled,
-            outside,
-            inside,
-        };
-
-        // Position
-        int m_Left;
-        int m_Right;
-
-        // Configuration
-        Config m_BackgroundConfig[kBackgroundCount];
-        Config m_ObjConfig;
-    };
-
-    static WindowConfig::Config getWindowConfig(uint32_t value);
-
-    enum class WindowLogic : uint32_t {
-        OR = 0,
-        AND = 1,
-        XOR = 2,
-        XNOR = 3,
-    };
-
     WindowConfig m_Window1Config;
     WindowConfig m_Window2Config;
 
     WindowLogic m_WindowLogicBackground[kBackgroundCount];
     WindowLogic m_WindowLogicObj;
 
-    bool m_WindowBackgroundEnabled[kBackgroundCount];
+    ScreenConfig m_MainScreenConfig;
+    ScreenConfig m_SubScreenConfig;
+
+    // Color math
+    bool m_SubscreenEnabled = false;
 
     // Layers priority charts
     static const Ppu::LayerPriority s_LayerPriorityMode0[];
