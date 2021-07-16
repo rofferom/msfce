@@ -332,3 +332,27 @@ void Scheduler::setHVIRQ_Flag(bool v)
     m_HVIRQ_Flag = v;
     m_Cpu->setIRQ(v);
 }
+
+void Scheduler::dumpToFile(FILE* f)
+{
+    fwrite(&m_HVBJOY, sizeof(m_HVBJOY), 1, f);
+    fwrite(&m_NMIEnabled, sizeof(m_NMIEnabled), 1, f);
+    fwrite(&m_HVIRQ_Config, sizeof(m_HVIRQ_Config), 1, f);
+    fwrite(&m_HVIRQ_Flag, sizeof(m_HVIRQ_Flag), 1, f);
+    fwrite(&m_HVIRQ_H, sizeof(m_HVIRQ_H), 1, f);
+    fwrite(&m_HVIRQ_V, sizeof(m_HVIRQ_V), 1, f);
+    fwrite(&m_JoypadAutoread, sizeof(m_JoypadAutoread), 1, f);
+    fwrite(&m_Vblank, sizeof(m_Vblank), 1, f);
+}
+
+void Scheduler::loadFromFile(FILE* f)
+{
+    fread(&m_HVBJOY, sizeof(m_HVBJOY), 1, f);
+    fread(&m_NMIEnabled, sizeof(m_NMIEnabled), 1, f);
+    fread(&m_HVIRQ_Config, sizeof(m_HVIRQ_Config), 1, f);
+    fread(&m_HVIRQ_Flag, sizeof(m_HVIRQ_Flag), 1, f);
+    fread(&m_HVIRQ_H, sizeof(m_HVIRQ_H), 1, f);
+    fread(&m_HVIRQ_V, sizeof(m_HVIRQ_V), 1, f);
+    fread(&m_JoypadAutoread, sizeof(m_JoypadAutoread), 1, f);
+    fread(&m_Vblank, sizeof(m_Vblank), 1, f);
+}

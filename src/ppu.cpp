@@ -1885,6 +1885,21 @@ void Ppu::dumpToFile(FILE* f)
     fwrite(&m_OldBgByte, sizeof(m_OldBgByte), 1, f);
     fwrite(&m_Bgmode, sizeof(m_Bgmode), 1, f);
     fwrite(&m_Bg3Priority, sizeof(m_Bg3Priority), 1, f);
+    fwrite(&m_SubscreenBackdrop, sizeof(m_SubscreenBackdrop), 1, f);
+    fwrite(&m_Window1Config, sizeof(m_Window1Config), 1, f);
+    fwrite(&m_Window2Config, sizeof(m_Window2Config), 1, f);
+    fwrite(&m_WindowLogicBackground, sizeof(m_WindowLogicBackground), 1, f);
+    fwrite(&m_WindowLogicObj, sizeof(m_WindowLogicObj), 1, f);
+    fwrite(&m_WindowLogicMath, sizeof(m_WindowLogicMath), 1, f);
+    fwrite(&m_MainScreenConfig, sizeof(m_MainScreenConfig), 1, f);
+    fwrite(&m_SubScreenConfig, sizeof(m_SubScreenConfig), 1, f);
+    fwrite(&m_ForceMainScreenBlack, sizeof(m_ForceMainScreenBlack), 1, f);
+    fwrite(&m_ColorMathEnabled, sizeof(m_ColorMathEnabled), 1, f);
+    fwrite(&m_SubscreenEnabled, sizeof(m_SubscreenEnabled), 1, f);
+    fwrite(&m_ColorMathOperation, sizeof(m_ColorMathOperation), 1, f);
+    fwrite(&m_ColorMathBackground, sizeof(m_ColorMathBackground), 1, f);
+    fwrite(&m_ColorMathBackdrop, sizeof(m_ColorMathBackdrop), 1, f);
+    fwrite(&m_Mosaic, sizeof(m_Mosaic), 1, f);
 }
 
 void Ppu::loadFromFile(FILE* f)
@@ -1912,6 +1927,21 @@ void Ppu::loadFromFile(FILE* f)
     fread(&m_OldBgByte, sizeof(m_OldBgByte), 1, f);
     fread(&m_Bgmode, sizeof(m_Bgmode), 1, f);
     fread(&m_Bg3Priority, sizeof(m_Bg3Priority), 1, f);
+    fread(&m_SubscreenBackdrop, sizeof(m_SubscreenBackdrop), 1, f);
+    fread(&m_Window1Config, sizeof(m_Window1Config), 1, f);
+    fread(&m_Window2Config, sizeof(m_Window2Config), 1, f);
+    fread(&m_WindowLogicBackground, sizeof(m_WindowLogicBackground), 1, f);
+    fread(&m_WindowLogicObj, sizeof(m_WindowLogicObj), 1, f);
+    fread(&m_WindowLogicMath, sizeof(m_WindowLogicMath), 1, f);
+    fread(&m_MainScreenConfig, sizeof(m_MainScreenConfig), 1, f);
+    fread(&m_SubScreenConfig, sizeof(m_SubScreenConfig), 1, f);
+    fread(&m_ForceMainScreenBlack, sizeof(m_ForceMainScreenBlack), 1, f);
+    fread(&m_ColorMathEnabled, sizeof(m_ColorMathEnabled), 1, f);
+    fread(&m_SubscreenEnabled, sizeof(m_SubscreenEnabled), 1, f);
+    fread(&m_ColorMathOperation, sizeof(m_ColorMathOperation), 1, f);
+    fread(&m_ColorMathBackground, sizeof(m_ColorMathBackground), 1, f);
+    fread(&m_ColorMathBackdrop, sizeof(m_ColorMathBackdrop), 1, f);
+    fread(&m_Mosaic, sizeof(m_Mosaic), 1, f);
 }
 
 Ppu::WindowConfig::Config Ppu::getWindowConfig(uint32_t value) {

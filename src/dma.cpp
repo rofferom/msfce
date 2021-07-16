@@ -270,16 +270,22 @@ void Dma::incrementABusAddress(const DmaChannel* channel, uint32_t* aBusAddress)
 
 void Dma::dumpToFile(FILE* f)
 {
+    fwrite(&m_Vblank, sizeof(m_Vblank), 1, f);
     fwrite(&m_DmaChannels, sizeof(m_DmaChannels), 1, f);
+    fwrite(&m_HdmaChannels, sizeof(m_HdmaChannels), 1, f);
     fwrite(&m_ChannelRegisters, sizeof(m_ChannelRegisters), 1, f);
     fwrite(&m_ActiveDmaChannels, sizeof(m_ActiveDmaChannels), 1, f);
+    fwrite(&m_ActiveHdmaChannels, sizeof(m_ActiveHdmaChannels), 1, f);
 }
 
 void Dma::loadFromFile(FILE* f)
 {
+    fread(&m_Vblank, sizeof(m_Vblank), 1, f);
     fread(&m_DmaChannels, sizeof(m_DmaChannels), 1, f);
+    fread(&m_HdmaChannels, sizeof(m_HdmaChannels), 1, f);
     fread(&m_ChannelRegisters, sizeof(m_ChannelRegisters), 1, f);
     fread(&m_ActiveDmaChannels, sizeof(m_ActiveDmaChannels), 1, f);
+    fread(&m_ActiveHdmaChannels, sizeof(m_ActiveHdmaChannels), 1, f);
 }
 
 void Dma::onScanStarted()
