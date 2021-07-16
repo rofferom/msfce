@@ -181,6 +181,7 @@ private:
         // Configuration
         Config m_BackgroundConfig[kBackgroundCount];
         Config m_ObjConfig;
+        Config m_MathConfig;
     };
 
 
@@ -198,6 +199,13 @@ private:
         bool m_Window_BgDisable[kBackgroundCount];
     };
 
+    enum class ColorMathConfig : uint32_t {
+        Never,
+        NotMathWin,
+        MathWin,
+        Always,
+    };
+
 private:
     TilemapMapper getTilemapMapper(uint16_t tilemapSize) const;
 
@@ -208,15 +216,14 @@ private:
         int x,
         int y,
         const ScreenConfig& screenConfig,
-        uint32_t backdropColor,
-        uint32_t* color);
+        uint32_t* color,
+        Ppu::LayerPriority* priority);
 
     bool getBackgroundCurrentPixel(
         int x,
         const ScreenConfig& screenConfig,
         RendererBgInfo* renderBg,
         int priority,
-        uint32_t backdropColor,
         uint32_t* color);
 
     bool getSpriteCurrentPixel(int x, int y, int priority, uint32_t* color);
@@ -297,12 +304,19 @@ private:
 
     WindowLogic m_WindowLogicBackground[kBackgroundCount];
     WindowLogic m_WindowLogicObj;
+    WindowLogic m_WindowLogicMath;
 
     ScreenConfig m_MainScreenConfig;
     ScreenConfig m_SubScreenConfig;
 
     // Color math
+    ColorMathConfig m_ForceMainScreenBlack;
+    ColorMathConfig m_ColorMathEnabled;
     bool m_SubscreenEnabled = false;
+
+    uint8_t m_ColorMathOperation = 0;
+    bool m_ColorMathBackground[kBackgroundCount];
+    bool m_ColorMathBackdrop = false;
 
     // Layers priority charts
     static const Ppu::LayerPriority s_LayerPriorityMode0[];

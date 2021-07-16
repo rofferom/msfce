@@ -670,11 +670,26 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         m_Window2Config.m_BackgroundConfig[3] = getWindowConfig((value >> 6) & 0b11);
         break;
 
+    case kRegWOBJSEL:
+        // OBJ
+        m_Window1Config.m_ObjConfig = getWindowConfig(value & 0b11);
+        m_Window2Config.m_ObjConfig = getWindowConfig((value >> 2) & 0b11);
+
+        // Math
+        m_Window1Config.m_MathConfig = getWindowConfig((value >> 4) & 0b11);
+        m_Window2Config.m_MathConfig = getWindowConfig((value >> 6) & 0b11);
+        break;
+
     case kRegWBGLOG:
         for (int i = 0; i < kBackgroundCount; i++) {
             m_WindowLogicBackground[i] = static_cast<WindowLogic>((value >> (2 * i)) & 0b11);
         }
 
+        break;
+
+    case kRegWOBJLOG:
+        m_WindowLogicObj = static_cast<WindowLogic>(value & 0b1);
+        m_WindowLogicMath = static_cast<WindowLogic>((value >> 1) & 1);
         break;
 
     case kRegTMW:
@@ -691,13 +706,56 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
 
         break;
 
-    case kRegWOBJSEL:
-    case kRegWOBJLOG:
-        break;
 
-    case kRegCGWSEL:
-        // Other parts To be implemented
+    case kRegCGWSEL: {
+        switch (value >> 6) {
+        case 0:
+            m_ForceMainScreenBlack = ColorMathConfig::Never;
+            break;
+
+        case 1:
+            m_ForceMainScreenBlack = ColorMathConfig::NotMathWin;
+            break;
+
+        case 2:
+            m_ForceMainScreenBlack = ColorMathConfig::MathWin;
+            break;
+
+        case 3:
+            m_ForceMainScreenBlack = ColorMathConfig::Always;
+            break;
+        }
+
+        switch ((value >> 4) & 0b11) {
+        case 0:
+            m_ColorMathEnabled = ColorMathConfig::Always;
+            break;
+
+        case 1:
+            m_ColorMathEnabled = ColorMathConfig::MathWin;
+            break;
+
+        case 2:
+            m_ColorMathEnabled = ColorMathConfig::NotMathWin;
+            break;
+
+        case 3:
+            m_ColorMathEnabled = ColorMathConfig::Never;
+            break;
+        }
+
         m_SubscreenEnabled = value & (1 << 1);
+        break;
+    }
+
+    case kRegCGADSUB:
+        m_ColorMathOperation = (value >> 6) & 0b11;
+        m_ColorMathBackdrop = (value >> 5) & 0b11;
+
+        for (int i = 0; i < kBackgroundCount; i++) {
+            m_ColorMathBackground[i] = (value >> i) & 1;
+        }
+
         break;
 
     case kRegCOLDATA: {
@@ -734,7 +792,6 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegSETINI:
     case kRegMOSAIC:
     case kRegM7SEL:
-    case kRegCGADSUB:
     case kRegM7A:
     case kRegM7B:
     case kRegM7C:
@@ -883,8 +940,8 @@ bool Ppu::getScreenCurrentPixel(
     int x,
     int y,
     const ScreenConfig& screenConfig,
-    uint32_t backdropColor,
-    uint32_t* color)
+    uint32_t* color,
+    Ppu::LayerPriority* priority)
 {
     bool colorValid = false;
 
@@ -893,9 +950,13 @@ bool Ppu::getScreenCurrentPixel(
 
         if (layer.m_Layer == Layer::background) {
             RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
-            colorValid = getBackgroundCurrentPixel(x, screenConfig, renderBg, layer.m_Priority, backdropColor, color);
+            colorValid = getBackgroundCurrentPixel(x, screenConfig, renderBg, layer.m_Priority, color);
         } else if (layer.m_Layer == Layer::sprite) {
             colorValid = getSpriteCurrentPixel(x, y, layer.m_Priority, color);
+        }
+
+        if (colorValid && priority) {
+            *priority = layer;
         }
     }
 
@@ -907,7 +968,6 @@ bool Ppu::getBackgroundCurrentPixel(
     const ScreenConfig& screenConfig,
     RendererBgInfo* renderBg,
     int priority,
-    uint32_t backdropColor,
     uint32_t* color)
 {
     auto background = renderBg->background;
@@ -933,8 +993,7 @@ bool Ppu::getBackgroundCurrentPixel(
     }
 
     if (pixelInWindow) {
-        *color = backdropColor;
-        return true;
+        return false;
     }
 
     // Get pixel and draw it
@@ -1272,37 +1331,147 @@ void Ppu::renderDot(int x, int y)
     }
 
     // Render MainScreen
+    Ppu::LayerPriority priority;
     uint32_t rawColor;
     bool colorValid;
-
-    const uint32_t mainBackdropColor = getMainBackdropColor();
 
     colorValid = getScreenCurrentPixel(
         x,
         y,
         m_MainScreenConfig,
-        mainBackdropColor,
-        &rawColor);
+        &rawColor,
+        &priority);
 
-    // Render SubScreen
-    if (!colorValid && m_SubscreenEnabled) {
-        colorValid = getScreenCurrentPixel(
+    // Check if color math is enabled and pixel is in the window
+    bool insideMathWindow;
+
+    if (m_ColorMathEnabled == ColorMathConfig::Never) {
+        insideMathWindow = false;
+    } else if (m_ColorMathEnabled == ColorMathConfig::Always) {
+        insideMathWindow = true;
+    } else {
+        insideMathWindow = applyWindowLogic(
             x,
-            y,
-            m_SubScreenConfig,
-            m_SubscreenBackdrop,
-            &rawColor);
+            m_Window1Config.m_MathConfig,
+            m_Window2Config.m_MathConfig,
+            m_WindowLogicMath);
+
+        if (m_ColorMathEnabled == ColorMathConfig::NotMathWin) {
+            insideMathWindow = !insideMathWindow;
+        }
     }
 
-    // Use backdrop colors if required
-    // 1. MainScreen
-    // 2. SubScreen
-    if (!colorValid) {
-        rawColor = mainBackdropColor;
+    // Check if color math should be applied to this color
+    bool doMath;
 
-        if (!rawColor) {
-            rawColor = m_SubscreenBackdrop;
+    if (insideMathWindow) {
+        if (!colorValid) {
+            doMath = m_ColorMathBackdrop;
+        } else if (priority.m_Layer == Ppu::Layer::background) {
+            doMath = m_ColorMathBackground[priority.m_BgIdx];
+        } else {
+            doMath = false;
         }
+    } else {
+        doMath = false;
+    }
+
+    // Apply math if enabled
+    if (doMath) {
+        // Force backdrop if color is invalid
+        if (!colorValid) {
+            rawColor = getMainBackdropColor();
+        }
+
+        // Render SubScreen
+        uint32_t subscreenRawColor;
+
+        if (m_SubscreenEnabled) {
+            bool subscreenColorValid;
+
+            subscreenColorValid = getScreenCurrentPixel(
+                x,
+                y,
+                m_SubScreenConfig,
+                &subscreenRawColor,
+                nullptr);
+
+            if (!subscreenColorValid) {
+                subscreenRawColor = m_SubscreenBackdrop;
+            }
+        } else {
+            subscreenRawColor = m_SubscreenBackdrop;
+        }
+
+        struct SplittedRawColor {
+            uint32_t r;
+            uint32_t g;
+            uint32_t b;
+
+            static SplittedRawColor fromU32(uint32_t c) {
+                return {
+                    c & 0b11111,
+                    (c >> 5) & 0b11111,
+                    (c >> 10) & 0b11111,
+                };
+            }
+
+            uint32_t toU32() const {
+                constexpr int kMask = 0b11111;
+                uint32_t c;
+
+                c = r & kMask;
+                c |= (g & kMask) << 5;
+                c |= (b & kMask) << 10;
+
+                return c;
+            }
+        };
+
+        SplittedRawColor splittedMainColor = SplittedRawColor::fromU32(rawColor);
+        SplittedRawColor splittedSubColor = SplittedRawColor::fromU32(subscreenRawColor);
+
+        // Add/Sub
+        if (m_ColorMathOperation & (1 << 1)) {
+            auto subCb = [](uint32_t a, uint32_t b) -> uint32_t {
+                if (b > a) {
+                    return 0;
+                } else {
+                    return a - b;
+                }
+            };
+
+            splittedMainColor.r = subCb(splittedMainColor.r, splittedSubColor.r);
+            splittedMainColor.g = subCb(splittedMainColor.g, splittedSubColor.g);
+            splittedMainColor.b = subCb(splittedMainColor.b, splittedSubColor.b);
+        } else {
+            splittedMainColor.r = splittedMainColor.r + splittedSubColor.r;
+            splittedMainColor.g = splittedMainColor.g + splittedSubColor.g;
+            splittedMainColor.b = splittedMainColor.b + splittedSubColor.b;
+        }
+
+        // Divide
+        if (m_ColorMathOperation & 1) {
+            splittedMainColor.r /= 2;
+            splittedMainColor.g /= 2;
+            splittedMainColor.b /= 2;
+        }
+
+        // Repack into raw color + saturate
+        rawColor = splittedMainColor.toU32();
+
+        // Use backdrop colors if required
+        // 1. MainScreen
+        // 2. SubScreen
+        if (!rawColor) {
+            rawColor = getMainBackdropColor();
+
+            if (!rawColor) {
+                rawColor = m_SubscreenBackdrop;
+            }
+        }
+    } else if (!colorValid) {
+        rawColor = getMainBackdropColor();
     }
 
     // Compute final color
