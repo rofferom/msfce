@@ -239,6 +239,12 @@ private:
     void renderStep();
 
     static WindowConfig::Config getWindowConfig(uint32_t value);
+    static bool isInsideWindow(int x, const WindowConfig& config, WindowConfig::Config layerConfig, bool* enabled);
+    bool applyWindowLogic(
+        int x,
+        WindowConfig::Config window1Config,
+        WindowConfig::Config window2Config,
+        WindowLogic logic);
 
 private:
     std::shared_ptr<Frontend> m_Frontend;

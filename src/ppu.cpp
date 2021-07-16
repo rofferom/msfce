@@ -922,76 +922,17 @@ bool Ppu::getBackgroundCurrentPixel(
     }
 
     // Check if background is inside window
-    bool pixelInWindow = true;
+    bool pixelInWindow = false;
 
     if (screenConfig.m_Window_BgDisable[renderBg->bgIdx]) {
-        auto isInsideWindow = [](int x, int bgIdx, const WindowConfig& config, bool* enabled) -> bool {
-            bool insideWindow = config.m_Left <= x && x <= config.m_Right;
-
-            auto bgConfig = config.m_BackgroundConfig[bgIdx];
-            if (bgConfig == WindowConfig::Config::outside) {
-                *enabled = true;
-                insideWindow = !insideWindow;
-            } else if (bgConfig == WindowConfig::Config::disabled) {
-                *enabled = false;
-                insideWindow = true;
-            } else {
-                *enabled = true;
-            }
-
-            return insideWindow;
-        };
-
-        bool insideWindow1, window1Enabled;
-        insideWindow1 = isInsideWindow(x, renderBg->bgIdx, m_Window1Config, &window1Enabled);
-
-        bool insideWindow2, window2Enabled;
-        insideWindow2 = isInsideWindow(x, renderBg->bgIdx, m_Window2Config, &window2Enabled);
-
-        if (window1Enabled && window2Enabled) {
-            const auto logic = m_WindowLogicBackground[renderBg->bgIdx];
-            bool outsideFinalWindow;
-
-            /**
-             * Logic applies to disabled area.
-             * It means that a pixel is disabled if it is disabled by both windows.
-             */
-
-            switch (logic) {
-            case WindowLogic::OR:
-                outsideFinalWindow = !insideWindow1 || !insideWindow2;
-                break;
-
-            case WindowLogic::AND:
-                outsideFinalWindow = !insideWindow1 && !insideWindow2;
-                break;
-
-            case WindowLogic::XOR:
-                outsideFinalWindow = !insideWindow1 != !insideWindow2;
-                break;
-
-            case WindowLogic::XNOR:
-                outsideFinalWindow = !insideWindow1 == !insideWindow2;
-                break;
-
-            default:
-                LOGE(TAG, "Unknown logic %d", static_cast<int>(logic));
-                outsideFinalWindow = false;
-                assert(false);
-                break;
-            }
-
-            pixelInWindow = !outsideFinalWindow;
-        } else if (window1Enabled) {
-            pixelInWindow = insideWindow1;
-        } else if (window2Enabled) {
-            pixelInWindow = insideWindow2;
-        } else {
-            pixelInWindow = true;
-        }
+        pixelInWindow = applyWindowLogic(
+            x,
+            m_Window1Config.m_BackgroundConfig[renderBg->bgIdx],
+            m_Window2Config.m_BackgroundConfig[renderBg->bgIdx],
+            m_WindowLogicBackground[renderBg->bgIdx]);
     }
 
-    if (!pixelInWindow) {
+    if (pixelInWindow) {
         *color = backdropColor;
         return true;
     }
@@ -1769,3 +1710,78 @@ Ppu::WindowConfig::Config Ppu::getWindowConfig(uint32_t value) {
       return WindowConfig::Config::outside;
   }
 };
+
+
+bool Ppu::isInsideWindow(int x, const WindowConfig& config, WindowConfig::Config layerConfig, bool* enabled)
+{
+    bool insideWindow = config.m_Left <= x && x <= config.m_Right;
+
+    if (layerConfig == WindowConfig::Config::outside) {
+        *enabled = true;
+        insideWindow = !insideWindow;
+    } else if (layerConfig == WindowConfig::Config::disabled) {
+        *enabled = false;
+        insideWindow = true;
+    } else {
+        *enabled = true;
+    }
+
+    return insideWindow;
+}
+
+bool Ppu::applyWindowLogic(
+    int x,
+    WindowConfig::Config window1BgConfig,
+    WindowConfig::Config window2BgConfig,
+    WindowLogic logic)
+{
+    bool pixelInWindow;
+
+    bool insideWindow1, window1Enabled;
+    insideWindow1 = isInsideWindow(
+        x,
+        m_Window1Config,
+        window1BgConfig,
+        &window1Enabled);
+
+    bool insideWindow2, window2Enabled;
+    insideWindow2 = isInsideWindow(
+        x,
+        m_Window2Config,
+        window2BgConfig,
+        &window2Enabled);
+
+    if (window1Enabled && window2Enabled) {
+        switch (logic) {
+        case WindowLogic::OR:
+            pixelInWindow = !insideWindow1 || !insideWindow2;
+            break;
+
+        case WindowLogic::AND:
+            pixelInWindow = !insideWindow1 && !insideWindow2;
+            break;
+
+        case WindowLogic::XOR:
+            pixelInWindow = !insideWindow1 != !insideWindow2;
+            break;
+
+        case WindowLogic::XNOR:
+            pixelInWindow = !insideWindow1 == !insideWindow2;
+            break;
+
+        default:
+            LOGE(TAG, "Unknown logic %d", static_cast<int>(logic));
+            pixelInWindow = false;
+            assert(false);
+            break;
+        }
+    } else if (window1Enabled) {
+        pixelInWindow = !insideWindow1;
+    } else if (window2Enabled) {
+        pixelInWindow = !insideWindow2;
+    } else {
+        pixelInWindow = false;
+    }
+
+    return pixelInWindow;
+}
