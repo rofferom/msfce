@@ -1610,10 +1610,14 @@ int  Cpu65816::run()
     int cycles = 0;
 
     // Check if NMI has been raised
-    if (m_NMI) {
-        handleNMI(&cycles);
-        m_NMI = false;
-        m_WaitInterrupt = false;
+    if (m_State != State::interrupt) {
+        if (m_NMI) {
+            handleNMI(&cycles);
+            m_NMI = false;
+            m_WaitInterrupt = false;
+        } else if (m_IRQ && !getBit(m_Registers.P, kPRegister_I)) {
+            handleIRQ(&cycles);
+        }
     }
 
     if (m_WaitInterrupt) {
@@ -1706,10 +1710,10 @@ void Cpu65816::printInstructionsLog() const
     }
 }
 
-void Cpu65816::handleNMI(int *cycles)
+void Cpu65816::handleInterrupt(uint32_t addr, int *cycles)
 {
     // Bank is forced at 0
-    uint16_t handlerAddress = m_Membus->readU16(kRegIV_NMI, cycles);
+    uint16_t handlerAddress = m_Membus->readU16(addr, cycles);
     if (!handlerAddress) {
         return;
     }
@@ -1729,6 +1733,16 @@ void Cpu65816::handleNMI(int *cycles)
     m_Registers.PC = handlerAddress;
 
     m_State = State::interrupt;
+}
+
+void Cpu65816::handleNMI(int *cycles)
+{
+    handleInterrupt(kRegIV_NMI, cycles);
+}
+
+void Cpu65816::handleIRQ(int *cycles)
+{
+    handleInterrupt(kRegIV_IRQ, cycles);
 }
 
 void Cpu65816::setNFlag(uint16_t value, uint16_t negativeMask)
@@ -3431,6 +3445,11 @@ void Cpu65816::handleWAI(uint32_t data, int *cycles)
 void Cpu65816::setNMI()
 {
     m_NMI = true;
+}
+
+void Cpu65816::setIRQ(bool value)
+{
+    m_IRQ = value;
 }
 
 void Cpu65816::handleImplied(

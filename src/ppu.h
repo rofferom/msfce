@@ -14,13 +14,22 @@ public:
     enum : uint32_t {
         Event_VBlankStart = (1 << 0),
         Event_HBlankStart = (1 << 1),
-        Event_ScanStarted = (1 << 2),
-        Event_ScanEnded = (1 << 3),
+        Event_HBlankEnd = (1 << 2),
+        Event_ScanStarted = (1 << 3),
+        Event_ScanEnded = (1 << 4),
+        Event_HV_IRQ = (1 << 5),
     };
 
     enum class DrawConfig {
         Draw,
         Skip,
+    };
+
+    enum class HVIRQConfig {
+        Disable = 0,
+        H = 1,
+        V = 2,
+        HV = 3,
     };
 
 public:
@@ -36,6 +45,8 @@ public:
 
     uint32_t getEvents() const;
     void setDrawConfig(DrawConfig config);
+
+    void setHVIRQConfig(HVIRQConfig config, uint16_t H, uint16_t V);
 
     void dumpToFile(FILE* f);
     void loadFromFile(FILE* f);
@@ -207,6 +218,8 @@ private:
     };
 
 private:
+    void setHVIRQ(int x, int y);
+
     TilemapMapper getTilemapMapper(uint16_t tilemapSize) const;
 
     void updateTileData(const Background* bg, RendererBgInfo* renderBg);
@@ -260,6 +273,12 @@ private:
 
     bool m_ForcedBlanking = false;
     uint8_t m_Brightness = 0;
+
+    struct {
+        HVIRQConfig m_Config = HVIRQConfig::Disable;
+        uint16_t m_H = 0;
+        uint16_t m_V = 0;
+    } m_HVIRQ;
 
     // VRAM
     bool m_VramIncrementHigh = false;

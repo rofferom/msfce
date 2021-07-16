@@ -43,6 +43,8 @@ private:
     bool runRunning();
     bool runPaused();
 
+    void setHVIRQ_Flag(bool v);
+
 private:
     struct DurationTool {
         // Current measure
@@ -82,8 +84,17 @@ private:
     std::shared_ptr<Ppu> m_Ppu;
 
     // MemComponent variables
+    // HVBJOY
+    uint8_t m_HVBJOY = 0;
+
     // VBlank interrupt
     bool m_NMIEnabled = false;
+
+    // H/V IRQ
+    uint8_t m_HVIRQ_Config = 0;
+    bool m_HVIRQ_Flag = false;
+    uint16_t m_HVIRQ_H = 0;
+    uint16_t m_HVIRQ_V = 0;
 
     // Joypad interrupt
     bool m_JoypadAutoread = false;

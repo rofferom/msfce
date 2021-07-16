@@ -818,6 +818,13 @@ void Ppu::setDrawConfig(DrawConfig config)
     m_DrawConfig = config;
 }
 
+void Ppu::setHVIRQConfig(HVIRQConfig config, uint16_t H, uint16_t V)
+{
+    m_HVIRQ.m_Config = config;
+    m_HVIRQ.m_H = H;
+    m_HVIRQ.m_V = V;
+}
+
 void Ppu::incrementVramAddress()
 {
     switch (m_VramIncrementStep) {
@@ -1184,6 +1191,39 @@ void Ppu::moveToNextPixel(RendererBgInfo* renderBg)
     }
 }
 
+void Ppu::setHVIRQ(int x, int y)
+{
+    if (m_HVIRQ.m_Config == HVIRQConfig::Disable) {
+        return;
+    }
+
+    switch (m_HVIRQ.m_Config) {
+    case HVIRQConfig::H:
+        if (x == m_HVIRQ.m_H) {
+            m_Events |= Event_HV_IRQ;
+        }
+
+        break;
+
+    case HVIRQConfig::V:
+        if (x == 0 && y == m_HVIRQ.m_V) {
+            m_Events |= Event_HV_IRQ;
+        }
+
+        break;
+
+    case HVIRQConfig::HV:
+        if (x == m_HVIRQ.m_H && y == m_HVIRQ.m_V) {
+            m_Events |= Event_HV_IRQ;
+        }
+
+        break;
+
+    default:
+        break;
+    }
+}
+
 int Ppu::run()
 {
     m_Events = 0;
@@ -1200,6 +1240,9 @@ int Ppu::run()
             // New line
             initLineRender(m_RenderY);
             renderDot(m_RenderX, m_RenderY);
+            setHVIRQ(m_RenderX, m_RenderY);
+
+            m_Events |= Event_HBlankEnd;
         }
     } else if (m_RenderX >= kPpuDisplayWidth) {
         // H-Blank
@@ -1211,6 +1254,7 @@ int Ppu::run()
         // V-Blank
     } else {
         renderDot(m_RenderX, m_RenderY);
+        setHVIRQ(m_RenderX, m_RenderY);
     }
 
     m_RenderX++;
