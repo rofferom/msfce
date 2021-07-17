@@ -35,6 +35,10 @@ Membus::Membus(AddressingType addrType)
             return 0;
         }
     };
+
+    m_Components[enumToInt(MemComponentType::ppu)].addrConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
+        return offset;
+    };
 }
 
 void Membus::initLowRom()
