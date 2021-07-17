@@ -797,11 +797,6 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
 
         break;
 
-    case kRegVTIMEL:
-    case kRegVTIMEH:
-        // To be implemented
-        break;
-
     // To be implemented
     case kRegSETINI:
     case kRegM7SEL:
