@@ -357,6 +357,12 @@ private:
     bool m_ColorMathBackground[kBackgroundCount];
     bool m_ColorMathBackdrop = false;
 
+    // Mode 7
+    uint8_t m_M7Old = 0;
+    int16_t m_M7A = 0;
+    int16_t m_M7B = 0;
+    int32_t m_MPY = 0;
+
     // Layers priority charts
     static const Ppu::LayerPriority s_LayerPriorityMode0[];
     static const Ppu::LayerPriority s_LayerPriorityMode1_BG3_On[];

@@ -410,9 +410,21 @@ void Ppu::dump() const
 
 uint8_t Ppu::readU8(uint32_t addr)
 {
-    LOGW(TAG, "Ignore ReadU8 at %06X", addr);
-    assert(false);
-    return 0;
+    switch (addr) {
+    case kRegMPYL:
+        return m_MPY & 0xFF;
+
+    case kRegMPYM:
+        return (m_MPY >> 8) & 0xFF;
+
+    case kRegMPYH:
+        return (m_MPY >> 16) & 0xFF;
+
+    default:
+        LOGW(TAG, "Ignore ReadU8 at %06X", addr);
+        assert(false);
+        return 0;
+    }
 }
 
 void Ppu::writeU8(uint32_t addr, uint8_t value)
@@ -801,11 +813,23 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
 
         break;
 
+    case kRegM7A:
+        m_M7A = (value << 8) | m_M7Old;
+        m_M7Old = value;
+
+        m_MPY = m_M7A * (m_M7B >> 8);
+        break;
+
+    case kRegM7B:
+        m_M7B = (value << 8) | m_M7Old;
+        m_M7Old = value;
+
+        m_MPY = m_M7A * (m_M7B >> 8);
+        break;
+
     // To be implemented
     case kRegSETINI:
     case kRegM7SEL:
-    case kRegM7A:
-    case kRegM7B:
     case kRegM7C:
     case kRegM7D:
     case kRegM7X:
