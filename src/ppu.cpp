@@ -783,6 +783,20 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         break;
     }
 
+    case kRegMOSAIC:
+        m_Mosaic.m_Size = ((value >> 4) & 0b1111) + 1;
+        if (m_Mosaic.m_Size == 1) {
+            for (int i = 0; i < kBackgroundCount; i++) {
+                m_Mosaic.m_Backgrounds[i] = false;
+            }
+        } else {
+            for (int i = 0; i < kBackgroundCount; i++) {
+                m_Mosaic.m_Backgrounds[i] = (value >> i) & 1;
+            }
+        }
+
+        break;
+
     case kRegVTIMEL:
     case kRegVTIMEH:
         // To be implemented
@@ -790,7 +804,6 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
 
     // To be implemented
     case kRegSETINI:
-    case kRegMOSAIC:
     case kRegM7SEL:
     case kRegM7A:
     case kRegM7B:
@@ -973,7 +986,7 @@ bool Ppu::getScreenCurrentPixel(
 bool Ppu::getBackgroundCurrentPixel(
     int x,
     const ScreenConfig& screenConfig,
-    RendererBgInfo* renderBg,
+    const RendererBgInfo* renderBg,
     int priority,
     uint32_t* color)
 {
@@ -1304,6 +1317,15 @@ void Ppu::initScreenRender()
         renderBg->tileSize = renderBg->tileBpp * 8;
 
         renderBg->tilemapMapper = getTilemapMapper(bg->m_TilemapSize);
+
+        // Setup mosaic if enabled
+        if (m_Mosaic.m_Size > 1 && m_Mosaic.m_Backgrounds[bgIdx]) {
+            renderBg->mosaic.startX = 1;
+            renderBg->mosaic.startY = 0;
+            renderBg->mosaic.size = m_Mosaic.m_Size;
+        } else {
+            renderBg->mosaic.size = 0;
+        }
     }
 
     // Prepare sprites
@@ -1328,10 +1350,26 @@ void Ppu::initLineRender(int y)
     for (size_t i = 0; i < bgCount; i++) {
         RendererBgInfo* renderBg = &m_RenderBgInfo[i];
         Background* bg = &m_Backgrounds[i];
+        int renderY; // Line to render. Can be tweaked when mosaic is enabled
+
+        // Handle mosaic
+        if (renderBg->mosaic.size > 1) {
+            renderBg->mosaic.startX = 1;
+
+            // Redraw the same line N times (size block)
+            const int nextBlockY = renderBg->mosaic.startY + renderBg->mosaic.size;
+            if (y == nextBlockY) {
+                renderBg->mosaic.startY = y;
+            }
+
+            renderY = renderBg->mosaic.startY;
+        } else {
+            renderY = y;
+        }
 
         // Compute background start coordinates in pixels at first
         int bgX = bg->m_HOffset % renderBg->tilemapWidthPixel;
-        int bgY = (bg->m_VOffset + y) % renderBg->tilemapHeightPixel;
+        int bgY = (bg->m_VOffset + renderY) % renderBg->tilemapHeightPixel;
 
         // Get the tile coordinates inside the tilemap
         renderBg->tilemapX = bgX / renderBg->tileWidthPixel;
@@ -1527,7 +1565,22 @@ void Ppu::renderDot(int x, int y)
     // Move to next pixel
     const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
     for (size_t i = 0; i < bgCount; i++) {
-        moveToNextPixel(&m_RenderBgInfo[i]);
+        RendererBgInfo* renderBg = &m_RenderBgInfo[i];
+
+        // If mosaic is enabled, redraw the same line N times
+        if (renderBg->mosaic.size > 1) {
+            const int nextBlockX = renderBg->mosaic.startX + renderBg->mosaic.size;
+            if (x == nextBlockX) {
+                renderBg->mosaic.startX = x;
+
+                // Move to the next block start
+                for (int j = 0; j < renderBg->mosaic.size; j++) {
+                    moveToNextPixel(renderBg);
+                }
+            }
+        } else {
+            moveToNextPixel(renderBg);
+        }
     }
 }
 

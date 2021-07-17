@@ -170,6 +170,13 @@ private:
         const uint8_t* tileDataPlane1; // 2 next bits
         const uint8_t* tileDataPlane2; // 2 next bits
         const uint8_t* tileDataPlane3; // 2 next bits
+
+        // Mosaic
+        struct {
+            int startX;
+            int startY;
+            int size = 1;
+        } mosaic;
     };
 
     struct RenderObjInfo {
@@ -235,7 +242,7 @@ private:
     bool getBackgroundCurrentPixel(
         int x,
         const ScreenConfig& screenConfig,
-        RendererBgInfo* renderBg,
+        const RendererBgInfo* renderBg,
         int priority,
         uint32_t* color);
 
@@ -316,6 +323,12 @@ private:
 
     int m_Bgmode = 0;
     bool m_Bg3Priority = 0;
+
+    // Mosaic
+    struct {
+        uint8_t m_Size = 0;
+        bool m_Backgrounds[kBackgroundCount];
+    } m_Mosaic;
 
     // Window
     WindowConfig m_Window1Config;
