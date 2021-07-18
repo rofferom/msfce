@@ -280,6 +280,10 @@ private:
         WindowConfig::Config window2Config,
         WindowLogic logic);
 
+    void initScreenRenderMode7();
+    void initLineRenderMode7(int y);
+    void renderDotMode7(int x, int y);
+
 private:
     std::shared_ptr<Frontend> m_Frontend;
     DrawConfig m_DrawConfig = DrawConfig::Draw;
@@ -368,6 +372,7 @@ private:
     static const Ppu::LayerPriority s_LayerPriorityMode1_BG3_On[];
     static const Ppu::LayerPriority s_LayerPriorityMode1_BG3_Off[];
     static const Ppu::LayerPriority s_LayerPriorityMode3[];
+    static const Ppu::LayerPriority s_LayerPriorityMode7[];
 
     // Rendering
     int m_RenderX = 0;

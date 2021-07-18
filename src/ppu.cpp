@@ -378,6 +378,11 @@ const Ppu::LayerPriority Ppu::s_LayerPriorityMode3[] = {
     {Layer::none, 0, 0},
 };
 
+const Ppu::LayerPriority Ppu::s_LayerPriorityMode7[] = {
+    {Layer::background, 0,   0},
+    {Layer::none, 0, 0},
+};
+
 Ppu::Ppu(const std::shared_ptr<Frontend>& frontend)
     : MemComponent(MemComponentType::ppu),
       SchedulerTask(),
@@ -1328,6 +1333,11 @@ void Ppu::initScreenRender()
         return;
     }
 
+    if (m_Bgmode == 7) {
+        initScreenRenderMode7();
+        return;
+    }
+
     // Prepare background rendering
     const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
     static_assert(SIZEOF_ARRAY(m_Backgrounds) == SIZEOF_ARRAY(m_RenderBgInfo));
@@ -1380,6 +1390,11 @@ void Ppu::initLineRender(int y)
         return;
     }
 
+    if (m_Bgmode == 7) {
+        initLineRenderMode7(y);
+        return;
+    }
+
     const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
 
     // Prepare background rendering for the current line.
@@ -1429,6 +1444,8 @@ void Ppu::initLineRender(int y)
         m_RenderLayerPriority = m_Bg3Priority ? s_LayerPriorityMode1_BG3_On : s_LayerPriorityMode1_BG3_Off;
     } else if (m_Bgmode == 3) {
         m_RenderLayerPriority = s_LayerPriorityMode3;
+    } else if (m_Bgmode == 7) {
+        m_RenderLayerPriority = s_LayerPriorityMode7;
     } else {
         m_RenderLayerPriority = nullptr;
     }
@@ -1447,6 +1464,11 @@ void Ppu::renderDot(int x, int y)
 
     // Mode not supported
     if (!m_RenderLayerPriority) {
+        return;
+    }
+
+    if (m_Bgmode == 7) {
+        renderDotMode7(x, y);
         return;
     }
 
@@ -1729,6 +1751,8 @@ uint32_t Ppu::getColorFromCgram(int bgIdx, int tileBpp, int palette, int color)
             assert(false);
             return 0;
         }
+    } else if (m_Bgmode == 7) {
+        return m_Cgram[color];
     } else {
         assert(false);
         return 0;
@@ -2118,4 +2142,36 @@ bool Ppu::applyWindowLogic(
     }
 
     return pixelInWindow;
+}
+
+void Ppu::initScreenRenderMode7()
+{
+}
+
+void Ppu::initLineRenderMode7(int y)
+{
+}
+
+void Ppu::renderDotMode7(int x, int y)
+{
+    // Compute tile address
+    const int tilemapX = x / 8;
+    const int tilemapY = y / 8;
+
+    const int tileX = x % 8;
+    const int tileY = y % 8;
+
+    const int kPpuMode7TilemapWidth = 128;
+    const int mapEntryIdx = kPpuMode7TilemapWidth * tilemapY + tilemapX;
+    const int charIdx = m_Vram[mapEntryIdx * 2];
+
+    // Read palette index
+    const int tileBaseAddr = charIdx * 0x80 + 1;
+    const uint32_t cgramIdx = m_Vram[tileBaseAddr + tileY * 0x10 + tileX * 2];
+
+    // Get final color
+    const auto color = rawColorToRgb(m_Cgram[cgramIdx]);
+
+    // Draw
+    m_Frontend->drawPoint(x, y, color);
 }
