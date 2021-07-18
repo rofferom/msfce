@@ -379,7 +379,11 @@ const Ppu::LayerPriority Ppu::s_LayerPriorityMode3[] = {
 };
 
 const Ppu::LayerPriority Ppu::s_LayerPriorityMode7[] = {
+    {Layer::sprite,    -1,   3},
+    {Layer::sprite,    -1,   2},
+    {Layer::sprite,    -1,   1},
     {Layer::background, 0,   0},
+    {Layer::sprite,    -1,   0},
     {Layer::none, 0, 0},
 };
 
@@ -597,11 +601,17 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegBG1HOFS:
         m_Backgrounds[0].m_HOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[0].m_HOffset >> 8) & 7);
         m_OldBgByte = value;
+
+        m_M7HOFS = (value << 8) | m_M7Old;
+        m_M7Old = value;
         break;
 
     case kRegBG1VOFS:
         m_Backgrounds[0].m_VOffset = (value << 8) | m_OldBgByte;
         m_OldBgByte = value;
+
+        m_M7VOFS = (value << 8) | m_M7Old;
+        m_M7Old = value;
         break;
 
     case kRegBG2HOFS:
@@ -832,13 +842,31 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         m_MPY = m_M7A * (m_M7B >> 8);
         break;
 
+    case kRegM7C:
+        m_M7C = (value << 8) | m_M7Old;
+        m_M7Old = value;
+        break;
+
+    case kRegM7D:
+        m_M7D = (value << 8) | m_M7Old;
+        m_M7Old = value;
+        break;
+
+    case kRegM7X:
+        m_M7X = (value << 8) | m_M7Old;
+        m_M7Old = value;
+        break;
+
+    case kRegM7Y:
+        m_M7Y = (value << 8) | m_M7Old;
+        m_M7Old = value;
+        break;
+
+    case kRegM7SEL:
+        break;
+
     // To be implemented
     case kRegSETINI:
-    case kRegM7SEL:
-    case kRegM7C:
-    case kRegM7D:
-    case kRegM7X:
-    case kRegM7Y:
         break;
 
     case kRegRDCGRAM:
@@ -2146,20 +2174,111 @@ bool Ppu::applyWindowLogic(
 
 void Ppu::initScreenRenderMode7()
 {
+    // Prepare sprites
+    for (size_t i = 0; i < SIZEOF_ARRAY(m_RenderObjInfo); i++) {
+        m_RenderObjInfo[i].m_ObjCount = 0;
+    }
+
+    loadObjs();
 }
 
 void Ppu::initLineRenderMode7(int y)
 {
+    m_RenderLayerPriority = s_LayerPriorityMode7;
 }
 
+// https://github.com/bsnes-emu/bsnes/blob/master/bsnes/sfc/ppu/mode7.cpp
 void Ppu::renderDotMode7(int x, int y)
 {
-    // Compute tile address
-    const int tilemapX = x / 8;
-    const int tilemapY = y / 8;
+    uint32_t rawColor;
+    bool colorValid = false;
 
-    const int tileX = x % 8;
-    const int tileY = y % 8;
+    for (size_t prioIdx = 0; !colorValid && m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
+        const auto& layer = m_RenderLayerPriority[prioIdx];
+
+        if (layer.m_Layer == Layer::background) {
+            RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
+            rawColor = renderGetColorMode7(x, y);
+            colorValid = true;
+        } else if (layer.m_Layer == Layer::sprite) {
+            colorValid = getSpriteCurrentPixel(x, y, m_MainScreenConfig, layer.m_Priority, &rawColor);
+        }
+    }
+
+    // Get final color
+    if (colorValid) {
+        const auto color = rawColorToRgb(rawColor);
+        m_Frontend->drawPoint(x, y, color);
+    } else {
+        m_Frontend->drawPoint(x, y, {0, 0, 0});
+    }
+}
+
+uint32_t Ppu::renderGetColorMode7(int x, int y)
+{
+    auto int13ToInt = [](int16_t value) -> int {
+        // Extract bit sign
+        const int sign = (value >> 12) & 1;
+        value &= ~(1 << 12);
+
+        // Add scale factor (0x100)
+        int intValue = value << 8;
+
+        if (sign) {
+            // Extend sign
+            return intValue | 0xFFF00000;
+        } else {
+            return intValue;
+        }
+    };
+
+    // Initial type: with 0 scale factor
+    // Add 0x100 scale factor
+    int scaledX = x << 8;
+    int scaledY = y << 8;
+
+    // Initial type: int16 with 0x100 scale factor
+    int m7A = m_M7A;
+    int m7B = m_M7B;
+    int m7C = m_M7C;
+    int m7D = m_M7D;
+
+    // Initial type: int13 with 0 scale factor
+    // Switch to int16 and add 0x100 scale factor
+    int m7HOFS = int13ToInt(m_M7HOFS);
+    int m7VOFS = int13ToInt(m_M7VOFS);
+    int m7X = int13ToInt(m_M7X);
+    int m7Y = int13ToInt(m_M7Y);
+
+    // Apply transformation
+    int offsetX = scaledX + m7HOFS - m7X;
+    int offsetY = scaledY + m7VOFS - m7Y;
+
+    int vramX = (m7A * offsetX & ~63) + (m7B * offsetY & ~63) + (m7X << 8);
+    int vramY = (m7C * offsetX & ~63) + (m7D * offsetY & ~63) + (m7Y << 8);
+
+    // Remove scale factor (multiplication double the scale factor)
+    vramX >>= 16;
+    vramY >>= 16;
+
+    if (vramX > 1024) {
+        vramX %= 1024;
+    } else if (vramX < 0) {
+        vramX += 1024;
+    }
+
+    if (vramY > 1024) {
+        vramY %= 1024;
+    } else if (vramY < 0) {
+        vramY += 1024;
+    }
+
+    // Compute tile address
+    const int tilemapX = vramX / 8;
+    const int tilemapY = vramY / 8;
+
+    const int tileX = vramX % 8;
+    const int tileY = vramY % 8;
 
     const int kPpuMode7TilemapWidth = 128;
     const int mapEntryIdx = kPpuMode7TilemapWidth * tilemapY + tilemapX;
@@ -2169,9 +2288,5 @@ void Ppu::renderDotMode7(int x, int y)
     const int tileBaseAddr = charIdx * 0x80 + 1;
     const uint32_t cgramIdx = m_Vram[tileBaseAddr + tileY * 0x10 + tileX * 2];
 
-    // Get final color
-    const auto color = rawColorToRgb(m_Cgram[cgramIdx]);
-
-    // Draw
-    m_Frontend->drawPoint(x, y, color);
+    return m_Cgram[cgramIdx];
 }

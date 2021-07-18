@@ -283,6 +283,7 @@ private:
     void initScreenRenderMode7();
     void initLineRenderMode7(int y);
     void renderDotMode7(int x, int y);
+    uint32_t renderGetColorMode7(int x, int y);
 
 private:
     std::shared_ptr<Frontend> m_Frontend;
@@ -363,8 +364,14 @@ private:
 
     // Mode 7
     uint8_t m_M7Old = 0;
+    int16_t m_M7HOFS = 0;
+    int16_t m_M7VOFS = 0;
     int16_t m_M7A = 0;
     int16_t m_M7B = 0;
+    int16_t m_M7C = 0;
+    int16_t m_M7D = 0;
+    int16_t m_M7X = 0;
+    int16_t m_M7Y = 0;
     int32_t m_MPY = 0;
 
     // Layers priority charts
