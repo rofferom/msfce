@@ -101,10 +101,11 @@ void Snes::run()
     m_IndirectWram = std::make_shared<IndirectWram>(m_Ram);
     membus->plugComponent(m_IndirectWram);
 
-    auto sram = std::make_shared<BufferMemComponent>(
+    m_Sram = std::make_shared<BufferMemComponent>(
         MemComponentType::sram,
         kSramSize);
-    membus->plugComponent(sram);
+    membus->plugComponent(m_Sram);
+    loadSram();
 
     m_Apu = std::make_shared<Apu>();
     membus->plugComponent(m_Apu);
@@ -127,6 +128,8 @@ void Snes::run()
     membus->plugComponent(m_Scheduler);
 
     m_Scheduler->run();
+
+    saveSram();
 }
 
 void Snes::toggleRunning()
@@ -187,5 +190,33 @@ void Snes::loadState(const std::string& path)
 
     m_Scheduler->resume();
 
+    fclose(f);
+}
+
+void Snes::loadSram()
+{
+    auto srmPath = m_RomBasename + ".srm";
+
+    FILE* f = fopen(srmPath.c_str(), "rb");
+    if (!f) {
+        return;
+    }
+
+    LOGI(TAG, "Loading srm %s", srmPath.c_str());
+    m_Sram->loadFromFile(f);
+    fclose(f);
+}
+
+void Snes::saveSram()
+{
+    auto srmPath = m_RomBasename + ".srm";
+
+    FILE* f = fopen(srmPath.c_str(), "wb");
+    if (!f) {
+        return;
+    }
+
+    LOGI(TAG, "Saving to srm %s", srmPath.c_str());
+    m_Sram->dumpToFile(f);
     fclose(f);
 }
