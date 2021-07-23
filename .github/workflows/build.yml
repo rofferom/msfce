@@ -1,0 +1,33 @@
+name: Build
+on:
+  push:
+    branches:
+      - master
+    pull_request:
+jobs:
+  build-linux:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v1
+    - uses: n1hility/cancel-previous-runs@v2
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Fetch submodules
+      run: git submodule update --init --recursive
+    - name: Install required system packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libsdl2-dev
+    - name: Run cmake
+      run: |
+        mkdir build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+    - name: Build
+      run: |
+        cd build
+        make -j2
+    - uses: actions/upload-artifact@v2
+      with:
+        name: msfe-linux-x64
+        path: build/msfe
