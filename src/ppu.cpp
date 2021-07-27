@@ -2046,6 +2046,19 @@ void Ppu::dumpToFile(FILE* f)
     fwrite(&m_ColorMathBackground, sizeof(m_ColorMathBackground), 1, f);
     fwrite(&m_ColorMathBackdrop, sizeof(m_ColorMathBackdrop), 1, f);
     fwrite(&m_Mosaic, sizeof(m_Mosaic), 1, f);
+    fwrite(&m_M7ScreenOver, sizeof(m_M7ScreenOver), 1, f);
+    fwrite(&m_M7HFlip, sizeof(m_M7HFlip), 1, f);
+    fwrite(&m_M7VFlip, sizeof(m_M7VFlip), 1, f);
+    fwrite(&m_M7Old, sizeof(m_M7Old), 1, f);
+    fwrite(&m_M7HOFS, sizeof(m_M7HOFS), 1, f);
+    fwrite(&m_M7VOFS, sizeof(m_M7VOFS), 1, f);
+    fwrite(&m_M7A, sizeof(m_M7A), 1, f);
+    fwrite(&m_M7B, sizeof(m_M7B), 1, f);
+    fwrite(&m_M7C, sizeof(m_M7C), 1, f);
+    fwrite(&m_M7D, sizeof(m_M7D), 1, f);
+    fwrite(&m_M7X, sizeof(m_M7X), 1, f);
+    fwrite(&m_M7Y, sizeof(m_M7Y), 1, f);
+    fwrite(&m_MPY, sizeof(m_MPY), 1, f);
 }
 
 void Ppu::loadFromFile(FILE* f)
@@ -2088,6 +2101,19 @@ void Ppu::loadFromFile(FILE* f)
     fread(&m_ColorMathBackground, sizeof(m_ColorMathBackground), 1, f);
     fread(&m_ColorMathBackdrop, sizeof(m_ColorMathBackdrop), 1, f);
     fread(&m_Mosaic, sizeof(m_Mosaic), 1, f);
+    fread(&m_M7ScreenOver, sizeof(m_M7ScreenOver), 1, f);
+    fread(&m_M7HFlip, sizeof(m_M7HFlip), 1, f);
+    fread(&m_M7VFlip, sizeof(m_M7VFlip), 1, f);
+    fread(&m_M7Old, sizeof(m_M7Old), 1, f);
+    fread(&m_M7HOFS, sizeof(m_M7HOFS), 1, f);
+    fread(&m_M7VOFS, sizeof(m_M7VOFS), 1, f);
+    fread(&m_M7A, sizeof(m_M7A), 1, f);
+    fread(&m_M7B, sizeof(m_M7B), 1, f);
+    fread(&m_M7C, sizeof(m_M7C), 1, f);
+    fread(&m_M7D, sizeof(m_M7D), 1, f);
+    fread(&m_M7X, sizeof(m_M7X), 1, f);
+    fread(&m_M7Y, sizeof(m_M7Y), 1, f);
+    fread(&m_MPY, sizeof(m_MPY), 1, f);
 }
 
 Ppu::WindowConfig::Config Ppu::getWindowConfig(uint32_t value) {
