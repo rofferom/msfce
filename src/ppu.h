@@ -13,12 +13,23 @@ class Ppu : public MemComponent, public SchedulerTask {
 public:
     enum : uint32_t {
         Event_VBlankStart = (1 << 0),
-        Event_ScanEnded = (1 << 1),
+        Event_HBlankStart = (1 << 1),
+        Event_HBlankEnd = (1 << 2),
+        Event_ScanStarted = (1 << 3),
+        Event_ScanEnded = (1 << 4),
+        Event_HV_IRQ = (1 << 5),
     };
 
     enum class DrawConfig {
         Draw,
         Skip,
+    };
+
+    enum class HVIRQConfig {
+        Disable = 0,
+        H = 1,
+        V = 2,
+        HV = 3,
     };
 
 public:
@@ -34,6 +45,8 @@ public:
 
     uint32_t getEvents() const;
     void setDrawConfig(DrawConfig config);
+
+    void setHVIRQConfig(HVIRQConfig config, uint16_t H, uint16_t V);
 
     void dumpToFile(FILE* f);
     void loadFromFile(FILE* f);
@@ -155,6 +168,15 @@ private:
         // Tile data
         const uint8_t* tileDataPlane0; // 2 first bits
         const uint8_t* tileDataPlane1; // 2 next bits
+        const uint8_t* tileDataPlane2; // 2 next bits
+        const uint8_t* tileDataPlane3; // 2 next bits
+
+        // Mosaic
+        struct {
+            int startX;
+            int startY;
+            int size = 1;
+        } mosaic;
     };
 
     struct RenderObjInfo {
@@ -162,14 +184,76 @@ private:
         int m_ObjCount;
     };
 
+    // Window
+    struct WindowConfig {
+        enum class Config {
+            disabled,
+            outside,
+            inside,
+        };
+
+        // Position
+        int m_Left;
+        int m_Right;
+
+        // Configuration
+        Config m_BackgroundConfig[kBackgroundCount];
+        Config m_ObjConfig;
+        Config m_MathConfig;
+    };
+
+
+    enum class WindowLogic : uint32_t {
+        OR = 0,
+        AND = 1,
+        XOR = 2,
+        XNOR = 3,
+    };
+
+    struct ScreenConfig {
+        bool m_BgEnabled[kBackgroundCount];
+        bool m_ObjEnabled;
+
+        bool m_Window_BgDisable[kBackgroundCount];
+        bool m_Window_ObjDisable;
+    };
+
+    enum class ColorMathConfig : uint32_t {
+        Never,
+        NotMathWin,
+        MathWin,
+        Always,
+    };
+
 private:
+    void setHVIRQ(int x, int y);
+
     TilemapMapper getTilemapMapper(uint16_t tilemapSize) const;
 
     void updateTileData(const Background* bg, RendererBgInfo* renderBg);
     void updateSubtileData(const Background* bg, RendererBgInfo* renderBg);
 
-    bool getBackgroundCurrentPixel(RendererBgInfo* renderBg, int priority, Color* color);
-    bool getSpriteCurrentPixel(int x, int y, int priority, Color* color);
+    bool getScreenCurrentPixel(
+        int x,
+        int y,
+        const ScreenConfig& screenConfig,
+        uint32_t* color,
+        Ppu::LayerPriority* priority);
+
+    bool getBackgroundCurrentPixel(
+        int x,
+        const ScreenConfig& screenConfig,
+        const RendererBgInfo* renderBg,
+        int priority,
+        uint32_t* color);
+
+    bool getSpriteCurrentPixel(
+        int x,
+        int y,
+        const ScreenConfig& screenConfig,
+        int priority,
+        uint32_t* color);
+
     void moveToNextPixel(RendererBgInfo* renderBg);
     void incrementVramAddress();
 
@@ -178,6 +262,8 @@ private:
 
     uint32_t getColorFromCgram(int bgIdx, int bpp, int palette, int colorIdx);
     uint32_t getObjColorFromCgram(int palette, int color);
+    uint32_t getMainBackdropColor();
+
     bool getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int screen_y, Color* c, int* priority);
     bool getPixelFromObj(int screen_x, int screen_y, Color* c, int* priority);
 
@@ -186,6 +272,14 @@ private:
     void renderDot(int x, int y);
     void renderStep();
 
+    static WindowConfig::Config getWindowConfig(uint32_t value);
+    static bool isInsideWindow(int x, const WindowConfig& config, WindowConfig::Config layerConfig, bool* enabled);
+    bool applyWindowLogic(
+        int x,
+        WindowConfig::Config window1Config,
+        WindowConfig::Config window2Config,
+        WindowLogic logic);
+
 private:
     std::shared_ptr<Frontend> m_Frontend;
     DrawConfig m_DrawConfig = DrawConfig::Draw;
@@ -193,6 +287,12 @@ private:
 
     bool m_ForcedBlanking = false;
     uint8_t m_Brightness = 0;
+
+    struct {
+        HVIRQConfig m_Config = HVIRQConfig::Disable;
+        uint16_t m_H = 0;
+        uint16_t m_V = 0;
+    } m_HVIRQ;
 
     // VRAM
     bool m_VramIncrementHigh = false;
@@ -206,6 +306,8 @@ private:
 
     bool m_CgramLsbSet = false;
     uint8_t m_CgramLsb = 0;
+
+    uint32_t m_SubscreenBackdrop = 0;
 
     // OAM (sprites)
     uint8_t m_Oam[2 * 256 + 32];
@@ -229,10 +331,37 @@ private:
     int m_Bgmode = 0;
     bool m_Bg3Priority = 0;
 
+    // Mosaic
+    struct {
+        uint8_t m_Size = 0;
+        bool m_Backgrounds[kBackgroundCount];
+    } m_Mosaic;
+
+    // Window
+    WindowConfig m_Window1Config;
+    WindowConfig m_Window2Config;
+
+    WindowLogic m_WindowLogicBackground[kBackgroundCount];
+    WindowLogic m_WindowLogicObj;
+    WindowLogic m_WindowLogicMath;
+
+    ScreenConfig m_MainScreenConfig;
+    ScreenConfig m_SubScreenConfig;
+
+    // Color math
+    ColorMathConfig m_ForceMainScreenBlack;
+    ColorMathConfig m_ColorMathEnabled;
+    bool m_SubscreenEnabled = false;
+
+    uint8_t m_ColorMathOperation = 0;
+    bool m_ColorMathBackground[kBackgroundCount];
+    bool m_ColorMathBackdrop = false;
+
     // Layers priority charts
     static const Ppu::LayerPriority s_LayerPriorityMode0[];
     static const Ppu::LayerPriority s_LayerPriorityMode1_BG3_On[];
     static const Ppu::LayerPriority s_LayerPriorityMode1_BG3_Off[];
+    static const Ppu::LayerPriority s_LayerPriorityMode3[];
 
     // Rendering
     int m_RenderX = 0;

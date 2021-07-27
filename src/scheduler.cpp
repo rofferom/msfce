@@ -78,9 +78,14 @@ uint8_t Scheduler::readU8(uint32_t addr)
         return (m_Vblank << 7) | (1 << 6);
     }
 
-    case kRegTIMEUP:
-        // Ack interrupt
-        return 0;
+    case kRegTIMEUP: {
+        uint8_t ret = m_HVIRQ_Flag << 7;
+        setHVIRQ_Flag(0);
+        return ret;
+    }
+
+    case kRegHVBJOY:
+        return m_HVBJOY;
     }
 
     LOGW(TAG, "Ignore ReadU8 at %06X", addr);
@@ -93,8 +98,15 @@ void Scheduler::writeU8(uint32_t addr, uint8_t value)
     switch (addr) {
     case kRegNmitimen: {
         // H/V IRQ
-        if (value & (0b11 << 4)) {
-            // To be implemented
+        uint8_t enableHVIRQ = (value >> 4) & 0b11;
+        if (m_HVIRQ_Config != enableHVIRQ) {
+            LOGD(TAG, "H/V IRQ is now %s", m_HVIRQ_Config ? "enabled" : "disabled");
+            m_HVIRQ_Config = enableHVIRQ;
+
+            m_Ppu->setHVIRQConfig(
+                static_cast<Ppu::HVIRQConfig>(m_HVIRQ_Config),
+                m_HVIRQ_H,
+                m_HVIRQ_V);
             break;
         }
 
@@ -114,6 +126,22 @@ void Scheduler::writeU8(uint32_t addr, uint8_t value)
 
         break;
     }
+
+    case kRegisterHTIMEL:
+        m_HVIRQ_H = (m_HVIRQ_H & 0xFF00) | value;
+        break;
+
+    case kRegisterHTIMEH:
+        m_HVIRQ_H = (m_HVIRQ_H & 0xFF) | (value << 8);
+        break;
+
+    case kRegisterVTIMEL:
+        m_HVIRQ_V = (m_HVIRQ_V & 0xFF00) | value;
+        break;
+
+    case kRegisterVTIMEH:
+        m_HVIRQ_V = (m_HVIRQ_V & 0xFF) | (value << 8);
+        break;
     }
 }
 
@@ -183,8 +211,30 @@ bool Scheduler::runRunning()
 
         m_Ppu->setNextRunCycle(m_MasterClock + ppuCycles);
         auto ppuEvents = m_Ppu->getEvents();
+
+        if (ppuEvents & Ppu::Event_ScanStarted) {
+            m_Dma->onScanStarted();
+        }
+
+        if (ppuEvents & Ppu::Event_HBlankStart) {
+            m_Dma->onHblank();
+
+            m_HVBJOY |= 1 << 6;
+        }
+
+        if (ppuEvents & Ppu::Event_HBlankEnd) {
+            m_HVBJOY &= ~(1 << 6);
+        }
+
+        if (ppuEvents & Ppu::Event_HV_IRQ) {
+            setHVIRQ_Flag(true);
+        }
+
         if (ppuEvents & Ppu::Event_VBlankStart) {
             m_Vblank = true;
+            m_HVBJOY |= 1 << 7;
+
+            m_Dma->onVblank();
 
             if (m_JoypadAutoread) {
                 m_ControllerPorts->readController();
@@ -212,6 +262,7 @@ bool Scheduler::runRunning()
             }
 
             m_Vblank = false;
+            m_HVBJOY &= ~(1 << 7);
 
             if (kLogTimings) {
                 LOGI(TAG, "CPU: %lu ms - PPU: %lu ms",
@@ -274,4 +325,34 @@ void Scheduler::pause()
 void Scheduler::resume()
 {
     m_Running = true;
+}
+
+void Scheduler::setHVIRQ_Flag(bool v)
+{
+    m_HVIRQ_Flag = v;
+    m_Cpu->setIRQ(v);
+}
+
+void Scheduler::dumpToFile(FILE* f)
+{
+    fwrite(&m_HVBJOY, sizeof(m_HVBJOY), 1, f);
+    fwrite(&m_NMIEnabled, sizeof(m_NMIEnabled), 1, f);
+    fwrite(&m_HVIRQ_Config, sizeof(m_HVIRQ_Config), 1, f);
+    fwrite(&m_HVIRQ_Flag, sizeof(m_HVIRQ_Flag), 1, f);
+    fwrite(&m_HVIRQ_H, sizeof(m_HVIRQ_H), 1, f);
+    fwrite(&m_HVIRQ_V, sizeof(m_HVIRQ_V), 1, f);
+    fwrite(&m_JoypadAutoread, sizeof(m_JoypadAutoread), 1, f);
+    fwrite(&m_Vblank, sizeof(m_Vblank), 1, f);
+}
+
+void Scheduler::loadFromFile(FILE* f)
+{
+    fread(&m_HVBJOY, sizeof(m_HVBJOY), 1, f);
+    fread(&m_NMIEnabled, sizeof(m_NMIEnabled), 1, f);
+    fread(&m_HVIRQ_Config, sizeof(m_HVIRQ_Config), 1, f);
+    fread(&m_HVIRQ_Flag, sizeof(m_HVIRQ_Flag), 1, f);
+    fread(&m_HVIRQ_H, sizeof(m_HVIRQ_H), 1, f);
+    fread(&m_HVIRQ_V, sizeof(m_HVIRQ_V), 1, f);
+    fread(&m_JoypadAutoread, sizeof(m_JoypadAutoread), 1, f);
+    fread(&m_Vblank, sizeof(m_Vblank), 1, f);
 }

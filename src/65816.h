@@ -18,6 +18,7 @@ public:
     int run() override;
 
     void setNMI();
+    void setIRQ(bool value);
 
     void dumpToFile(FILE* f);
     void loadFromFile(FILE* f);
@@ -28,7 +29,9 @@ private:
 
     void printInstructionsLog() const;
 
+    void handleInterrupt(uint32_t addr, int *cycles);
     void handleNMI(int *cycles);
+    void handleIRQ(int *cycles);
 
     void setNFlag(uint16_t value, uint16_t negativeMask);
     void setZFlag(uint16_t value);
@@ -362,6 +365,7 @@ private:
 
     State m_State = State::running;
     bool m_NMI = false;
+    bool m_IRQ = false;
     bool m_WaitInterrupt = false;
 
     using InstructionLogBuilder = std::function<std::string()>;

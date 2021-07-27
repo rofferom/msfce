@@ -161,6 +161,7 @@ void Snes::saveState(const std::string& path)
     m_Dma->dumpToFile(f);
     m_ControllerPorts->dumpToFile(f);
     m_Cpu->dumpToFile(f);
+    m_Scheduler->dumpToFile(f);
 
     m_Scheduler->resume();
 
@@ -184,6 +185,7 @@ void Snes::loadState(const std::string& path)
     m_Dma->loadFromFile(f);
     m_ControllerPorts->loadFromFile(f);
     m_Cpu->loadFromFile(f);
+    m_Scheduler->loadFromFile(f);
 
     m_Scheduler->resume();
 
