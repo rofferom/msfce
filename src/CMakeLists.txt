@@ -40,8 +40,6 @@ add_library(msfe_lib
     ppu.cpp
 
     scheduler.h
-    scheduler.cpp
-
     schedulertask.h
     schedulertask.cpp
 

@@ -12,18 +12,59 @@
 #include "membus.h"
 #include "ppu.h"
 #include "registers.h"
-#include "scheduler.h"
 #include "wram.h"
 
 #include "snes.h"
 
 #define TAG "SNES"
 
+namespace {
+
 constexpr uint32_t kLowRomHeader_Title = 0x7FC0;
 constexpr uint32_t kLowRomHeader_TitleSize = 21;
 
+constexpr bool kLogTimings = true;
+
+} // anonymous namespace
+
+void Snes::DurationTool::reset()
+{
+    total_duration = Snes::Clock::duration::zero();
+}
+
+void Snes::DurationTool::begin()
+{
+    if (!kLogTimings) {
+        return;
+    }
+
+    begin_tp = Clock::now();
+}
+
+void Snes::DurationTool::end()
+{
+    if (!kLogTimings) {
+        return;
+    }
+
+    end_tp = Clock::now();
+    total_duration += end_tp - begin_tp;
+}
+
+template <typename Duration>
+int64_t Snes::DurationTool::total()
+{
+    if (!kLogTimings) {
+        return 0;
+    }
+
+    return std::chrono::duration_cast<Duration>(total_duration).count();
+}
+
 Snes::Snes(const std::shared_ptr<SnesRenderer>& renderer)
-    : m_Renderer(renderer)
+    : MemComponent(MemComponentType::irq),
+      Scheduler(),
+      m_Renderer(renderer)
 {
 }
 
@@ -124,10 +165,10 @@ int Snes::start()
 
     m_Cpu = std::make_shared<Cpu65816>(membus);
 
-    m_Scheduler = std::make_shared<Scheduler>(m_Renderer, m_Cpu, m_Dma, m_Ppu, m_ControllerPorts);
-    membus->plugComponent(m_Scheduler);
+    auto snes = shared_from_this();
+    membus->plugComponent(snes);
 
-    m_Dma->setScheduler(m_Scheduler);
+    m_Dma->setScheduler(snes);
 
     return 0;
 }
@@ -141,8 +182,121 @@ int Snes::stop()
 
 int Snes::renderSingleFrame(bool renderPpu)
 {
-    return m_Scheduler->renderSingleFrame(renderPpu);
+    bool scanEnded = false;
+
+    if (renderPpu) {
+        m_Ppu->setDrawConfig(Ppu::DrawConfig::Draw);
+    } else {
+        m_Ppu->setDrawConfig(Ppu::DrawConfig::Skip);
+    }
+
+    while (!scanEnded) {
+        // DMA has priority over CPU
+        if (m_Dma->getState() == SchedulerTask::State::running) {
+            if (m_Dma->getNextRunCycle() == m_MasterClock) {
+                int dmaCycles = m_Dma->run();
+
+                if (dmaCycles > 0) {
+                    m_Dma->setNextRunCycle(m_MasterClock + dmaCycles);
+                } else {
+                    m_Dma->setIdle();
+
+                    // Resume CPU at a multiple of 8 cycles. 0 is forbidden
+                    auto cpuSync = m_MasterClock % 8;
+                    if (cpuSync == 0) {
+                        cpuSync = 8;
+                    }
+
+                    m_Cpu->setNextRunCycle(m_MasterClock + cpuSync);
+                }
+            }
+        } else if (m_Cpu->getNextRunCycle() == m_MasterClock) {
+            m_CpuTime.begin();
+            int cpuCycles = m_Cpu->run();
+            m_CpuTime.end();
+
+            m_Cpu->setNextRunCycle(m_MasterClock + cpuCycles);
+        }
+
+        // Always run PPU
+        if (m_Ppu->getNextRunCycle() == m_MasterClock) {
+            m_PpuTime.begin();
+            int ppuCycles = m_Ppu->run();
+            m_PpuTime.end();
+
+            m_Ppu->setNextRunCycle(m_MasterClock + ppuCycles);
+            auto ppuEvents = m_Ppu->getEvents();
+
+            if (ppuEvents & Ppu::Event_ScanStarted) {
+                m_Renderer->scanStarted();
+                m_Dma->onScanStarted();
+            }
+
+            if (ppuEvents & Ppu::Event_HBlankStart) {
+                m_Dma->onHblank();
+
+                m_HVBJOY |= 1 << 6;
+            }
+
+            if (ppuEvents & Ppu::Event_HBlankEnd) {
+                m_HVBJOY &= ~(1 << 6);
+            }
+
+            if (ppuEvents & Ppu::Event_HV_IRQ) {
+                setHVIRQ_Flag(true);
+            }
+
+            if (ppuEvents & Ppu::Event_VBlankStart) {
+                m_Vblank = true;
+                m_HVBJOY |= 1 << 7;
+
+                m_Dma->onVblank();
+
+                if (m_JoypadAutoread) {
+                    m_ControllerPorts->readController();
+                }
+
+                // Dirty hack to avoid vblank to be retriggered
+                if (m_NMIEnabled) {
+                    m_Cpu->setNMI();
+                }
+            }
+
+            if (ppuEvents & Ppu::Event_ScanEnded) {
+                m_Vblank = false;
+                m_HVBJOY &= ~(1 << 7);
+
+                if (kLogTimings) {
+                    LOGI(TAG, "CPU: %lu ms - PPU: %lu ms",
+                         m_CpuTime.total<std::chrono::milliseconds>(),
+                         m_PpuTime.total<std::chrono::milliseconds>());
+
+                    m_CpuTime.reset();
+                    m_PpuTime.reset();
+                }
+
+                m_Renderer->scanEnded();
+                scanEnded = true;
+            }
+        }
+
+        m_MasterClock++;
+    }
+
+    return 0;
 }
+
+void Snes::resumeTask(SchedulerTask* task, int cycles)
+{
+    task->setNextRunCycle(m_MasterClock + cycles);
+}
+
+void Snes::setHVIRQ_Flag(bool v)
+{
+    m_HVIRQ_Flag = v;
+    m_Cpu->setIRQ(v);
+}
+
 
 void Snes::setController1(const SnesController& controller)
 {
@@ -164,7 +318,15 @@ void Snes::saveState(const std::string& path)
     m_Dma->dumpToFile(f);
     m_ControllerPorts->dumpToFile(f);
     m_Cpu->dumpToFile(f);
-    m_Scheduler->dumpToFile(f);
+
+    fwrite(&m_HVBJOY, sizeof(m_HVBJOY), 1, f);
+    fwrite(&m_NMIEnabled, sizeof(m_NMIEnabled), 1, f);
+    fwrite(&m_HVIRQ_Config, sizeof(m_HVIRQ_Config), 1, f);
+    fwrite(&m_HVIRQ_Flag, sizeof(m_HVIRQ_Flag), 1, f);
+    fwrite(&m_HVIRQ_H, sizeof(m_HVIRQ_H), 1, f);
+    fwrite(&m_HVIRQ_V, sizeof(m_HVIRQ_V), 1, f);
+    fwrite(&m_JoypadAutoread, sizeof(m_JoypadAutoread), 1, f);
+    fwrite(&m_Vblank, sizeof(m_Vblank), 1, f);
 
     fclose(f);
 }
@@ -184,7 +346,15 @@ void Snes::loadState(const std::string& path)
     m_Dma->loadFromFile(f);
     m_ControllerPorts->loadFromFile(f);
     m_Cpu->loadFromFile(f);
-    m_Scheduler->loadFromFile(f);
+
+    fread(&m_HVBJOY, sizeof(m_HVBJOY), 1, f);
+    fread(&m_NMIEnabled, sizeof(m_NMIEnabled), 1, f);
+    fread(&m_HVIRQ_Config, sizeof(m_HVIRQ_Config), 1, f);
+    fread(&m_HVIRQ_Flag, sizeof(m_HVIRQ_Flag), 1, f);
+    fread(&m_HVIRQ_H, sizeof(m_HVIRQ_H), 1, f);
+    fread(&m_HVIRQ_V, sizeof(m_HVIRQ_V), 1, f);
+    fread(&m_JoypadAutoread, sizeof(m_JoypadAutoread), 1, f);
+    fread(&m_Vblank, sizeof(m_Vblank), 1, f);
 
     fclose(f);
 }
@@ -215,4 +385,78 @@ void Snes::saveSram()
     LOGI(TAG, "Saving to srm %s", srmPath.c_str());
     m_Sram->dumpToFile(f);
     fclose(f);
+}
+
+uint8_t Snes::readU8(uint32_t addr)
+{
+    switch (addr) {
+    case kRegRDNMI: {
+        return (m_Vblank << 7) | (1 << 6);
+    }
+
+    case kRegTIMEUP: {
+        uint8_t ret = m_HVIRQ_Flag << 7;
+        setHVIRQ_Flag(0);
+        return ret;
+    }
+
+    case kRegHVBJOY:
+        return m_HVBJOY;
+    }
+
+    LOGW(TAG, "Ignore ReadU8 at %06X", addr);
+    assert(false);
+    return 0;
+}
+
+void Snes::writeU8(uint32_t addr, uint8_t value)
+{
+    switch (addr) {
+    case kRegNmitimen: {
+        // H/V IRQ
+        uint8_t enableHVIRQ = (value >> 4) & 0b11;
+        if (m_HVIRQ_Config != enableHVIRQ) {
+            LOGD(TAG, "H/V IRQ is now %s", m_HVIRQ_Config ? "enabled" : "disabled");
+            m_HVIRQ_Config = enableHVIRQ;
+
+            m_Ppu->setHVIRQConfig(
+                static_cast<Ppu::HVIRQConfig>(m_HVIRQ_Config),
+                m_HVIRQ_H,
+                m_HVIRQ_V);
+            break;
+        }
+
+        // NMI
+        bool enableNMI = value & (1 << 7);
+        if (m_NMIEnabled != enableNMI) {
+            m_NMIEnabled = enableNMI;
+            LOGI(TAG, "NMI is now %s", m_NMIEnabled ? "enabled" : "disabled");
+        }
+
+        // Joypad
+        bool joypadAutoread = value & 1;
+        if (m_JoypadAutoread != joypadAutoread) {
+            LOGI(TAG, "Joypad autoread is now %s", joypadAutoread ? "enabled" : "disabled");
+            m_JoypadAutoread = joypadAutoread;
+        }
+
+        break;
+    }
+
+    case kRegisterHTIMEL:
+        m_HVIRQ_H = (m_HVIRQ_H & 0xFF00) | value;
+        break;
+
+    case kRegisterHTIMEH:
+        m_HVIRQ_H = (m_HVIRQ_H & 0xFF) | (value << 8);
+        break;
+
+    case kRegisterVTIMEL:
+        m_HVIRQ_V = (m_HVIRQ_V & 0xFF00) | value;
+        break;
+
+    case kRegisterVTIMEH:
+        m_HVIRQ_V = (m_HVIRQ_V & 0xFF) | (value << 8);
+        break;
+    }
 }
