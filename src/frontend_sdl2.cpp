@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <sys/stat.h>
 
 #include <chrono>
 #include <thread>
@@ -210,6 +211,22 @@ GLuint compileShader(const char* vShaderCode, const char* fShaderCode)
     return ID;
 }
 
+std::string loadFile(const char* path)
+{
+    struct stat s;
+    FILE* f = fopen(path, "r");
+    fstat(fileno(f), &s);
+
+    char* cStr = new char[s.st_size];
+    fread(cStr, s.st_size, 1, f);
+    fclose(f);
+
+    std::string str = cStr;
+    delete[] cStr;
+
+    return str;
+}
+
 } // anonymous namespace
 
 FrontendSdl2::FrontendSdl2()
@@ -253,6 +270,8 @@ int FrontendSdl2::run()
     bool run = true;
 
     auto presentTp = std::chrono::high_resolution_clock::now() + kRenderPeriod;
+
+    const auto renderStartTp = std::chrono::high_resolution_clock::now();
 
     while (run) {
         SDL_Event event;
@@ -374,6 +393,14 @@ int FrontendSdl2::run()
         glBindTexture(GL_TEXTURE_2D, m_Texture);
 
         glUseProgram(m_Shader);
+
+        if (m_UniformTime >= 0) {
+            auto deltaTs = std::chrono::high_resolution_clock::now() - renderStartTp;
+            auto deltaMs = (float) std::chrono::duration_cast<std::chrono::milliseconds>(deltaTs).count();
+
+            glUniform1f(m_UniformTime, deltaMs / 1000);
+        }
+
         glBindVertexArray(m_VAO);
         glDrawElements(GL_TRIANGLES, m_VAO_ElemSize, GL_UNSIGNED_INT, 0);
 
@@ -470,8 +497,12 @@ std::string FrontendSdl2::getSavestateName() const
 
 int FrontendSdl2::glInitContext()
 {
-    m_Shader = compileShader(vertexShader, fragmentShader);
+    auto rainShader = loadFile("frag.glsl");
+    m_Shader = compileShader(vertexShader, rainShader.c_str());
+
+//    m_Shader = compileShader(vertexShader, fragmentShader);
     m_ScaleMatrixUniform = glGetUniformLocation(m_Shader, "scaleMatrix");
+    m_UniformTime = glGetUniformLocation(m_Shader, "iTime");
 
     // Create VAO
     static const float vertices[] = {

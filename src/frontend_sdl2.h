@@ -62,6 +62,7 @@ private:
     bool m_FirstFrame = true;
     GLuint m_Shader = 0;
     GLint m_ScaleMatrixUniform = -1;
+    GLint m_UniformTime = -1;
     GLuint m_VAO = 0;
     GLsizei m_VAO_ElemSize = 0;
     GLuint m_PBO = 0;
