@@ -278,7 +278,7 @@ constexpr uint8_t scaleColor(uint32_t c)
     return c * 255 / 0b11111;
 }
 
-constexpr Color rawColorToRgb(uint32_t raw_color)
+constexpr SnesColor rawColorToRgb(uint32_t raw_color)
 {
     // Convert the packed RGB15 color to RGB32
     uint8_t red = scaleColor(raw_color & 0b11111);
@@ -288,7 +288,7 @@ constexpr Color rawColorToRgb(uint32_t raw_color)
     return {red, green, blue};
 }
 
-constexpr void applyBrightness(Color* color, uint8_t brightness)
+constexpr void applyBrightness(SnesColor* color, uint8_t brightness)
 {
     color->r = color->r * (brightness + 1) / 16;
     color->g = color->g * (brightness + 1) / 16;
@@ -387,10 +387,10 @@ const Ppu::LayerPriority Ppu::s_LayerPriorityMode7[] = {
     {Layer::none, 0, 0},
 };
 
-Ppu::Ppu(const std::shared_ptr<Frontend>& frontend)
+Ppu::Ppu(const std::shared_ptr<SnesRenderer>& renderer)
     : MemComponent(MemComponentType::ppu),
       SchedulerTask(),
-      m_Frontend(frontend)
+      m_Renderer(renderer)
 {
 }
 
@@ -1485,7 +1485,7 @@ void Ppu::initLineRender(int y)
 void Ppu::renderDot(int x, int y)
 {
     if (m_ForcedBlanking) {
-        m_Frontend->drawPoint(x, y, {0, 0, 0});
+        m_Renderer->drawPixel({0, 0, 0});
         return;
     }
 
@@ -1648,10 +1648,10 @@ void Ppu::renderDot(int x, int y)
     }
 
     // Compute final color
-    Color color = rawColorToRgb(rawColor);
+    SnesColor color = rawColorToRgb(rawColor);
     applyBrightness(&color, m_Brightness);
 
-    m_Frontend->drawPoint(x, y, color);
+    m_Renderer->drawPixel(color);
 
     // Move to next pixel
     const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
@@ -1800,7 +1800,7 @@ uint32_t Ppu::getMainBackdropColor()
     return m_Cgram[0];
 }
 
-bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int screen_y, Color* c, int* out_priority)
+bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int screen_y, SnesColor* c, int* out_priority)
 {
     // Compute some dimensions that will be ready for future use
     int tilemapWidth;
@@ -1910,7 +1910,7 @@ bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int scre
     return true;
 }
 
-bool Ppu::getPixelFromObj(int screenX, int screenY, Color* c, int* outPriority)
+bool Ppu::getPixelFromObj(int screenX, int screenY, SnesColor* c, int* outPriority)
 {
     const ObjProperty* obj = nullptr;
     int spriteWidth;
@@ -2237,9 +2237,9 @@ void Ppu::renderDotMode7(int x, int y)
     // Get final color
     if (colorValid) {
         const auto color = rawColorToRgb(rawColor);
-        m_Frontend->drawPoint(x, y, color);
+        m_Renderer->drawPixel(color);
     } else {
-        m_Frontend->drawPoint(x, y, {0, 0, 0});
+        m_Renderer->drawPixel({0, 0, 0});
     }
 }
 

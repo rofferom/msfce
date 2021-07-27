@@ -30,18 +30,17 @@ static const RegisterMapping s_ControllerRegisterMap[] = {
 };
 
 static bool controllerGetButton(
-    const std::shared_ptr<SnesController>& controller,
+    const SnesController* controller,
     const RegisterMapping& mapping)
 {
-    auto rawPtr = (reinterpret_cast<uint8_t *>(controller.get()) + mapping.offset);
-    return *(reinterpret_cast<bool *>(rawPtr));
+    auto rawPtr = reinterpret_cast<const uint8_t *>(controller) + mapping.offset;
+    return *(reinterpret_cast<const bool *>(rawPtr));
 }
 
 } // anonymous namespace
 
-ControllerPorts::ControllerPorts(const std::shared_ptr<Frontend>& frontend)
-    : MemComponent(MemComponentType::joypads),
-      m_Controller1(frontend->getController1())
+ControllerPorts::ControllerPorts()
+    : MemComponent(MemComponentType::joypads)
 {
 }
 
@@ -74,6 +73,11 @@ void ControllerPorts::writeU8(uint32_t addr, uint8_t value)
     LOGW(TAG, "Ignore WriteU8 %02X at %06X", value, addr);
 }
 
+void ControllerPorts::setController1(const SnesController& controller)
+{
+    m_Controller1 = controller;
+}
+
 void ControllerPorts::readController()
 {
     m_Joypad1Register = 0;
@@ -81,7 +85,7 @@ void ControllerPorts::readController()
     for (size_t i = 0; i < SIZEOF_ARRAY(s_ControllerRegisterMap); i++) {
         const auto& mapping = s_ControllerRegisterMap[i];
 
-        if (controllerGetButton(m_Controller1, mapping)) {
+        if (controllerGetButton(&m_Controller1, mapping)) {
             m_Joypad1Register |= (1 << mapping.bit);
         }
     }
@@ -89,14 +93,12 @@ void ControllerPorts::readController()
 
 void ControllerPorts::dumpToFile(FILE* f)
 {
-    const auto controller1 = m_Controller1.get();
-    fwrite(controller1, sizeof(*controller1), 1, f);
+    fwrite(&m_Controller1, sizeof(m_Controller1), 1, f);
     fwrite(&m_Joypad1Register, sizeof(m_Joypad1Register), 1, f);
 }
 
 void ControllerPorts::loadFromFile(FILE* f)
 {
-    const auto controller1 = m_Controller1.get();
-    fread(controller1, sizeof(*controller1), 1, f);
+    fread(&m_Controller1, sizeof(m_Controller1), 1, f);
     fread(&m_Joypad1Register, sizeof(m_Joypad1Register), 1, f);
 }

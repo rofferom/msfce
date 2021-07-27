@@ -1,6 +1,9 @@
 # Find dependencies
 find_package(PkgConfig REQUIRED)
+
 pkg_check_modules(PKG_SDL2 REQUIRED sdl2)
+pkg_check_modules(PKG_EPOXY REQUIRED epoxy)
+pkg_check_modules(PKG_GLM REQUIRED glm)
 
 # msfe lib
 add_library(msfe_lib
@@ -40,8 +43,6 @@ add_library(msfe_lib
     ppu.cpp
 
     scheduler.h
-    scheduler.cpp
-
     schedulertask.h
     schedulertask.cpp
 
@@ -56,15 +57,21 @@ set_property(TARGET msfe_lib PROPERTY CXX_STANDARD 17)
 
 target_include_directories(msfe_lib PUBLIC
     ${PKG_SDL2_INCLUDE_DIRS}
+    ${PKG_EPOXY_INCLUDE_DIRS}
+    ${PKG_GLM_INCLUDE_DIRS}
+
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 target_link_directories(msfe_lib PUBLIC
     ${PKG_SDL2_LIBRARY_DIRS}
+    ${PKG_EPOXY_LIBRARY_DIRS}
 )
 
 target_link_libraries(msfe_lib PUBLIC
     ${PKG_SDL2_LIBRARIES}
+    ${PKG_EPOXY_LIBRARIES}
+
     -lstdc++fs
     -lpthread
 )
