@@ -372,6 +372,14 @@ void Dma::onHblank()
 
             if (doTransfer) {
                 switch (channel->m_Params.m_Mode) {
+                case 0:
+                    m_Membus->writeU8(channel->m_bBaseBusAddress,
+                        m_Membus->readU8(channel->m_NextDataAddress));
+
+                    channel->m_NextDataAddress++;
+
+                    break;
+
                 case 1:
                     m_Membus->writeU16(channel->m_bBaseBusAddress,
                         m_Membus->readU16(channel->m_NextDataAddress));
@@ -434,6 +442,10 @@ void Dma::onHblank()
                     uint32_t dataSize = 0;
 
                     switch (channel->m_Params.m_Mode) {
+                    case 0:
+                        dataSize = 1;
+                        break;
+
                     case 1:
                     case 2:
                         dataSize = 2;
