@@ -38,6 +38,9 @@ private:
     int glInitContext();
     void glSetViewport();
 
+    void onJoystickAdded(int index);
+    void onJoystickRemoved(int index);
+
 private:
     SDL_Window* m_Window = nullptr;
     int m_WindowWidth;
@@ -45,6 +48,8 @@ private:
     bool m_Fullscreen = false;
 
     SDL_GLContext m_GlContext = nullptr;
+
+    SDL_Joystick* m_Joystick = nullptr;
 
     std::shared_ptr<Snes> m_Snes;
     SnesController m_Controller1;

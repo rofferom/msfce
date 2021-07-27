@@ -75,6 +75,24 @@ static const std::unordered_map<SDL_Scancode, SnesControllerMapping> s_Controlle
     { SDL_SCANCODE_X, { "A", offsetof(SnesController, a) } },
 };
 
+static const std::unordered_map<SDL_GameControllerButton, SnesControllerMapping> s_JoystickMapping = {
+    { SDL_CONTROLLER_BUTTON_DPAD_UP,    { "Up",    offsetof(SnesController, up) } },
+    { SDL_CONTROLLER_BUTTON_DPAD_DOWN,  { "Down",  offsetof(SnesController, down) } },
+    { SDL_CONTROLLER_BUTTON_DPAD_LEFT,  { "Left",  offsetof(SnesController, left) } },
+    { SDL_CONTROLLER_BUTTON_DPAD_RIGHT, { "Right", offsetof(SnesController, right) } },
+
+    { SDL_CONTROLLER_BUTTON_START, { "Start",  offsetof(SnesController, start) } },
+    { SDL_CONTROLLER_BUTTON_BACK, { "Select", offsetof(SnesController, select) } },
+
+    { SDL_CONTROLLER_BUTTON_LEFTSHOULDER, { "L", offsetof(SnesController, l) } },
+    { SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, { "R", offsetof(SnesController, r) } },
+
+    { SDL_CONTROLLER_BUTTON_Y, { "Y", offsetof(SnesController, y) } },
+    { SDL_CONTROLLER_BUTTON_X, { "X", offsetof(SnesController, x) } },
+    { SDL_CONTROLLER_BUTTON_B, { "B", offsetof(SnesController, b) } },
+    { SDL_CONTROLLER_BUTTON_A, { "A", offsetof(SnesController, a) } },
+};
+
 bool* controllerGetButton(
     SnesController* controller,
     const SnesControllerMapping& mapping)
@@ -102,6 +120,33 @@ bool handleContollerKey(
     LOGD(TAG, "Button %s (scancode %d) %s",
         mapping.name,
         scancode,
+        pressed ? "pressed" : "released");
+
+    auto buttonValue = controllerGetButton(controller, mapping);
+    *buttonValue = pressed;
+
+    return true;
+}
+
+bool handleJoystickKey(
+    SnesController* controller,
+    SDL_GameControllerButton button,
+    bool pressed)
+{
+    LOGD(TAG, "Joystick button %d %s",
+        button,
+        pressed ? "pressed" : "released");
+
+    auto it = s_JoystickMapping.find(button);
+    if (it == s_JoystickMapping.end()) {
+        return false;
+    }
+
+    const auto& mapping = it->second;
+
+    LOGD(TAG, "Joystick button %s (button %d) %s",
+        mapping.name,
+        button,
         pressed ? "pressed" : "released");
 
     auto buttonValue = controllerGetButton(controller, mapping);
@@ -180,7 +225,9 @@ FrontendSdl2::~FrontendSdl2()
 
 int FrontendSdl2::init()
 {
-    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK);
+
+    SDL_JoystickEventState(SDL_ENABLE);
 
     m_WindowWidth = kPpuDisplayWidth * kWindowInitialScale;
     m_WindowHeight = kPpuDisplayHeight * kWindowInitialScale;
@@ -260,6 +307,28 @@ int FrontendSdl2::run()
                 }
 
                 handleShortcut(event.key.keysym.scancode, false);
+                break;
+
+            case SDL_JOYDEVICEADDED:
+                onJoystickAdded(event.jdevice.which);
+                break;
+
+            case SDL_JOYDEVICEREMOVED:
+                onJoystickRemoved(event.jdevice.which);
+                break;
+
+            case SDL_JOYBUTTONDOWN:
+                handleJoystickKey(
+                    &m_Controller1,
+                    static_cast<SDL_GameControllerButton>(event.jbutton.button),
+                    true);
+                break;
+
+            case SDL_JOYBUTTONUP:
+                handleJoystickKey(
+                    &m_Controller1,
+                    static_cast<SDL_GameControllerButton>(event.jbutton.button),
+                    false);
                 break;
 
             default:
@@ -493,4 +562,29 @@ void FrontendSdl2::glSetViewport()
     glUseProgram(0);
 
     glViewport(0, 0, m_WindowWidth, m_WindowHeight);
+}
+
+void FrontendSdl2::onJoystickAdded(int index)
+{
+    if (m_Joystick) {
+        return;
+    }
+
+    LOGI(TAG, "Opening joystick '%s'", SDL_JoystickNameForIndex(index));
+    m_Joystick = SDL_JoystickOpen(index);
+}
+
+void FrontendSdl2::onJoystickRemoved(int index)
+{
+    if (!m_Joystick) {
+        return;
+    }
+
+    if (index != SDL_JoystickInstanceID(m_Joystick)) {
+        return;
+    }
+
+    LOGI(TAG, "Closing joystick '%s'", SDL_JoystickName(m_Joystick));
+    SDL_JoystickClose(m_Joystick);
+    m_Joystick = nullptr;
 }
