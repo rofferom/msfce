@@ -363,6 +363,10 @@ private:
     bool m_ColorMathBackdrop = false;
 
     // Mode 7
+    int m_M7ScreenOver = 0;
+    bool m_M7HFlip = false;
+    bool m_M7VFlip = false;
+
     uint8_t m_M7Old = 0;
     int16_t m_M7HOFS = 0;
     int16_t m_M7VOFS = 0;

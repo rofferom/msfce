@@ -863,6 +863,9 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         break;
 
     case kRegM7SEL:
+        m_M7ScreenOver = (value >> 6) & 0b11;
+        m_M7HFlip = value & 1;
+        m_M7VFlip = (value >> 1) & 1;
         break;
 
     // To be implemented
@@ -2216,6 +2219,14 @@ void Ppu::renderDotMode7(int x, int y)
 
 uint32_t Ppu::renderGetColorMode7(int x, int y)
 {
+    if (m_M7HFlip) {
+        x = kPpuDisplayWidth - x;
+    }
+
+    if (m_M7VFlip) {
+        y = kPpuDisplayHeight - y;
+    }
+
     auto int13ToInt = [](int16_t value) -> int {
         // Extract bit sign
         const int sign = (value >> 12) & 1;
@@ -2261,16 +2272,43 @@ uint32_t Ppu::renderGetColorMode7(int x, int y)
     vramX >>= 16;
     vramY >>= 16;
 
-    if (vramX > 1024) {
-        vramX %= 1024;
-    } else if (vramX < 0) {
-        vramX += 1024;
-    }
+    // Handle wrap
+    if (m_M7ScreenOver == 0 || m_M7ScreenOver == 1) {
+        if (vramX > 1024) {
+            vramX %= 1024;
+        } else if (vramX < 0) {
+            vramX += 1024;
+        }
 
-    if (vramY > 1024) {
-        vramY %= 1024;
-    } else if (vramY < 0) {
-        vramY += 1024;
+        if (vramY > 1024) {
+            vramY %= 1024;
+        } else if (vramY < 0) {
+            vramY += 1024;
+        }
+    } else if (m_M7ScreenOver == 2) {
+        if (vramX < 0 || vramX > 1024) {
+            return 0;
+        }
+
+        if (vramY < 0 || vramY > 1024) {
+            return 0;
+        }
+    } else if (m_M7ScreenOver == 3) {
+        if (vramX > 1024) {
+            vramX %= 8;
+            vramY %= 8;
+        } else if (vramX < 0) {
+            vramX = (vramX + 1024) % 8;
+            vramY = (vramY + 1024) % 8;
+        }
+
+        if (vramY > 1024) {
+            vramX %= 8;
+            vramY %= 8;
+        } else if (vramY < 0) {
+            vramX = (vramX + 1024) % 8;
+            vramY = (vramY + 1024) % 8;
+        }
     }
 
     // Compute tile address
