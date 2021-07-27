@@ -17,6 +17,35 @@ namespace {
 constexpr auto kRenderPeriod = std::chrono::microseconds(16666);
 constexpr int kSpeedupFrameSkip = 3; // x4 (skip 3 frames)
 
+constexpr int kTextureSize = kPpuDisplayWidth * kPpuDisplayHeight * 3;
+
+const char *vertexShader =
+    "#version 330 core\n"
+    "layout (location = 0) in vec3 aPos;"
+    "layout (location = 1) in vec2 aTexCoord;"
+
+    "out vec2 TexCoord;"
+
+    "void main()"
+    "{"
+    "    gl_Position = vec4(aPos, 1.0);"
+    "    TexCoord = vec2(aTexCoord.x, aTexCoord.y);"
+    "}";
+
+const char *fragmentShader =
+    "#version 330 core\n"
+    "out vec4 FragColor;"
+
+    "in vec3 ourColor;"
+    "in vec2 TexCoord;"
+
+    "uniform sampler2D texture1;"
+
+    "void main()"
+    "{"
+    "    FragColor = texture(texture1, TexCoord);"
+    "}";
+
 struct SnesControllerMapping {
     const char* name;
     off64_t offset;
@@ -75,6 +104,61 @@ bool handleContollerKey(
     return true;
 }
 
+void checkCompileErrors(GLuint shader, const std::string& type)
+{
+    int success;
+    char infoLog[1024];
+
+    if (type != "PROGRAM")
+    {
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+        if (!success)
+        {
+            glGetShaderInfoLog(shader, sizeof(infoLog), nullptr, infoLog);
+            LOGE(TAG, "Shader compilation error of type: '%s': '%s'", type.c_str(), infoLog);
+        }
+    }
+    else
+    {
+        glGetProgramiv(shader, GL_LINK_STATUS, &success);
+        if (!success)
+        {
+            glGetProgramInfoLog(shader, sizeof(infoLog), nullptr, infoLog);
+            LOGE(TAG, "Shader link error of type: '%s'", infoLog);
+        }
+    }
+}
+
+GLuint compileShader(const char* vShaderCode, const char* fShaderCode)
+{
+    GLuint vertex, fragment;
+
+    // vertex shader
+    vertex = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex, 1, &vShaderCode, NULL);
+    glCompileShader(vertex);
+    checkCompileErrors(vertex, "VERTEX");
+
+    // fragment Shader
+    fragment = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment, 1, &fShaderCode, NULL);
+    glCompileShader(fragment);
+    checkCompileErrors(fragment, "FRAGMENT");
+
+    // shader Program
+    GLuint ID = glCreateProgram();
+    glAttachShader(ID, vertex);
+    glAttachShader(ID, fragment);
+    glLinkProgram(ID);
+    checkCompileErrors(ID, "PROGRAM");
+
+    // delete the shaders as they're linked into our program now and no longer necessary
+    glDeleteShader(vertex);
+    glDeleteShader(fragment);
+
+    return ID;
+}
+
 } // anonymous namespace
 
 FrontendSdl2::FrontendSdl2()
@@ -96,11 +180,13 @@ int FrontendSdl2::init()
         "Monkey Super Famicom Emulator",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         kPpuDisplayWidth, kPpuDisplayHeight,
-        0);
+        SDL_WINDOW_OPENGL);
     assert(m_Window);
 
-    m_Surface = SDL_GetWindowSurface(m_Window);
-    assert(m_Surface);
+    m_GlContext = SDL_GL_CreateContext(m_Window);
+    assert(m_GlContext);
+
+    glInitContext();
 
     return 0;
 }
@@ -155,6 +241,7 @@ int FrontendSdl2::run()
             }
         }
 
+
         if (m_Running) {
             m_Snes->setController1(m_Controller1);
 
@@ -164,11 +251,35 @@ int FrontendSdl2::run()
                 }
             }
 
+            // Render texture
+            glBindTexture(GL_TEXTURE_2D, m_Texture);
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_PBO);
+
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 224, GL_RGB, GL_UNSIGNED_BYTE, 0);
+
+            glBufferData(GL_PIXEL_UNPACK_BUFFER, kTextureSize, 0, GL_STREAM_DRAW);
+            m_TextureData = (GLubyte*)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+
             m_Snes->renderSingleFrame();
+
+            glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+
+            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+            glBindTexture(GL_TEXTURE_2D, 0);
         }
 
+        // Render screen
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        glBindTexture(GL_TEXTURE_2D, m_Texture);
+
+        glUseProgram(m_Shader);
+        glBindVertexArray(m_VAO);
+        glDrawElements(GL_TRIANGLES, m_VAO_ElemSize, GL_UNSIGNED_INT, 0);
+
         std::this_thread::sleep_until(presentTp);
-        SDL_UpdateWindowSurface(m_Window);
+        SDL_GL_SwapWindow(m_Window);
         presentTp += kRenderPeriod;
     }
 
@@ -182,23 +293,19 @@ void FrontendSdl2::setSnes(const std::shared_ptr<Snes>& snes)
 
 void FrontendSdl2::scanStarted()
 {
-    SDL_LockSurface(m_Surface);
-    m_SurfaceData = reinterpret_cast<uint8_t*>(m_Surface->pixels);;
 }
 
 void FrontendSdl2::drawPixel(const SnesColor& c)
 {
-    m_SurfaceData[0] = c.b;
-    m_SurfaceData[1] = c.g;
-    m_SurfaceData[2] = c.r;
+    m_TextureData[0] = c.r;
+    m_TextureData[1] = c.g;
+    m_TextureData[2] = c.b;
 
-    m_SurfaceData += m_Surface->format->BytesPerPixel;
+    m_TextureData += 3;
 }
 
 void FrontendSdl2::scanEnded()
 {
-    m_SurfaceData = nullptr;
-    SDL_UnlockSurface(m_Surface);
 }
 
 bool FrontendSdl2::handleShortcut(
@@ -246,4 +353,73 @@ bool FrontendSdl2::handleShortcut(
 std::string FrontendSdl2::getSavestateName() const
 {
     return m_Snes->getRomBasename() + ".msfe";
+}
+
+int FrontendSdl2::glInitContext()
+{
+    m_Shader = compileShader(vertexShader, fragmentShader);
+
+    // Create VAO
+    static const float vertices[] = {
+         // Coords            // Texture
+         1.0f,  1.0f, 0.0f,   1.0f, 0.0f,
+         1.0f, -1.0f, 0.0f,   1.0f, 1.0f,
+        -1.0f, -1.0f, 0.0f,   0.0f, 1.0f,
+        -1.0f,  1.0f, 0.0f,   0.0f, 0.0f
+    };
+
+    static const GLuint indices[] = {
+        0, 1, 3,
+        1, 2, 3
+    };
+
+    GLuint VBO, EBO;
+    glGenVertexArrays(1, &m_VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(m_VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    m_VAO_ElemSize = SIZEOF_ARRAY(indices);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    // Create texture
+    glGenTextures(1, &m_Texture);
+    glBindTexture(GL_TEXTURE_2D, m_Texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGB,
+        kPpuDisplayWidth,
+        kPpuDisplayHeight,
+        0,
+        GL_RGB,
+        GL_UNSIGNED_BYTE,
+        nullptr);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    // Create PBO
+    glGenBuffers(1, &m_PBO);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_PBO);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, kTextureSize, 0, GL_STREAM_DRAW);
+    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+
+    return 0;
 }

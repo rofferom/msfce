@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include <epoxy/gl.h>
 #include <SDL.h>
 
 #include "controller.h"
@@ -34,12 +35,11 @@ private:
 
     std::string getSavestateName() const;
 
+    int glInitContext();
+
 private:
     SDL_Window* m_Window = nullptr;
-
-    SDL_Surface* m_Surface = nullptr;
-
-    uint8_t* m_SurfaceData = nullptr;
+    SDL_GLContext m_GlContext = nullptr;
 
     std::shared_ptr<Snes> m_Snes;
     SnesController m_Controller1;
@@ -47,4 +47,14 @@ private:
     // Scheduling
     bool m_Running = true;
     bool m_SpeedUp = false;
+
+    // OpenGL
+    bool m_FirstFrame = true;
+    GLuint m_Shader = 0;
+    GLuint m_VAO = 0;
+    GLsizei m_VAO_ElemSize = 0;
+    GLuint m_PBO = 0;
+    GLuint m_Texture = 0;
+    GLubyte* m_TextureData = nullptr;
+
 };
