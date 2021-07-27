@@ -1,5 +1,7 @@
 #include <assert.h>
 
+#include <chrono>
+#include <thread>
 #include <unordered_map>
 
 #include "controller.h"
@@ -11,6 +13,9 @@
 #define TAG "FrontendSdl2"
 
 namespace {
+
+constexpr auto kRenderPeriod = std::chrono::microseconds(16666);
+constexpr int kSpeedupFrameSkip = 3; // x4 (skip 3 frames)
 
 struct SnesControllerMapping {
     const char* name;
@@ -36,15 +41,15 @@ static const std::unordered_map<SDL_Scancode, SnesControllerMapping> s_Controlle
 };
 
 bool* controllerGetButton(
-    const std::shared_ptr<SnesController>& controller,
+    SnesController* controller,
     const SnesControllerMapping& mapping)
 {
-    auto rawPtr = (reinterpret_cast<uint8_t *>(controller.get()) + mapping.offset);
+    auto rawPtr = reinterpret_cast<uint8_t *>(controller) + mapping.offset;
     return reinterpret_cast<bool *>(rawPtr);
 }
 
 bool handleContollerKey(
-    const std::shared_ptr<SnesController>& controller,
+    SnesController* controller,
     SDL_Scancode scancode,
     bool pressed)
 {
@@ -74,7 +79,7 @@ bool handleContollerKey(
 
 FrontendSdl2::FrontendSdl2()
     : Frontend(),
-      m_Controller1(std::make_shared<SnesController>())
+      SnesRenderer()
 {
 }
 
@@ -94,81 +99,106 @@ int FrontendSdl2::init()
         0);
     assert(m_Window);
 
-    m_Renderer = SDL_CreateRenderer(m_Window, -1, 0);
-    assert(m_Renderer);
-
-    SDL_SetRenderDrawColor(m_Renderer, 0, 0, 0, 255);
-    SDL_RenderClear(m_Renderer);
+    m_Surface = SDL_GetWindowSurface(m_Window);
+    assert(m_Surface);
 
     return 0;
 }
 
-bool FrontendSdl2::runOnce()
+int FrontendSdl2::run()
 {
-    SDL_Event event;
-    bool keyHandled;
+    bool run = true;
 
-    if (SDL_PollEvent(&event)) {
-        if (event.type == SDL_QUIT) {
-            return false;
+    auto presentTp = std::chrono::high_resolution_clock::now() + kRenderPeriod;
+
+    while (run) {
+        SDL_Event event;
+
+        // Handle events
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                run = false;
+                break;
+            }
+
+            bool keyHandled;
+
+            switch (event.type) {
+            case SDL_KEYDOWN:
+                keyHandled = handleContollerKey(&m_Controller1, event.key.keysym.scancode, true);
+                if (keyHandled) {
+                    break;
+                }
+
+                if (event.key.repeat) {
+                    break;
+                }
+
+                handleShortcut(event.key.keysym.scancode, true);
+                break;
+
+            case SDL_KEYUP:
+                keyHandled = handleContollerKey(&m_Controller1, event.key.keysym.scancode, false);
+                if (keyHandled) {
+                    break;
+                }
+
+                if (event.key.repeat) {
+                    break;
+                }
+
+                handleShortcut(event.key.keysym.scancode, false);
+                break;
+
+            default:
+                break;
+            }
         }
 
-        switch (event.type) {
-        case SDL_KEYDOWN:
-            keyHandled = handleContollerKey(m_Controller1, event.key.keysym.scancode, true);
-            if (keyHandled) {
-                return true;
+        if (m_Running) {
+            m_Snes->setController1(m_Controller1);
+
+            if (m_SpeedUp) {
+                for (int i = 0; i < kSpeedupFrameSkip; i++) {
+                    m_Snes->renderSingleFrame(false);
+                }
             }
 
-            if (event.key.repeat) {
-                return true;
-            }
-
-            handleShortcut(event.key.keysym.scancode, true);
-
-            break;
-
-        case SDL_KEYUP:
-            keyHandled = handleContollerKey(m_Controller1, event.key.keysym.scancode, false);
-            if (keyHandled) {
-                return true;
-            }
-
-            if (event.key.repeat) {
-                return true;
-            }
-
-            handleShortcut(event.key.keysym.scancode, false);
-
-            break;
-
-        default:
-            break;
+            m_Snes->renderSingleFrame();
         }
+
+        std::this_thread::sleep_until(presentTp);
+        SDL_UpdateWindowSurface(m_Window);
+        presentTp += kRenderPeriod;
     }
 
     return true;
 }
 
-std::shared_ptr<SnesController> FrontendSdl2::getController1()
-{
-    return m_Controller1;
-}
-
-void FrontendSdl2::drawPoint(int x, int y, const Color& c)
-{
-    SDL_SetRenderDrawColor(m_Renderer, c.r, c.g, c.b, 255);
-    SDL_RenderDrawPoint(m_Renderer, x, y);
-}
-
-void FrontendSdl2::present()
-{
-    SDL_RenderPresent(m_Renderer);
-}
-
 void FrontendSdl2::setSnes(const std::shared_ptr<Snes>& snes)
 {
     m_Snes = snes;
+}
+
+void FrontendSdl2::scanStarted()
+{
+    SDL_LockSurface(m_Surface);
+    m_SurfaceData = reinterpret_cast<uint8_t*>(m_Surface->pixels);;
+}
+
+void FrontendSdl2::drawPixel(const SnesColor& c)
+{
+    m_SurfaceData[0] = c.b;
+    m_SurfaceData[1] = c.g;
+    m_SurfaceData[2] = c.r;
+
+    m_SurfaceData += m_Surface->format->BytesPerPixel;
+}
+
+void FrontendSdl2::scanEnded()
+{
+    m_SurfaceData = nullptr;
+    SDL_UnlockSurface(m_Surface);
 }
 
 bool FrontendSdl2::handleShortcut(
@@ -178,17 +208,17 @@ bool FrontendSdl2::handleShortcut(
     switch (scancode) {
     case SDL_SCANCODE_P:
         if (pressed) {
-            m_Snes->toggleRunning();
+            m_Running = !m_Running;
         }
         break;
 
     case SDL_SCANCODE_GRAVE:
         if (pressed) {
             LOGI(TAG, "Speedup");
-            m_Snes->speedUp();
+            m_SpeedUp = true;
         } else {
             LOGI(TAG, "Normal speed");
-            m_Snes->speedNormal();
+            m_SpeedUp = false;
         }
         break;
 

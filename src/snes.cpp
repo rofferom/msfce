@@ -22,8 +22,8 @@
 constexpr uint32_t kLowRomHeader_Title = 0x7FC0;
 constexpr uint32_t kLowRomHeader_TitleSize = 21;
 
-Snes::Snes(const std::shared_ptr<Frontend>& frontend)
-    : m_Frontend(frontend)
+Snes::Snes(const std::shared_ptr<SnesRenderer>& renderer)
+    : m_Renderer(renderer)
 {
 }
 
@@ -86,7 +86,7 @@ std::string Snes::getRomBasename() const
     return m_RomBasename;
 }
 
-void Snes::run()
+int Snes::start()
 {
     auto membus = std::make_shared<Membus>(AddressingType::lowrom);
 
@@ -110,7 +110,7 @@ void Snes::run()
     m_Apu = std::make_shared<Apu>();
     membus->plugComponent(m_Apu);
 
-    m_Ppu = std::make_shared<Ppu>(m_Frontend);
+    m_Ppu = std::make_shared<Ppu>(m_Renderer);
     membus->plugComponent(m_Ppu);
 
     m_Maths = std::make_shared<Maths>();
@@ -119,32 +119,34 @@ void Snes::run()
     m_Dma = std::make_shared<Dma>(membus);
     membus->plugComponent(m_Dma);
 
-    m_ControllerPorts = std::make_shared<ControllerPorts>(m_Frontend);
+    m_ControllerPorts = std::make_shared<ControllerPorts>();
     membus->plugComponent(m_ControllerPorts);
 
     m_Cpu = std::make_shared<Cpu65816>(membus);
 
-    m_Scheduler = std::make_shared<Scheduler>(m_Frontend, m_Cpu, m_Dma, m_Ppu, m_ControllerPorts);
+    m_Scheduler = std::make_shared<Scheduler>(m_Renderer, m_Cpu, m_Dma, m_Ppu, m_ControllerPorts);
     membus->plugComponent(m_Scheduler);
 
-    m_Scheduler->run();
+    m_Dma->setScheduler(m_Scheduler);
 
+    return 0;
+}
+
+int Snes::stop()
+{
     saveSram();
+
+    return 0;
 }
 
-void Snes::toggleRunning()
+int Snes::renderSingleFrame(bool renderPpu)
 {
-    m_Scheduler->toggleRunning();
+    return m_Scheduler->renderSingleFrame(renderPpu);
 }
 
-void Snes::speedUp()
+void Snes::setController1(const SnesController& controller)
 {
-    m_Scheduler->speedUp();
-}
-
-void Snes::speedNormal()
-{
-    m_Scheduler->speedNormal();
+    m_ControllerPorts->setController1(controller);
 }
 
 void Snes::saveState(const std::string& path)
@@ -153,8 +155,6 @@ void Snes::saveState(const std::string& path)
 
     FILE* f = fopen(path.c_str(), "wb");
     assert(f);
-
-    m_Scheduler->pause();
 
     m_Ram->dumpToFile(f);
     m_IndirectWram->dumpToFile(f);
@@ -166,8 +166,6 @@ void Snes::saveState(const std::string& path)
     m_Cpu->dumpToFile(f);
     m_Scheduler->dumpToFile(f);
 
-    m_Scheduler->resume();
-
     fclose(f);
 }
 
@@ -178,8 +176,6 @@ void Snes::loadState(const std::string& path)
     FILE* f = fopen(path.c_str(), "rb");
     assert(f);
 
-    m_Scheduler->pause();
-
     m_Ram->loadFromFile(f);
     m_IndirectWram->loadFromFile(f);
     m_Apu->loadFromFile(f);
@@ -189,8 +185,6 @@ void Snes::loadState(const std::string& path)
     m_ControllerPorts->loadFromFile(f);
     m_Cpu->loadFromFile(f);
     m_Scheduler->loadFromFile(f);
-
-    m_Scheduler->resume();
 
     fclose(f);
 }

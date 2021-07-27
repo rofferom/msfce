@@ -4,12 +4,14 @@
 #include <string>
 #include <vector>
 
+#include "controller.h"
+#include "snes_renderer.h"
+
 class Apu;
 class BufferMemComponent;
 class ControllerPorts;
 class Cpu65816;
 class Dma;
-class Frontend;
 class IndirectWram;
 class Maths;
 class Ppu;
@@ -18,17 +20,17 @@ class Wram;
 
 class Snes {
 public:
-    Snes(const std::shared_ptr<Frontend>& frontend);
+    Snes(const std::shared_ptr<SnesRenderer>& renderer);
 
     int plugCartidge(const char* path);
     std::string getRomBasename() const;
 
-    void run();
+    int start();
+    int stop();
 
-    void toggleRunning();
+    int renderSingleFrame(bool renderPpu = true);
 
-    void speedUp();
-    void speedNormal();
+    void setController1(const SnesController& controller);
 
     void saveState(const std::string& path);
     void loadState(const std::string& path);
@@ -40,7 +42,7 @@ private:
     void saveSram();
 
 private:
-    std::shared_ptr<Frontend> m_Frontend;
+    std::shared_ptr<SnesRenderer> m_Renderer;
     std::string m_RomBasename;
 
     std::shared_ptr<Wram> m_Ram;

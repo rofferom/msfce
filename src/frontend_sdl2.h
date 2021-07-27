@@ -4,24 +4,28 @@
 
 #include <SDL.h>
 
+#include "controller.h"
+#include "snes_renderer.h"
+
 #include "frontend.h"
 
 class SnesController;
 
-class FrontendSdl2 : public Frontend {
+class FrontendSdl2 : public Frontend, public SnesRenderer {
 public:
     FrontendSdl2();
     ~FrontendSdl2();
 
+    /// Frontend methods
     int init() final;
-    bool runOnce() final;
-
-    std::shared_ptr<SnesController> getController1() final;
-
-    void drawPoint(int x, int y, const Color& c) final;
-    void present() final;
+    int run() final;
 
     void setSnes(const std::shared_ptr<Snes>& snes) final;
+
+    // SnesRenderer methods
+    void scanStarted() final;
+    void drawPixel(const SnesColor& c) final;
+    void scanEnded() final;
 
 private:
     bool handleShortcut(
@@ -32,9 +36,15 @@ private:
 
 private:
     SDL_Window* m_Window = nullptr;
-    SDL_Renderer* m_Renderer = nullptr;
 
-    std::shared_ptr<SnesController> m_Controller1;
+    SDL_Surface* m_Surface = nullptr;
+
+    uint8_t* m_SurfaceData = nullptr;
 
     std::shared_ptr<Snes> m_Snes;
+    SnesController m_Controller1;
+
+    // Scheduling
+    bool m_Running = true;
+    bool m_SpeedUp = false;
 };

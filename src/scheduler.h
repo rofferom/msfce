@@ -4,11 +4,11 @@
 #include <thread>
 
 #include "memcomponent.h"
+#include "snes_renderer.h"
 
 class ControllerPorts;
 class Cpu65816;
 class Dma;
-class Frontend;
 class Ppu;
 class SchedulerTask;
 
@@ -19,7 +19,7 @@ public:
 
 public:
     Scheduler(
-        const std::shared_ptr<Frontend>& frontend,
+        const std::shared_ptr<SnesRenderer>& renderer,
         const std::shared_ptr<Cpu65816>& cpu,
         const std::shared_ptr<Dma>& dma,
         const std::shared_ptr<Ppu>& ppu,
@@ -31,16 +31,9 @@ public:
     void dumpToFile(FILE* f);
     void loadFromFile(FILE* f);
 
-    int run();
-
-    void toggleRunning();
-    void pause();
-    void resume();
+    int renderSingleFrame(bool renderPpu);
 
     void resumeTask(SchedulerTask* task, int cycles);
-
-    void speedUp();
-    void speedNormal();
 
 private:
     bool runRunning();
@@ -68,17 +61,9 @@ private:
     };
 
 private:
-    // Frontend and controller variables
-    std::shared_ptr<Frontend> m_Frontend;
+    // Renderer and controller variables
+    std::shared_ptr<SnesRenderer> m_Renderer;
     std::shared_ptr<ControllerPorts> m_ControllerPorts;
-
-    // State
-    bool m_Running = false;
-
-    struct {
-        bool active = false;
-        int framesToSkip = 0;
-    } m_SpeedUp;
 
     // Components
     std::shared_ptr<Cpu65816> m_Cpu;
@@ -107,7 +92,6 @@ private:
 
     // Scheduling
     uint64_t m_MasterClock = 0;
-    Clock::time_point m_NextPresent;
 
     DurationTool m_CpuTime;
     DurationTool m_PpuTime;

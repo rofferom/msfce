@@ -16,10 +16,6 @@ namespace {
 
 constexpr bool kLogTimings = true;
 
-constexpr int kSpeedupFrameSkip = 2; // x3
-
-constexpr auto kRenderPeriod = std::chrono::microseconds(16666);
-
 } // anonymous namespace
 
 void Scheduler::DurationTool::reset()
@@ -57,13 +53,13 @@ int64_t Scheduler::DurationTool::total()
 }
 
 Scheduler::Scheduler(
-    const std::shared_ptr<Frontend>& frontend,
+    const std::shared_ptr<SnesRenderer>& renderer,
     const std::shared_ptr<Cpu65816>& cpu,
     const std::shared_ptr<Dma>& dma,
     const std::shared_ptr<Ppu>& ppu,
     const std::shared_ptr<ControllerPorts>& controllerPorts)
     : MemComponent(MemComponentType::irq),
-      m_Frontend(frontend),
+      m_Renderer(renderer),
       m_ControllerPorts(controllerPorts),
       m_Cpu(cpu),
       m_Dma(dma),
@@ -145,186 +141,115 @@ void Scheduler::writeU8(uint32_t addr, uint8_t value)
     }
 }
 
-void Scheduler::toggleRunning()
+int Scheduler::renderSingleFrame(bool renderPpu)
 {
-    m_Running = !m_Running;
-}
+    bool scanEnded = false;
 
-int Scheduler::run()
-{
-    bool run = true;
+    if (renderPpu) {
+        m_Ppu->setDrawConfig(Ppu::DrawConfig::Draw);
+    } else {
+        m_Ppu->setDrawConfig(Ppu::DrawConfig::Skip);
+    }
 
-    m_NextPresent = Clock::now() + kRenderPeriod;
+    while (!scanEnded) {
+        // DMA has priority over CPU
+        if (m_Dma->getState() == SchedulerTask::State::running) {
+            if (m_Dma->getNextRunCycle() == m_MasterClock) {
+                int dmaCycles = m_Dma->run();
 
-    // Register components
-    m_Dma->setScheduler(shared_from_this());
+                if (dmaCycles > 0) {
+                    m_Dma->setNextRunCycle(m_MasterClock + dmaCycles);
+                } else {
+                    m_Dma->setIdle();
 
-    m_Running = true;
+                    // Resume CPU at a multiple of 8 cycles. 0 is forbidden
+                    auto cpuSync = m_MasterClock % 8;
+                    if (cpuSync == 0) {
+                        cpuSync = 8;
+                    }
 
-    while (run) {
-        if (m_Running) {
-            run = runRunning();
-        } else {
-            run = runPaused();
+                    m_Cpu->setNextRunCycle(m_MasterClock + cpuSync);
+                }
+            }
+        } else if (m_Cpu->getNextRunCycle() == m_MasterClock) {
+            m_CpuTime.begin();
+            int cpuCycles = m_Cpu->run();
+            m_CpuTime.end();
+
+            m_Cpu->setNextRunCycle(m_MasterClock + cpuCycles);
         }
+
+        // Always run PPU
+        if (m_Ppu->getNextRunCycle() == m_MasterClock) {
+            m_PpuTime.begin();
+            int ppuCycles = m_Ppu->run();
+            m_PpuTime.end();
+
+            m_Ppu->setNextRunCycle(m_MasterClock + ppuCycles);
+            auto ppuEvents = m_Ppu->getEvents();
+
+            if (ppuEvents & Ppu::Event_ScanStarted) {
+                m_Renderer->scanStarted();
+                m_Dma->onScanStarted();
+            }
+
+            if (ppuEvents & Ppu::Event_HBlankStart) {
+                m_Dma->onHblank();
+
+                m_HVBJOY |= 1 << 6;
+            }
+
+            if (ppuEvents & Ppu::Event_HBlankEnd) {
+                m_HVBJOY &= ~(1 << 6);
+            }
+
+            if (ppuEvents & Ppu::Event_HV_IRQ) {
+                setHVIRQ_Flag(true);
+            }
+
+            if (ppuEvents & Ppu::Event_VBlankStart) {
+                m_Vblank = true;
+                m_HVBJOY |= 1 << 7;
+
+                m_Dma->onVblank();
+
+                if (m_JoypadAutoread) {
+                    m_ControllerPorts->readController();
+                }
+
+                // Dirty hack to avoid vblank to be retriggered
+                if (m_NMIEnabled) {
+                    m_Cpu->setNMI();
+                }
+            }
+
+            if (ppuEvents & Ppu::Event_ScanEnded) {
+                m_Vblank = false;
+                m_HVBJOY &= ~(1 << 7);
+
+                if (kLogTimings) {
+                    LOGI(TAG, "CPU: %lu ms - PPU: %lu ms",
+                         m_CpuTime.total<std::chrono::milliseconds>(),
+                         m_PpuTime.total<std::chrono::milliseconds>());
+
+                    m_CpuTime.reset();
+                    m_PpuTime.reset();
+                }
+
+                m_Renderer->scanEnded();
+                scanEnded = true;
+            }
+        }
+
+        m_MasterClock++;
     }
 
     return 0;
 }
 
-bool Scheduler::runRunning()
-{
-    bool keepRunning = true;
-
-    // DMA has priority over CPU
-    if (m_Dma->getState() == SchedulerTask::State::running) {
-        if (m_Dma->getNextRunCycle() == m_MasterClock) {
-            int dmaCycles = m_Dma->run();
-
-            if (dmaCycles > 0) {
-                m_Dma->setNextRunCycle(m_MasterClock + dmaCycles);
-            } else {
-                m_Dma->setIdle();
-
-                // Resume CPU at a multiple of 8 cycles. 0 is forbidden
-                auto cpuSync = m_MasterClock % 8;
-                if (cpuSync == 0) {
-                    cpuSync = 8;
-                }
-
-                m_Cpu->setNextRunCycle(m_MasterClock + cpuSync);
-            }
-        }
-    } else if (m_Cpu->getNextRunCycle() == m_MasterClock) {
-        m_CpuTime.begin();
-        int cpuCycles = m_Cpu->run();
-        m_CpuTime.end();
-
-        m_Cpu->setNextRunCycle(m_MasterClock + cpuCycles);
-    }
-
-    // Always run PPU
-    if (m_Ppu->getNextRunCycle() == m_MasterClock) {
-        m_PpuTime.begin();
-        int ppuCycles = m_Ppu->run();
-        m_PpuTime.end();
-
-        m_Ppu->setNextRunCycle(m_MasterClock + ppuCycles);
-        auto ppuEvents = m_Ppu->getEvents();
-
-        if (ppuEvents & Ppu::Event_ScanStarted) {
-            m_Dma->onScanStarted();
-        }
-
-        if (ppuEvents & Ppu::Event_HBlankStart) {
-            m_Dma->onHblank();
-
-            m_HVBJOY |= 1 << 6;
-        }
-
-        if (ppuEvents & Ppu::Event_HBlankEnd) {
-            m_HVBJOY &= ~(1 << 6);
-        }
-
-        if (ppuEvents & Ppu::Event_HV_IRQ) {
-            setHVIRQ_Flag(true);
-        }
-
-        if (ppuEvents & Ppu::Event_VBlankStart) {
-            m_Vblank = true;
-            m_HVBJOY |= 1 << 7;
-
-            m_Dma->onVblank();
-
-            if (m_JoypadAutoread) {
-                m_ControllerPorts->readController();
-            }
-
-            // Dirty hack to avoid vblank to be retriggered
-            if (m_NMIEnabled) {
-                m_Cpu->setNMI();
-            }
-        }
-
-        if (ppuEvents & Ppu::Event_ScanEnded) {
-            // In case of speedup, present can be skipped
-            bool doPresent = true;
-
-            if (m_SpeedUp.active) {
-                if (m_SpeedUp.framesToSkip == 0) {
-                    m_Ppu->setDrawConfig(Ppu::DrawConfig::Draw);
-                    m_SpeedUp.framesToSkip = kSpeedupFrameSkip;
-                } else {
-                    m_Ppu->setDrawConfig(Ppu::DrawConfig::Skip);
-                    m_SpeedUp.framesToSkip--;
-                    doPresent = false;
-                }
-            }
-
-            m_Vblank = false;
-            m_HVBJOY &= ~(1 << 7);
-
-            if (kLogTimings) {
-                LOGI(TAG, "CPU: %lu ms - PPU: %lu ms",
-                     m_CpuTime.total<std::chrono::milliseconds>(),
-                     m_PpuTime.total<std::chrono::milliseconds>());
-
-                m_CpuTime.reset();
-                m_PpuTime.reset();
-            }
-
-            if (doPresent) {
-                std::this_thread::sleep_until(m_NextPresent);
-                m_Frontend->present();
-                m_NextPresent += kRenderPeriod;
-            }
-
-            // Run frontend after present
-            keepRunning = m_Frontend->runOnce();
-        }
-    }
-
-    m_MasterClock++;
-
-    return keepRunning;
-}
-
-bool Scheduler::runPaused()
-{
-    // Continue to run frontend to process inputs
-    std::this_thread::sleep_until(m_NextPresent);
-    m_NextPresent += kRenderPeriod;
-
-    // Run frontend after present
-    return m_Frontend->runOnce();
-}
-
 void Scheduler::resumeTask(SchedulerTask* task, int cycles)
 {
     task->setNextRunCycle(m_MasterClock + cycles);
-}
-
-void Scheduler::speedUp()
-{
-    m_SpeedUp.active = true;
-    m_Ppu->setDrawConfig(Ppu::DrawConfig::Skip);
-    m_SpeedUp.framesToSkip = kSpeedupFrameSkip;
-}
-
-void Scheduler::speedNormal()
-{
-    m_SpeedUp.active = false;
-    m_Ppu->setDrawConfig(Ppu::DrawConfig::Draw);
-}
-
-void Scheduler::pause()
-{
-    m_Running = false;
-}
-
-void Scheduler::resume()
-{
-    m_Running = true;
 }
 
 void Scheduler::setHVIRQ_Flag(bool v)

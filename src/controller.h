@@ -22,15 +22,15 @@ struct SnesController {
     bool a = false;
 };
 
-class Frontend;
-
 class ControllerPorts : public MemComponent {
 public:
-    ControllerPorts(const std::shared_ptr<Frontend>& frontend);
+    ControllerPorts();
     ~ControllerPorts() = default;
 
     uint8_t readU8(uint32_t addr) override;
     void writeU8(uint32_t addr, uint8_t value) override;
+
+    void setController1(const SnesController& controller);
 
     void readController();
 
@@ -38,7 +38,7 @@ public:
     void loadFromFile(FILE* f);
 
 private:
-    std::shared_ptr<SnesController> m_Controller1;
+    SnesController m_Controller1;
     uint16_t m_Joypad1Register = 0;
 };
 

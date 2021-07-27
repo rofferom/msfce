@@ -28,9 +28,11 @@ int main(int argc, char* argv[])
     snes->plugCartidge(romPath);
 
     frontend->setSnes(snes);
+    snes->start();
 
-    snes->run();
+    frontend->run();
 
+    snes->stop();
     frontend.reset();
 
     return 0;

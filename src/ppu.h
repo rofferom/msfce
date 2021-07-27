@@ -4,10 +4,10 @@
 #include <stdint.h>
 #include <memory>
 
-#include "frontend.h"
 #include "memcomponent.h"
 #include "registers.h"
 #include "schedulertask.h"
+#include "snes_renderer.h"
 
 class Ppu : public MemComponent, public SchedulerTask {
 public:
@@ -33,7 +33,7 @@ public:
     };
 
 public:
-    Ppu(const std::shared_ptr<Frontend>& frontend);
+    Ppu(const std::shared_ptr<SnesRenderer>& renderer);
     ~Ppu() = default;
 
     void dump() const;
@@ -264,8 +264,8 @@ private:
     uint32_t getObjColorFromCgram(int palette, int color);
     uint32_t getMainBackdropColor();
 
-    bool getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int screen_y, Color* c, int* priority);
-    bool getPixelFromObj(int screen_x, int screen_y, Color* c, int* priority);
+    bool getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int screen_y, SnesColor* c, int* priority);
+    bool getPixelFromObj(int screen_x, int screen_y, SnesColor* c, int* priority);
 
     void initScreenRender();
     void initLineRender(int y);
@@ -286,7 +286,7 @@ private:
     uint32_t renderGetColorMode7(int x, int y);
 
 private:
-    std::shared_ptr<Frontend> m_Frontend;
+    std::shared_ptr<SnesRenderer> m_Renderer;
     DrawConfig m_DrawConfig = DrawConfig::Draw;
     uint32_t m_Events = 0;
 
