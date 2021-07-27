@@ -17,7 +17,7 @@ jobs:
     - name: Install required system packages
       run: |
         sudo apt-get update
-        sudo apt-get install -y libsdl2-dev libepoxy-dev
+        sudo apt-get install -y libsdl2-dev libepoxy-dev libglm-dev
     - name: Run cmake
       run: |
         mkdir build

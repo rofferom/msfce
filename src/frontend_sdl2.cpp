@@ -4,6 +4,9 @@
 #include <thread>
 #include <unordered_map>
 
+#include <glm/gtx/transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include "controller.h"
 #include "log.h"
 #include "ppu.h"
@@ -13,6 +16,8 @@
 #define TAG "FrontendSdl2"
 
 namespace {
+
+constexpr int kWindowInitialScale = 2;
 
 constexpr auto kRenderPeriod = std::chrono::microseconds(16666);
 constexpr int kSpeedupFrameSkip = 3; // x4 (skip 3 frames)
@@ -24,11 +29,12 @@ const char *vertexShader =
     "layout (location = 0) in vec3 aPos;"
     "layout (location = 1) in vec2 aTexCoord;"
 
+    "uniform mat4 scaleMatrix;"
     "out vec2 TexCoord;"
 
     "void main()"
     "{"
-    "    gl_Position = vec4(aPos, 1.0);"
+    "    gl_Position = scaleMatrix * vec4(aPos, 1.0);"
     "    TexCoord = vec2(aTexCoord.x, aTexCoord.y);"
     "}";
 
@@ -176,17 +182,21 @@ int FrontendSdl2::init()
 {
     SDL_Init(SDL_INIT_VIDEO);
 
+    m_WindowWidth = kPpuDisplayWidth * kWindowInitialScale;
+    m_WindowHeight = kPpuDisplayHeight * kWindowInitialScale;
+
     m_Window = SDL_CreateWindow(
         "Monkey Super Famicom Emulator",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        kPpuDisplayWidth, kPpuDisplayHeight,
-        SDL_WINDOW_OPENGL);
+        m_WindowWidth, m_WindowHeight,
+        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     assert(m_Window);
 
     m_GlContext = SDL_GL_CreateContext(m_Window);
     assert(m_GlContext);
 
     glInitContext();
+    glSetViewport();
 
     return 0;
 }
@@ -199,6 +209,7 @@ int FrontendSdl2::run()
 
     while (run) {
         SDL_Event event;
+        bool windowSizeUpdated = false;
 
         // Handle events
         while (SDL_PollEvent(&event)) {
@@ -210,6 +221,21 @@ int FrontendSdl2::run()
             bool keyHandled;
 
             switch (event.type) {
+            case SDL_WINDOWEVENT: {
+                switch (event.window.event) {
+                case SDL_WINDOWEVENT_RESIZED:
+                    m_WindowWidth = event.window.data1;
+                    m_WindowHeight = event.window.data2;
+                    windowSizeUpdated = true;
+                    break;
+
+                default:
+                    break;
+                }
+
+                break;
+            }
+
             case SDL_KEYDOWN:
                 keyHandled = handleContollerKey(&m_Controller1, event.key.keysym.scancode, true);
                 if (keyHandled) {
@@ -271,6 +297,10 @@ int FrontendSdl2::run()
         // Render screen
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        if (windowSizeUpdated) {
+            glSetViewport();
+        }
 
         glBindTexture(GL_TEXTURE_2D, m_Texture);
 
@@ -358,6 +388,7 @@ std::string FrontendSdl2::getSavestateName() const
 int FrontendSdl2::glInitContext()
 {
     m_Shader = compileShader(vertexShader, fragmentShader);
+    m_ScaleMatrixUniform = glGetUniformLocation(m_Shader, "scaleMatrix");
 
     // Create VAO
     static const float vertices[] = {
@@ -422,4 +453,30 @@ int FrontendSdl2::glInitContext()
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
     return 0;
+}
+
+void FrontendSdl2::glSetViewport()
+{
+    glm::mat4 m;
+
+    const float windowRatio = (float) m_WindowWidth / (float) m_WindowHeight;
+    const float ppuRatio = (float) kPpuDisplayWidth / (float) kPpuDisplayHeight;
+
+    if (windowRatio > ppuRatio) {
+        // Window is wider than expected
+        const float displayedWidth = (float) kPpuDisplayWidth * ((float) m_WindowHeight / (float) kPpuDisplayHeight);
+        const float widthRatio = displayedWidth / (float) m_WindowWidth;
+        m = glm::scale(glm::vec3(widthRatio, 1.0f, 1));
+    } else {
+        // Window is higher than expected
+        const float displayedHeight = (float) kPpuDisplayHeight * ((float) m_WindowWidth / (float) kPpuDisplayWidth);
+        const float heightRatio = (float) displayedHeight / (float) m_WindowHeight;
+        m = glm::scale(glm::vec3(1.0f, heightRatio, 1));
+    }
+
+    glUseProgram(m_Shader);
+    glUniformMatrix4fv(m_ScaleMatrixUniform, 1, GL_FALSE, glm::value_ptr(m));
+    glUseProgram(0);
+
+    glViewport(0, 0, m_WindowWidth, m_WindowHeight);
 }

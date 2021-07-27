@@ -36,9 +36,12 @@ private:
     std::string getSavestateName() const;
 
     int glInitContext();
+    void glSetViewport();
 
 private:
     SDL_Window* m_Window = nullptr;
+    int m_WindowWidth;
+    int m_WindowHeight;
     SDL_GLContext m_GlContext = nullptr;
 
     std::shared_ptr<Snes> m_Snes;
@@ -51,6 +54,7 @@ private:
     // OpenGL
     bool m_FirstFrame = true;
     GLuint m_Shader = 0;
+    GLint m_ScaleMatrixUniform = -1;
     GLuint m_VAO = 0;
     GLsizei m_VAO_ElemSize = 0;
     GLuint m_PBO = 0;
