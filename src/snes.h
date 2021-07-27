@@ -36,12 +36,16 @@ public:
 private:
     int loadRom(const char* romPath, std::vector<uint8_t>* outRom);
 
+    void loadSram();
+    void saveSram();
+
 private:
     std::shared_ptr<Frontend> m_Frontend;
     std::string m_RomBasename;
 
     std::shared_ptr<Wram> m_Ram;
     std::shared_ptr<IndirectWram> m_IndirectWram;
+    std::shared_ptr<BufferMemComponent> m_Sram;
     std::shared_ptr<Apu> m_Apu;
     std::shared_ptr<ControllerPorts> m_ControllerPorts;
     std::shared_ptr<Cpu65816> m_Cpu;
