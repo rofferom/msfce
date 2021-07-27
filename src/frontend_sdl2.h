@@ -42,6 +42,8 @@ private:
     SDL_Window* m_Window = nullptr;
     int m_WindowWidth;
     int m_WindowHeight;
+    bool m_Fullscreen = false;
+
     SDL_GLContext m_GlContext = nullptr;
 
     std::shared_ptr<Snes> m_Snes;
@@ -60,5 +62,4 @@ private:
     GLuint m_PBO = 0;
     GLuint m_Texture = 0;
     GLubyte* m_TextureData = nullptr;
-
 };

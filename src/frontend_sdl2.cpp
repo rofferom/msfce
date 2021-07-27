@@ -359,6 +359,20 @@ bool FrontendSdl2::handleShortcut(
         }
         break;
 
+    case SDL_SCANCODE_F:
+        if (pressed) {
+            m_Fullscreen = !m_Fullscreen;
+
+            if (m_Fullscreen) {
+                SDL_SetWindowFullscreen(m_Window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+                SDL_ShowCursor(SDL_DISABLE);
+            } else {
+                SDL_SetWindowFullscreen(m_Window, 0);
+                SDL_ShowCursor(SDL_ENABLE);
+            }
+        }
+        break;
+
     case SDL_SCANCODE_F2: {
         if (pressed) {
             m_Snes->saveState(getSavestateName());
