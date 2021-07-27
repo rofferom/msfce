@@ -378,6 +378,15 @@ const Ppu::LayerPriority Ppu::s_LayerPriorityMode3[] = {
     {Layer::none, 0, 0},
 };
 
+const Ppu::LayerPriority Ppu::s_LayerPriorityMode7[] = {
+    {Layer::sprite,    -1,   3},
+    {Layer::sprite,    -1,   2},
+    {Layer::sprite,    -1,   1},
+    {Layer::background, 0,   0},
+    {Layer::sprite,    -1,   0},
+    {Layer::none, 0, 0},
+};
+
 Ppu::Ppu(const std::shared_ptr<Frontend>& frontend)
     : MemComponent(MemComponentType::ppu),
       SchedulerTask(),
@@ -410,9 +419,21 @@ void Ppu::dump() const
 
 uint8_t Ppu::readU8(uint32_t addr)
 {
-    LOGW(TAG, "Ignore ReadU8 at %06X", addr);
-    assert(false);
-    return 0;
+    switch (addr) {
+    case kRegMPYL:
+        return m_MPY & 0xFF;
+
+    case kRegMPYM:
+        return (m_MPY >> 8) & 0xFF;
+
+    case kRegMPYH:
+        return (m_MPY >> 16) & 0xFF;
+
+    default:
+        LOGW(TAG, "Ignore ReadU8 at %06X", addr);
+        assert(false);
+        return 0;
+    }
 }
 
 void Ppu::writeU8(uint32_t addr, uint8_t value)
@@ -580,11 +601,17 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegBG1HOFS:
         m_Backgrounds[0].m_HOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[0].m_HOffset >> 8) & 7);
         m_OldBgByte = value;
+
+        m_M7HOFS = (value << 8) | m_M7Old;
+        m_M7Old = value;
         break;
 
     case kRegBG1VOFS:
         m_Backgrounds[0].m_VOffset = (value << 8) | m_OldBgByte;
         m_OldBgByte = value;
+
+        m_M7VOFS = (value << 8) | m_M7Old;
+        m_M7Old = value;
         break;
 
     case kRegBG2HOFS:
@@ -801,15 +828,48 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
 
         break;
 
+    case kRegM7A:
+        m_M7A = (value << 8) | m_M7Old;
+        m_M7Old = value;
+
+        m_MPY = m_M7A * (m_M7B >> 8);
+        break;
+
+    case kRegM7B:
+        m_M7B = (value << 8) | m_M7Old;
+        m_M7Old = value;
+
+        m_MPY = m_M7A * (m_M7B >> 8);
+        break;
+
+    case kRegM7C:
+        m_M7C = (value << 8) | m_M7Old;
+        m_M7Old = value;
+        break;
+
+    case kRegM7D:
+        m_M7D = (value << 8) | m_M7Old;
+        m_M7Old = value;
+        break;
+
+    case kRegM7X:
+        m_M7X = (value << 8) | m_M7Old;
+        m_M7Old = value;
+        break;
+
+    case kRegM7Y:
+        m_M7Y = (value << 8) | m_M7Old;
+        m_M7Old = value;
+        break;
+
+    case kRegM7SEL:
+        m_M7ScreenOver = (value >> 6) & 0b11;
+        m_M7HFlip = value & 1;
+        m_M7VFlip = (value >> 1) & 1;
+        break;
+
     // To be implemented
     case kRegSETINI:
-    case kRegM7SEL:
-    case kRegM7A:
-    case kRegM7B:
-    case kRegM7C:
-    case kRegM7D:
-    case kRegM7X:
-    case kRegM7Y:
         break;
 
     case kRegRDCGRAM:
@@ -1304,6 +1364,11 @@ void Ppu::initScreenRender()
         return;
     }
 
+    if (m_Bgmode == 7) {
+        initScreenRenderMode7();
+        return;
+    }
+
     // Prepare background rendering
     const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
     static_assert(SIZEOF_ARRAY(m_Backgrounds) == SIZEOF_ARRAY(m_RenderBgInfo));
@@ -1356,6 +1421,11 @@ void Ppu::initLineRender(int y)
         return;
     }
 
+    if (m_Bgmode == 7) {
+        initLineRenderMode7(y);
+        return;
+    }
+
     const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
 
     // Prepare background rendering for the current line.
@@ -1405,6 +1475,8 @@ void Ppu::initLineRender(int y)
         m_RenderLayerPriority = m_Bg3Priority ? s_LayerPriorityMode1_BG3_On : s_LayerPriorityMode1_BG3_Off;
     } else if (m_Bgmode == 3) {
         m_RenderLayerPriority = s_LayerPriorityMode3;
+    } else if (m_Bgmode == 7) {
+        m_RenderLayerPriority = s_LayerPriorityMode7;
     } else {
         m_RenderLayerPriority = nullptr;
     }
@@ -1423,6 +1495,11 @@ void Ppu::renderDot(int x, int y)
 
     // Mode not supported
     if (!m_RenderLayerPriority) {
+        return;
+    }
+
+    if (m_Bgmode == 7) {
+        renderDotMode7(x, y);
         return;
     }
 
@@ -1705,6 +1782,8 @@ uint32_t Ppu::getColorFromCgram(int bgIdx, int tileBpp, int palette, int color)
             assert(false);
             return 0;
         }
+    } else if (m_Bgmode == 7) {
+        return m_Cgram[color];
     } else {
         assert(false);
         return 0;
@@ -1967,6 +2046,19 @@ void Ppu::dumpToFile(FILE* f)
     fwrite(&m_ColorMathBackground, sizeof(m_ColorMathBackground), 1, f);
     fwrite(&m_ColorMathBackdrop, sizeof(m_ColorMathBackdrop), 1, f);
     fwrite(&m_Mosaic, sizeof(m_Mosaic), 1, f);
+    fwrite(&m_M7ScreenOver, sizeof(m_M7ScreenOver), 1, f);
+    fwrite(&m_M7HFlip, sizeof(m_M7HFlip), 1, f);
+    fwrite(&m_M7VFlip, sizeof(m_M7VFlip), 1, f);
+    fwrite(&m_M7Old, sizeof(m_M7Old), 1, f);
+    fwrite(&m_M7HOFS, sizeof(m_M7HOFS), 1, f);
+    fwrite(&m_M7VOFS, sizeof(m_M7VOFS), 1, f);
+    fwrite(&m_M7A, sizeof(m_M7A), 1, f);
+    fwrite(&m_M7B, sizeof(m_M7B), 1, f);
+    fwrite(&m_M7C, sizeof(m_M7C), 1, f);
+    fwrite(&m_M7D, sizeof(m_M7D), 1, f);
+    fwrite(&m_M7X, sizeof(m_M7X), 1, f);
+    fwrite(&m_M7Y, sizeof(m_M7Y), 1, f);
+    fwrite(&m_MPY, sizeof(m_MPY), 1, f);
 }
 
 void Ppu::loadFromFile(FILE* f)
@@ -2009,6 +2101,19 @@ void Ppu::loadFromFile(FILE* f)
     fread(&m_ColorMathBackground, sizeof(m_ColorMathBackground), 1, f);
     fread(&m_ColorMathBackdrop, sizeof(m_ColorMathBackdrop), 1, f);
     fread(&m_Mosaic, sizeof(m_Mosaic), 1, f);
+    fread(&m_M7ScreenOver, sizeof(m_M7ScreenOver), 1, f);
+    fread(&m_M7HFlip, sizeof(m_M7HFlip), 1, f);
+    fread(&m_M7VFlip, sizeof(m_M7VFlip), 1, f);
+    fread(&m_M7Old, sizeof(m_M7Old), 1, f);
+    fread(&m_M7HOFS, sizeof(m_M7HOFS), 1, f);
+    fread(&m_M7VOFS, sizeof(m_M7VOFS), 1, f);
+    fread(&m_M7A, sizeof(m_M7A), 1, f);
+    fread(&m_M7B, sizeof(m_M7B), 1, f);
+    fread(&m_M7C, sizeof(m_M7C), 1, f);
+    fread(&m_M7D, sizeof(m_M7D), 1, f);
+    fread(&m_M7X, sizeof(m_M7X), 1, f);
+    fread(&m_M7Y, sizeof(m_M7Y), 1, f);
+    fread(&m_MPY, sizeof(m_MPY), 1, f);
 }
 
 Ppu::WindowConfig::Config Ppu::getWindowConfig(uint32_t value) {
@@ -2094,4 +2199,158 @@ bool Ppu::applyWindowLogic(
     }
 
     return pixelInWindow;
+}
+
+void Ppu::initScreenRenderMode7()
+{
+    // Prepare sprites
+    for (size_t i = 0; i < SIZEOF_ARRAY(m_RenderObjInfo); i++) {
+        m_RenderObjInfo[i].m_ObjCount = 0;
+    }
+
+    loadObjs();
+}
+
+void Ppu::initLineRenderMode7(int y)
+{
+    m_RenderLayerPriority = s_LayerPriorityMode7;
+}
+
+// https://github.com/bsnes-emu/bsnes/blob/master/bsnes/sfc/ppu/mode7.cpp
+void Ppu::renderDotMode7(int x, int y)
+{
+    uint32_t rawColor;
+    bool colorValid = false;
+
+    for (size_t prioIdx = 0; !colorValid && m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
+        const auto& layer = m_RenderLayerPriority[prioIdx];
+
+        if (layer.m_Layer == Layer::background) {
+            RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
+            rawColor = renderGetColorMode7(x, y);
+            colorValid = true;
+        } else if (layer.m_Layer == Layer::sprite) {
+            colorValid = getSpriteCurrentPixel(x, y, m_MainScreenConfig, layer.m_Priority, &rawColor);
+        }
+    }
+
+    // Get final color
+    if (colorValid) {
+        const auto color = rawColorToRgb(rawColor);
+        m_Frontend->drawPoint(x, y, color);
+    } else {
+        m_Frontend->drawPoint(x, y, {0, 0, 0});
+    }
+}
+
+uint32_t Ppu::renderGetColorMode7(int x, int y)
+{
+    if (m_M7HFlip) {
+        x = kPpuDisplayWidth - x;
+    }
+
+    if (m_M7VFlip) {
+        y = kPpuDisplayHeight - y;
+    }
+
+    auto int13ToInt = [](int16_t value) -> int {
+        // Extract bit sign
+        const int sign = (value >> 12) & 1;
+        value &= ~(1 << 12);
+
+        // Add scale factor (0x100)
+        int intValue = value << 8;
+
+        if (sign) {
+            // Extend sign
+            return intValue | 0xFFF00000;
+        } else {
+            return intValue;
+        }
+    };
+
+    // Initial type: with 0 scale factor
+    // Add 0x100 scale factor
+    int scaledX = x << 8;
+    int scaledY = y << 8;
+
+    // Initial type: int16 with 0x100 scale factor
+    int m7A = m_M7A;
+    int m7B = m_M7B;
+    int m7C = m_M7C;
+    int m7D = m_M7D;
+
+    // Initial type: int13 with 0 scale factor
+    // Switch to int16 and add 0x100 scale factor
+    int m7HOFS = int13ToInt(m_M7HOFS);
+    int m7VOFS = int13ToInt(m_M7VOFS);
+    int m7X = int13ToInt(m_M7X);
+    int m7Y = int13ToInt(m_M7Y);
+
+    // Apply transformation
+    int offsetX = scaledX + m7HOFS - m7X;
+    int offsetY = scaledY + m7VOFS - m7Y;
+
+    int vramX = (m7A * offsetX & ~63) + (m7B * offsetY & ~63) + (m7X << 8);
+    int vramY = (m7C * offsetX & ~63) + (m7D * offsetY & ~63) + (m7Y << 8);
+
+    // Remove scale factor (multiplication double the scale factor)
+    vramX >>= 16;
+    vramY >>= 16;
+
+    // Handle wrap
+    if (m_M7ScreenOver == 0 || m_M7ScreenOver == 1) {
+        if (vramX > 1024) {
+            vramX %= 1024;
+        } else if (vramX < 0) {
+            vramX += 1024;
+        }
+
+        if (vramY > 1024) {
+            vramY %= 1024;
+        } else if (vramY < 0) {
+            vramY += 1024;
+        }
+    } else if (m_M7ScreenOver == 2) {
+        if (vramX < 0 || vramX > 1024) {
+            return 0;
+        }
+
+        if (vramY < 0 || vramY > 1024) {
+            return 0;
+        }
+    } else if (m_M7ScreenOver == 3) {
+        if (vramX > 1024) {
+            vramX %= 8;
+            vramY %= 8;
+        } else if (vramX < 0) {
+            vramX = (vramX + 1024) % 8;
+            vramY = (vramY + 1024) % 8;
+        }
+
+        if (vramY > 1024) {
+            vramX %= 8;
+            vramY %= 8;
+        } else if (vramY < 0) {
+            vramX = (vramX + 1024) % 8;
+            vramY = (vramY + 1024) % 8;
+        }
+    }
+
+    // Compute tile address
+    const int tilemapX = vramX / 8;
+    const int tilemapY = vramY / 8;
+
+    const int tileX = vramX % 8;
+    const int tileY = vramY % 8;
+
+    const int kPpuMode7TilemapWidth = 128;
+    const int mapEntryIdx = kPpuMode7TilemapWidth * tilemapY + tilemapX;
+    const int charIdx = m_Vram[mapEntryIdx * 2];
+
+    // Read palette index
+    const int tileBaseAddr = charIdx * 0x80 + 1;
+    const uint32_t cgramIdx = m_Vram[tileBaseAddr + tileY * 0x10 + tileX * 2];
+
+    return m_Cgram[cgramIdx];
 }

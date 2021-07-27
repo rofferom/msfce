@@ -280,6 +280,11 @@ private:
         WindowConfig::Config window2Config,
         WindowLogic logic);
 
+    void initScreenRenderMode7();
+    void initLineRenderMode7(int y);
+    void renderDotMode7(int x, int y);
+    uint32_t renderGetColorMode7(int x, int y);
+
 private:
     std::shared_ptr<Frontend> m_Frontend;
     DrawConfig m_DrawConfig = DrawConfig::Draw;
@@ -357,11 +362,28 @@ private:
     bool m_ColorMathBackground[kBackgroundCount];
     bool m_ColorMathBackdrop = false;
 
+    // Mode 7
+    int m_M7ScreenOver = 0;
+    bool m_M7HFlip = false;
+    bool m_M7VFlip = false;
+
+    uint8_t m_M7Old = 0;
+    int16_t m_M7HOFS = 0;
+    int16_t m_M7VOFS = 0;
+    int16_t m_M7A = 0;
+    int16_t m_M7B = 0;
+    int16_t m_M7C = 0;
+    int16_t m_M7D = 0;
+    int16_t m_M7X = 0;
+    int16_t m_M7Y = 0;
+    int32_t m_MPY = 0;
+
     // Layers priority charts
     static const Ppu::LayerPriority s_LayerPriorityMode0[];
     static const Ppu::LayerPriority s_LayerPriorityMode1_BG3_On[];
     static const Ppu::LayerPriority s_LayerPriorityMode1_BG3_Off[];
     static const Ppu::LayerPriority s_LayerPriorityMode3[];
+    static const Ppu::LayerPriority s_LayerPriorityMode7[];
 
     // Rendering
     int m_RenderX = 0;
