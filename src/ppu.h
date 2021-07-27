@@ -215,6 +215,7 @@ private:
         bool m_ObjEnabled;
 
         bool m_Window_BgDisable[kBackgroundCount];
+        bool m_Window_ObjDisable;
     };
 
     enum class ColorMathConfig : uint32_t {
@@ -246,7 +247,13 @@ private:
         int priority,
         uint32_t* color);
 
-    bool getSpriteCurrentPixel(int x, int y, int priority, uint32_t* color);
+    bool getSpriteCurrentPixel(
+        int x,
+        int y,
+        const ScreenConfig& screenConfig,
+        int priority,
+        uint32_t* color);
+
     void moveToNextPixel(RendererBgInfo* renderBg);
     void incrementVramAddress();
 

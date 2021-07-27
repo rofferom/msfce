@@ -697,12 +697,16 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
             m_MainScreenConfig.m_Window_BgDisable[i] = (value >> i) & 1;
         }
 
+        m_MainScreenConfig.m_Window_ObjDisable = (value >> 4) & 1;
+
         break;
 
     case kRegTSW:
         for (int i = 0; i < kBackgroundCount; i++) {
             m_SubScreenConfig.m_Window_BgDisable[i] = (value >> i) & 1;
         }
+
+        m_SubScreenConfig.m_Window_ObjDisable = (value >> 4) & 1;
 
         break;
 
@@ -967,7 +971,7 @@ bool Ppu::getScreenCurrentPixel(
             RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
             colorValid = getBackgroundCurrentPixel(x, screenConfig, renderBg, layer.m_Priority, color);
         } else if (layer.m_Layer == Layer::sprite) {
-            colorValid = getSpriteCurrentPixel(x, y, layer.m_Priority, color);
+            colorValid = getSpriteCurrentPixel(x, y, screenConfig, layer.m_Priority, color);
         }
 
         if (colorValid && priority) {
@@ -1064,9 +1068,24 @@ bool Ppu::getBackgroundCurrentPixel(
     return true;
 }
 
-bool Ppu::getSpriteCurrentPixel(int x, int y, int priority, uint32_t* c)
+bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, int priority, uint32_t* c)
 {
     if (!m_RenderObjInfo[y].m_ObjCount) {
+        return false;
+    }
+
+    // Check if background is inside window
+    bool pixelInWindow = false;
+
+    if (screenConfig.m_Window_ObjDisable) {
+        pixelInWindow = applyWindowLogic(
+            x,
+            m_Window1Config.m_ObjConfig,
+            m_Window2Config.m_ObjConfig,
+            m_WindowLogicObj);
+    }
+
+    if (pixelInWindow) {
         return false;
     }
 
