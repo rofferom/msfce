@@ -10,6 +10,7 @@
 
 #include "frontend.h"
 
+class Recorder;
 class SnesController;
 
 class FrontendSdl2 : public Frontend, public SnesRenderer {
@@ -41,6 +42,10 @@ private:
     void onJoystickAdded(int index);
     void onJoystickRemoved(int index);
 
+    void initRecorder();
+    void clearRecorder();
+    void checkRecorder();
+
 private:
     SDL_Window* m_Window = nullptr;
     int m_WindowWidth;
@@ -67,4 +72,7 @@ private:
     GLuint m_PBO = 0;
     GLuint m_Texture = 0;
     GLubyte* m_TextureData = nullptr;
+
+    // Recorder
+    std::shared_ptr<Recorder> m_Recorder;
 };

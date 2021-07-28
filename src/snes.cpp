@@ -81,6 +81,7 @@ int Snes::removeRenderer(const std::shared_ptr<SnesRenderer>& renderer)
         return -ENOENT;
     }
 
+    LOGD(TAG, "Renderer removed");
     m_RendererList.erase(it);
 
     return 0;

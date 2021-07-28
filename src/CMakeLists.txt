@@ -5,6 +5,11 @@ pkg_check_modules(PKG_SDL2 REQUIRED sdl2)
 pkg_check_modules(PKG_EPOXY REQUIRED epoxy)
 pkg_check_modules(PKG_GLM REQUIRED glm)
 
+pkg_check_modules(PKG_AVCODEC REQUIRED libavcodec)
+pkg_check_modules(PKG_AVUTIL REQUIRED libavutil)
+pkg_check_modules(PKG_AVFORMAT REQUIRED libavformat)
+pkg_check_modules(PKG_SWSCALE REQUIRED libswscale)
+
 # msfe lib
 add_library(msfe_lib
     65816.h
@@ -42,6 +47,9 @@ add_library(msfe_lib
     ppu.h
     ppu.cpp
 
+    recorder.h
+    recorder.cpp
+
     scheduler.h
     schedulertask.h
     schedulertask.cpp
@@ -60,17 +68,32 @@ target_include_directories(msfe_lib PUBLIC
     ${PKG_EPOXY_INCLUDE_DIRS}
     ${PKG_GLM_INCLUDE_DIRS}
 
+    ${PKG_AVCODEC_INCLUDE_DIRS}
+    ${PKG_AVFORMAT_INCLUDE_DIRS}
+    ${PKG_AVUTIL_INCLUDE_DIRS}
+    ${PKG_SWSCALE_INCLUDE_DIRS}
+
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 target_link_directories(msfe_lib PUBLIC
     ${PKG_SDL2_LIBRARY_DIRS}
     ${PKG_EPOXY_LIBRARY_DIRS}
+
+    ${PKG_AVCODEC_LIBRARY_DIRS}
+    ${PKG_AVFORMAT_LIBRARY_DIRS}
+    ${PKG_AVUTIL_LIBRARY_DIRS}
+    ${PKG_SWSCALE_LIBRARY_DIRS}
 )
 
 target_link_libraries(msfe_lib PUBLIC
     ${PKG_SDL2_LIBRARIES}
     ${PKG_EPOXY_LIBRARIES}
+
+    ${PKG_AVCODEC_LIBRARIES}
+    ${PKG_AVFORMAT_LIBRARIES}
+    ${PKG_AVUTIL_LIBRARIES}
+    ${PKG_SWSCALE_LIBRARIES}
 
     -lstdc++fs
     -lpthread
