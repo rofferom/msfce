@@ -387,10 +387,10 @@ const Ppu::LayerPriority Ppu::s_LayerPriorityMode7[] = {
     {Layer::none, 0, 0},
 };
 
-Ppu::Ppu(const std::shared_ptr<SnesRenderer>& renderer)
+Ppu::Ppu(RenderCb renderCb)
     : MemComponent(MemComponentType::ppu),
       SchedulerTask(),
-      m_Renderer(renderer)
+      m_RenderCb(renderCb)
 {
 }
 
@@ -1485,7 +1485,7 @@ void Ppu::initLineRender(int y)
 void Ppu::renderDot(int x, int y)
 {
     if (m_ForcedBlanking) {
-        m_Renderer->drawPixel({0, 0, 0});
+        m_RenderCb({0, 0, 0});
         return;
     }
 
@@ -1651,7 +1651,7 @@ void Ppu::renderDot(int x, int y)
     SnesColor color = rawColorToRgb(rawColor);
     applyBrightness(&color, m_Brightness);
 
-    m_Renderer->drawPixel(color);
+    m_RenderCb(color);
 
     // Move to next pixel
     const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
@@ -2237,9 +2237,9 @@ void Ppu::renderDotMode7(int x, int y)
     // Get final color
     if (colorValid) {
         const auto color = rawColorToRgb(rawColor);
-        m_Renderer->drawPixel(color);
+        m_RenderCb(color);
     } else {
-        m_Renderer->drawPixel({0, 0, 0});
+        m_RenderCb({0, 0, 0});
     }
 }
 
