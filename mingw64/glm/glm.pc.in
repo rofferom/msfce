@@ -1,0 +1,7 @@
+prefix=@prefix@
+includedir=${prefix}/include
+
+Name: GLM
+Description: OpenGL Mathematics
+Version: 0.9.9.8
+Cflags: -I${includedir}
