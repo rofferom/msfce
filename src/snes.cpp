@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <filesystem>
@@ -131,7 +132,7 @@ int Snes::plugCartidge(const char* path)
 
     fclose(f);
 
-    m_RomBasename = std::filesystem::path(path).replace_extension("");
+    m_RomBasename = std::filesystem::path(path).replace_extension("").string();
 
     return 0;
 
@@ -295,7 +296,7 @@ int Snes::renderSingleFrame(bool renderPpu)
                 m_HVBJOY &= ~(1 << 7);
 
                 if (kLogTimings) {
-                    LOGI(TAG, "CPU: %lu ms - PPU: %lu ms",
+                    LOGI(TAG, "CPU: %" PRId64 " ms - PPU: %" PRId64 " ms",
                          m_CpuTime.total<std::chrono::milliseconds>(),
                          m_PpuTime.total<std::chrono::milliseconds>());
 

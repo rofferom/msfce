@@ -12,7 +12,7 @@
 namespace {
 
 constexpr bool kLogAllInstructions = false;
-constexpr bool kLogLastInstructions = true;
+constexpr bool kLogLastInstructions = false;
 constexpr size_t kInstructionsLogSize = 10;
 
 constexpr uint32_t kPRegister_C = 0;

@@ -272,10 +272,17 @@ int FrontendSdl2::run()
             switch (event.type) {
             case SDL_WINDOWEVENT: {
                 switch (event.window.event) {
+                case SDL_WINDOWEVENT_SIZE_CHANGED:
                 case SDL_WINDOWEVENT_RESIZED:
-                    m_WindowWidth = event.window.data1;
-                    m_WindowHeight = event.window.data2;
-                    windowSizeUpdated = true;
+                    if (m_WindowWidth != event.window.data1) {
+                        m_WindowWidth = event.window.data1;
+                        windowSizeUpdated = true;
+                    }
+
+                    if (m_WindowHeight != event.window.data2) {
+                        m_WindowHeight = event.window.data2;
+                        windowSizeUpdated = true;
+                    }
                     break;
 
                 default:
