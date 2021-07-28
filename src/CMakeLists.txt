@@ -102,3 +102,52 @@ target_link_libraries(msfe_lib PUBLIC
 # msfe
 add_executable(msfe main.cpp)
 target_link_libraries(msfe msfe_lib)
+
+if (WIN32)
+    target_compile_definitions(msfe_lib
+        PRIVATE
+        __USE_MINGW_ANSI_STDIO=1
+    )
+
+    target_link_libraries(msfe
+        -static-libgcc
+        -static-libstdc++
+    )
+
+    # Install mingw64 DLLs
+    set(MINGW_DLL_LIST
+        libwinpthread-1.dll
+    )
+
+    foreach(DLL_NAME ${MINGW_DLL_LIST})
+        add_custom_command(
+            TARGET msfe POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                /usr/${TOOLCHAIN_PREFIX}/lib/${DLL_NAME}
+                ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${DLL_NAME}
+            COMMENT "Copying ${DLL_NAME}"
+        )
+    endforeach()
+
+    # Install deps
+    set(DEPS_BINARY_DIR ${PKG_SDL2_LIBDIR}/../bin)
+
+    set(DLL_LIST
+        avcodec-58.dll
+        avformat-58.dll
+        avutil-56.dll
+        swscale-5.dll
+
+        SDL2.dll
+    )
+
+    foreach(DLL_NAME ${DLL_LIST})
+        add_custom_command(
+            TARGET msfe POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${DEPS_BINARY_DIR}/${DLL_NAME}
+                ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${DLL_NAME}
+            COMMENT "Copying ${DLL_NAME}"
+        )
+    endforeach()
+endif()

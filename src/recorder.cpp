@@ -27,16 +27,30 @@ namespace {
 
 std::string getDate()
 {
+#ifdef __MINGW32__
+    time_t t;
+    struct tm* localTm;
+
+    time(&t);
+    localTm = localtime(&t);
+
+    char s[128];
+    strftime(s, sizeof(s), "%Y-%m-%d %H:%M:%S", localTm);
+
+    return s;
+#else
     time_t t;
     struct tm localTm;
 
     time(&t);
+
     localtime_r(&t, &localTm);
 
     char s[128];
     strftime(s, sizeof(s), "%F %T", &localTm);
 
     return s;
+#endif
 }
 
 } // anonymous namespace
