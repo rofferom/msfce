@@ -2,6 +2,8 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+
+#include <functional>
 #include <memory>
 
 #include "memcomponent.h"
@@ -32,8 +34,10 @@ public:
         HV = 3,
     };
 
+    using RenderCb = std::function<void(const SnesColor& c)>;
+
 public:
-    Ppu(const std::shared_ptr<SnesRenderer>& renderer);
+    Ppu(RenderCb renderCb);
     ~Ppu() = default;
 
     void dump() const;
@@ -286,7 +290,7 @@ private:
     uint32_t renderGetColorMode7(int x, int y);
 
 private:
-    std::shared_ptr<SnesRenderer> m_Renderer;
+    RenderCb m_RenderCb;
     DrawConfig m_DrawConfig = DrawConfig::Draw;
     uint32_t m_Events = 0;
 

@@ -10,6 +10,7 @@
 #include "controller.h"
 #include "log.h"
 #include "ppu.h"
+#include "recorder.h"
 #include "snes.h"
 #include "frontend_sdl2.h"
 
@@ -220,6 +221,7 @@ FrontendSdl2::FrontendSdl2()
 
 FrontendSdl2::~FrontendSdl2()
 {
+    clearRecorder();
     SDL_Quit();
 }
 
@@ -336,6 +338,7 @@ int FrontendSdl2::run()
             }
         }
 
+        checkRecorder();
 
         if (m_Running) {
             m_Snes->setController1(m_Controller1);
@@ -412,6 +415,18 @@ bool FrontendSdl2::handleShortcut(
     bool pressed)
 {
     switch (scancode) {
+    case SDL_SCANCODE_O:
+        if (pressed) {
+            if (!m_Recorder) {
+                initRecorder();
+            }
+
+            assert(m_Recorder);
+            m_Recorder->toggleVideoRecord();
+        }
+
+        break;
+
     case SDL_SCANCODE_P:
         if (pressed) {
             m_Running = !m_Running;
@@ -452,6 +467,18 @@ bool FrontendSdl2::handleShortcut(
     case SDL_SCANCODE_F4: {
         if (pressed) {
             m_Snes->loadState(getSavestateName());
+        }
+        break;
+    }
+
+    case SDL_SCANCODE_F8: {
+        if (pressed) {
+            if (!m_Recorder) {
+                initRecorder();
+            }
+
+            assert(m_Recorder);
+            m_Recorder->takeScreenshot();
         }
         break;
     }
@@ -587,4 +614,33 @@ void FrontendSdl2::onJoystickRemoved(int index)
     LOGI(TAG, "Closing joystick '%s'", SDL_JoystickName(m_Joystick));
     SDL_JoystickClose(m_Joystick);
     m_Joystick = nullptr;
+}
+
+void FrontendSdl2::initRecorder()
+{
+    // FIXME: Framerate must be updated for PAL games
+    m_Recorder = std::make_shared<Recorder>(
+        kPpuDisplayWidth, kPpuDisplayHeight, 60,
+        m_Snes->getRomBasename());
+
+    m_Snes->addRenderer(m_Recorder);
+}
+
+void FrontendSdl2::clearRecorder()
+{
+    m_Snes->removeRenderer(m_Recorder);
+    m_Recorder.reset();
+}
+
+void FrontendSdl2::checkRecorder()
+{
+    if (!m_Recorder) {
+        return;
+    }
+
+    if (m_Recorder->active()) {
+        return;
+    }
+
+    clearRecorder();
 }

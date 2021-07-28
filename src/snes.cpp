@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <sys/stat.h>
 #include <filesystem>
@@ -61,11 +62,29 @@ int64_t Snes::DurationTool::total()
     return std::chrono::duration_cast<Duration>(total_duration).count();
 }
 
-Snes::Snes(const std::shared_ptr<SnesRenderer>& renderer)
+Snes::Snes()
     : MemComponent(MemComponentType::irq),
-      Scheduler(),
-      m_Renderer(renderer)
+      Scheduler(){
+}
+
+int Snes::addRenderer(const std::shared_ptr<SnesRenderer>& renderer)
 {
+    m_RendererList.push_back(renderer);
+
+    return 0;
+}
+
+int Snes::removeRenderer(const std::shared_ptr<SnesRenderer>& renderer)
+{
+    auto it = std::find(m_RendererList.begin(), m_RendererList.end(), renderer);
+    if (it == m_RendererList.end()) {
+        return -ENOENT;
+    }
+
+    LOGD(TAG, "Renderer removed");
+    m_RendererList.erase(it);
+
+    return 0;
 }
 
 int Snes::plugCartidge(const char* path)
@@ -151,7 +170,13 @@ int Snes::start()
     m_Apu = std::make_shared<Apu>();
     membus->plugComponent(m_Apu);
 
-    m_Ppu = std::make_shared<Ppu>(m_Renderer);
+    auto renderCb = [this](const SnesColor& c) {
+        for (const auto& renderer : m_RendererList) {
+            renderer->drawPixel(c);
+        }
+    };
+
+    m_Ppu = std::make_shared<Ppu>(renderCb);
     membus->plugComponent(m_Ppu);
 
     m_Maths = std::make_shared<Maths>();
@@ -228,7 +253,10 @@ int Snes::renderSingleFrame(bool renderPpu)
             auto ppuEvents = m_Ppu->getEvents();
 
             if (ppuEvents & Ppu::Event_ScanStarted) {
-                m_Renderer->scanStarted();
+                for (const auto& renderer : m_RendererList) {
+                    renderer->scanStarted();
+                }
+
                 m_Dma->onScanStarted();
             }
 
@@ -275,7 +303,10 @@ int Snes::renderSingleFrame(bool renderPpu)
                     m_PpuTime.reset();
                 }
 
-                m_Renderer->scanEnded();
+                for (const auto& renderer : m_RendererList) {
+                    renderer->scanEnded();
+                }
+
                 scanEnded = true;
             }
         }

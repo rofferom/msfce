@@ -21,7 +21,10 @@ class Wram;
 
 class Snes : public MemComponent, public Scheduler, public std::enable_shared_from_this<Snes> {
 public:
-    Snes(const std::shared_ptr<SnesRenderer>& renderer);
+    Snes();
+
+    int addRenderer(const std::shared_ptr<SnesRenderer>& renderer);
+    int removeRenderer(const std::shared_ptr<SnesRenderer>& renderer);
 
     int plugCartidge(const char* path);
     std::string getRomBasename() const;
@@ -72,7 +75,7 @@ private:
 
 private:
     // Renderer variables
-    std::shared_ptr<SnesRenderer> m_Renderer;
+    std::vector<std::shared_ptr<SnesRenderer>> m_RendererList;
 
     // Rom
     std::string m_RomBasename;
