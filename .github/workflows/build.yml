@@ -33,3 +33,43 @@ jobs:
       with:
         name: msfe-linux-x64
         path: build/msfe
+  build-mingw64:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v1
+    - uses: n1hility/cancel-previous-runs@v2
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Fetch submodules
+      run: git submodule update --init --recursive
+    - name: Install required system packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          mingw-w64 meson ninja-build nasm
+    - name: Cache build dependencies
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-build-dependencies
+      with:
+        path: mingw64/x86_64-w64-mingw32
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('mingw64/build_deps.sh') }}
+    - name: Build dependencies
+      run: (test -d mingw64/x86_64-w64-mingw32 && echo Build dependencies found, skip rebuild) || ./mingw64/build_deps.sh
+    - name: Run cmake
+      run: |
+        export PKG_CONFIG_LIBDIR=$(pwd)/mingw64/x86_64-w64-mingw32/lib/pkgconfig
+        mkdir build
+        cd build
+        cmake -DCMAKE_TOOLCHAIN_FILE=../mingw64/toolchain.cmake -DCMAKE_BUILD_TYPE=Release ..
+    - name: Build
+      run: |
+        cd build
+        make -j2
+        x86_64-w64-mingw32-strip msfe.exe *.dll
+    - uses: actions/upload-artifact@v2
+      with:
+        name: msfe-windows-x64
+        path: |
+          build/msfe.exe
+          build/*.dll
