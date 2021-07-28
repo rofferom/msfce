@@ -35,7 +35,7 @@ std::string getDate()
     localTm = localtime(&t);
 
     char s[128];
-    strftime(s, sizeof(s), "%Y-%m-%d %H:%M:%S", localTm);
+    strftime(s, sizeof(s), "%Y-%m-%d %H-%M-%S", localTm);
 
     return s;
 #else
