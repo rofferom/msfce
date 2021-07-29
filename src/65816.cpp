@@ -3822,7 +3822,7 @@ void Cpu65816::handlePcRelativeLong(
     uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 2;
 
-    *data = m_Registers.PC + rawData;
+    *data = (m_Registers.PC + rawData) & 0xFFFF;
     *data |= m_Registers.PB << 16;
 
     logInstruction("%s $%02X [%06X]", opcodeDesc.m_Name, rawData, *data);
