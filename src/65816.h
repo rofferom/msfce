@@ -154,7 +154,7 @@ private:
         uint16_t X = 0;
         uint16_t Y = 0;
 
-        uint16_t S = 0x1FF;
+        uint16_t S = 0x1FD;
         uint8_t DB = 0;
         uint16_t D = 0;
 
