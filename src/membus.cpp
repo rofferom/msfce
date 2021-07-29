@@ -36,9 +36,12 @@ Membus::Membus(AddressingType addrType)
         }
     };
 
-    m_Components[enumToInt(MemComponentType::ppu)].addrConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
+    auto dropBankConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
         return offset;
     };
+
+    m_Components[enumToInt(MemComponentType::ppu)].addrConverter = dropBankConverter;
+    m_Components[enumToInt(MemComponentType::dma)].addrConverter = dropBankConverter;
 }
 
 void Membus::initLowRom()
