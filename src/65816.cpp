@@ -1016,7 +1016,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0xD4,
             Cpu65816::AddressingMode::DpIndirect,
             OpcodeFlag_Default,
-            &Cpu65816::handlePEA,
+            &Cpu65816::handlePEI,
         }, {
             "PER",
             0x62,
