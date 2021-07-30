@@ -63,6 +63,16 @@ add_library(msfe_lib
 
 set_property(TARGET msfe_lib PROPERTY CXX_STANDARD 17)
 
+target_compile_options(msfe_lib
+    PRIVATE
+        -Wall
+        -Wextra
+        -Werror
+        -Wno-unused-parameter
+        -Wno-unused-variable
+        -Wno-unused-result
+)
+
 target_include_directories(msfe_lib PUBLIC
     ${PKG_SDL2_INCLUDE_DIRS}
     ${PKG_EPOXY_INCLUDE_DIRS}
