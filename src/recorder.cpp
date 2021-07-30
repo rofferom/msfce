@@ -494,6 +494,10 @@ void Recorder::scanEnded()
     m_BackBuffer = nullptr;
 }
 
+void Recorder::playAudioSamples(const uint8_t* data, size_t sampleCount)
+{
+}
+
 bool Recorder::active()
 {
     bool ret = false;

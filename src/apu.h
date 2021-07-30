@@ -1,39 +1,46 @@
 #pragma once
 
-#include <stdlib.h>
 #include <stdint.h>
 
+#include <functional>
+#include <memory>
+#include <mutex>
+
+#include <snes_spc/SNES_SPC.h>
+
 #include "memcomponent.h"
+#include "schedulertask.h"
 
-class Apu : public MemComponent {
+struct SNES_SPC;
+
+class Apu : public MemComponent, public SchedulerTask {
 public:
-    Apu();
-    ~Apu() = default;
+    using RenderSampleCb = std::function<void(const uint8_t* data, size_t sampleCount)>;
 
+    static constexpr int kSampleSize = 4; // S16 stereo
+    static constexpr int kSampleRate = 32000;
+
+public:
+    Apu(const uint64_t& masterClock, RenderSampleCb renderSampleCb);
+    ~Apu();
+
+    // MemComponent methods
     uint8_t readU8(uint32_t addr) override;
     void writeU8(uint32_t addr, uint8_t value) override;
+
+    // SchedulerTask methods
+    int run() override;
 
     void dumpToFile(FILE* f);
     void loadFromFile(FILE* f);
 
 private:
-    enum class State {
-        waiting,
-        waitingBlockBegin,
-        transfering,
-        ending,
-    };
+    RenderSampleCb m_RenderSampleCb;
 
-    struct Port {
-        uint8_t m_Apu;
-        uint8_t m_Cpu;
-    };
+    const uint64_t& m_MasterClock;
+    uint64_t m_Clock = 0;
 
-private:
-    State m_State = State::waiting;
-
-    Port m_Port0 { 0xAA, 0 };
-    Port m_Port1 { 0xBB, 0 };
-    Port m_Port2 {};
-    Port m_Port3 {};
+    SNES_SPC m_SPC;
+    uint8_t* m_Samples = nullptr;
+    size_t m_SamplesSize = 0;
 };

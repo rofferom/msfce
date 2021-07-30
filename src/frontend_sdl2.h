@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 
 #include <epoxy/gl.h>
 #include <SDL.h>
@@ -29,6 +30,8 @@ public:
     void drawPixel(const SnesColor& c) final;
     void scanEnded() final;
 
+    void playAudioSamples(const uint8_t* data, size_t sampleCount) final;
+
 private:
     bool handleShortcut(
         SDL_Scancode scancode,
@@ -45,6 +48,9 @@ private:
     void initRecorder();
     void clearRecorder();
     void checkRecorder();
+
+private:
+    void onSdlPlayCb(Uint8* stream, int len);
 
 private:
     SDL_Window* m_Window = nullptr;
@@ -72,6 +78,12 @@ private:
     GLuint m_PBO = 0;
     GLuint m_Texture = 0;
     GLubyte* m_TextureData = nullptr;
+
+    // Audio
+    std::mutex m_AudioSamplesMutex;
+    static constexpr int kAudioSamplesSize = 32000 * 2 * 2; // 1 s
+    uint8_t m_AudioSamples[kAudioSamplesSize];
+    size_t m_AudioSamplesUsed = 0;
 
     // Recorder
     std::shared_ptr<Recorder> m_Recorder;

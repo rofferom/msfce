@@ -26,6 +26,8 @@ public:
     void drawPixel(const SnesColor& c) final;
     void scanEnded() final;
 
+    void playAudioSamples(const uint8_t* data, size_t sampleCount);
+
     // Control API
     bool active();
 

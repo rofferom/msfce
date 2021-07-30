@@ -97,6 +97,8 @@ target_link_directories(msfe_lib PUBLIC
 )
 
 target_link_libraries(msfe_lib PUBLIC
+    snes_spc
+
     ${PKG_SDL2_LIBRARIES}
     ${PKG_EPOXY_LIBRARIES}
 
