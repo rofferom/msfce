@@ -35,7 +35,20 @@ public:
     void takeScreenshot();
 
 private:
-    using Frame = std::vector<uint8_t>;
+    enum class FrameType {
+        video,
+    };
+
+    struct Frame {
+        FrameType type;
+        std::vector<uint8_t> payload;
+
+        Frame(FrameType type, size_t payloadSize)
+            : type(type),
+              payload(payloadSize)
+        {
+        }
+    };
 
     class FrameRecorderBackend {
     public:
@@ -90,7 +103,7 @@ private:
         int start() final;
         int stop() final;
 
-        bool onFrameReceived(const std::shared_ptr<Frame>& frame) final;
+        bool onFrameReceived(const std::shared_ptr<Frame>& inputFrame) final;
 
     private:
         std::string m_Basename;
@@ -105,19 +118,28 @@ private:
         int start() final;
         int stop() final;
 
-        bool onFrameReceived(const std::shared_ptr<Frame>& frame) final;
+        bool onFrameReceived(const std::shared_ptr<Frame>& inputFrame) final;
+
+    private:
+        int initVideo();
+        int clearVideo();
+
+        bool onVideoFrameReceived(const std::shared_ptr<Frame>& inputFrame);
 
     private:
         std::string m_Basename;
+
+        AVFormatContext* m_ContainerCtx = nullptr;
+
+        // Video
         const int m_FrameWidth;
         const int m_FrameHeight;
         const int m_Framerate;
 
-        AVCodecContext* m_CodecCtx = nullptr;
+        AVCodecContext* m_VideoCodecCtx = nullptr;
         AVStream* m_VideoStream = nullptr;
-        AVFormatContext* m_FormatCtx = nullptr;
-        SwsContext* m_SwsCtx = nullptr;
-        int m_FrameIdx = 0;
+        SwsContext* m_VideoSwsCtx = nullptr;
+        int m_VideoFrameIdx = 0;
     };
 
 private:

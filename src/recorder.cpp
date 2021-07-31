@@ -134,13 +134,17 @@ int Recorder::ImageRecorder::stop()
     return 0;
 }
 
-bool Recorder::ImageRecorder::onFrameReceived(const std::shared_ptr<Frame>& rgbFrame)
+bool Recorder::ImageRecorder::onFrameReceived(const std::shared_ptr<Frame>& inputFrame)
 {
     AVFrame* avFrame;
     AVPacket* pkt = nullptr;
     std::string outname;
     FILE* f;
     int ret;
+
+    if (inputFrame->type != FrameType::video) {
+        return true;
+    }
 
     AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_PNG);
 
@@ -173,7 +177,7 @@ bool Recorder::ImageRecorder::onFrameReceived(const std::shared_ptr<Frame>& rgbF
         goto free_avframe;
     }
 
-    memcpy(avFrame->data[0], rgbFrame->data(), avFrame->width * avFrame->height * kRgbSampleSize);
+    memcpy(avFrame->data[0], inputFrame->payload.data(), avFrame->width * avFrame->height * kRgbSampleSize);
 
     // Output data
     pkt = av_packet_alloc();
@@ -229,6 +233,87 @@ Recorder::VideoRecorder::VideoRecorder(const std::string& basename, int frameWid
 {
 }
 
+int Recorder::VideoRecorder::initVideo()
+{
+    AVCodec* codec = nullptr;
+    int ret;
+
+    codec = avcodec_find_encoder_by_name("libx264");
+    if (!codec) {
+        codec = avcodec_find_encoder(AV_CODEC_ID_H264);
+    }
+
+    if (!codec) {
+        LOGW(TAG, "Failed to find a valid H264 encoder");
+        return -ECANCELED;
+    }
+
+    m_VideoCodecCtx = avcodec_alloc_context3(codec);
+    if (!m_VideoCodecCtx) {
+        LOGW(TAG, "avcodec_alloc_context3() failed");
+        return -ECANCELED;
+    }
+
+    m_VideoCodecCtx->time_base.num = 1;
+    m_VideoCodecCtx->time_base.den = m_Framerate;
+    m_VideoCodecCtx->width = m_FrameWidth;
+    m_VideoCodecCtx->height = m_FrameHeight;
+    m_VideoCodecCtx->pix_fmt = AV_PIX_FMT_YUV420P;
+
+    // Add and setup video stream
+    m_VideoStream = avformat_new_stream(m_ContainerCtx, 0);
+    if (!m_VideoStream) {
+        LOGW(TAG, "avformat_new_stream() failed");
+        goto free_codecctx;
+    }
+
+    if (m_ContainerCtx->oformat->flags & AVFMT_GLOBALHEADER) {
+        m_VideoCodecCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+    }
+
+    ret = avcodec_open2(m_VideoCodecCtx, codec, nullptr);
+    if (ret < 0) {
+        LOG_AVERROR("avcodec_open2", ret);
+        goto close_codec;
+    }
+
+    ret = avcodec_parameters_from_context(m_VideoStream->codecpar, m_VideoCodecCtx);
+    if (ret < 0) {
+        LOG_AVERROR("avcodec_parameters_from_context", ret);
+        goto close_codec;
+    }
+
+    // Create RGB => YUV420 converter
+    m_VideoSwsCtx = sws_getContext(
+        m_FrameWidth, m_FrameHeight, AV_PIX_FMT_RGB24,
+        m_FrameWidth, m_FrameHeight, AV_PIX_FMT_YUV420P,
+        0, nullptr, nullptr, nullptr);
+    if (!m_VideoSwsCtx) {
+        LOGW(TAG, "sws_getContext() failed");
+        goto close_codec;
+    }
+
+    return 0;
+
+close_codec:
+    avcodec_close(m_VideoCodecCtx);
+free_codecctx:
+    avcodec_free_context(&m_VideoCodecCtx);
+    m_VideoCodecCtx = nullptr;
+
+    return -ECANCELED;
+}
+
+int Recorder::VideoRecorder::clearVideo()
+{
+    sws_freeContext(m_VideoSwsCtx);
+
+    avcodec_close(m_VideoCodecCtx);
+    avcodec_free_context(&m_VideoCodecCtx);
+
+    return 0;
+}
+
 int Recorder::VideoRecorder::start()
 {
     AVCodec* codec = nullptr;
@@ -244,91 +329,36 @@ int Recorder::VideoRecorder::start()
         return -ECANCELED;
     }
 
-    m_FormatCtx = avformat_alloc_context();
-    m_FormatCtx->oformat = fmt;
-    m_FormatCtx->url = av_strdup(outname.c_str());
+    m_ContainerCtx = avformat_alloc_context();
+    m_ContainerCtx->oformat = fmt;
+    m_ContainerCtx->url = av_strdup(outname.c_str());
 
-    ret = avio_open(&m_FormatCtx->pb, m_FormatCtx->url, AVIO_FLAG_WRITE);
+    ret = avio_open(&m_ContainerCtx->pb, m_ContainerCtx->url, AVIO_FLAG_WRITE);
     if (ret < 0) {
         LOG_AVERROR("avio_open", ret);
         goto free_format;
     }
 
-    // Create encoder
-    codec = avcodec_find_encoder_by_name("libx264");
-    if (!codec) {
-        codec = avcodec_find_encoder(AV_CODEC_ID_H264);
-    }
-
-    if (!codec) {
-        LOGW(TAG, "Failed to find a valid H264 encoder");
-        goto close_avio;
-    }
-
-    m_CodecCtx = avcodec_alloc_context3(codec);
-    if (!m_CodecCtx) {
-        LOGW(TAG, "avcodec_alloc_context3() failed");
-        goto close_avio;
-    }
-
-    m_CodecCtx->time_base.num = 1;
-    m_CodecCtx->time_base.den = m_Framerate;
-    m_CodecCtx->width = m_FrameWidth;
-    m_CodecCtx->height = m_FrameHeight;
-    m_CodecCtx->pix_fmt = AV_PIX_FMT_YUV420P;
-
-    // Add and setup video stream
-    m_VideoStream = avformat_new_stream(m_FormatCtx, 0);
-    if (!m_VideoStream) {
-        LOGW(TAG, "avformat_new_stream() failed");
-        goto free_codecctx;
-    }
-
-    if (m_FormatCtx->oformat->flags & AVFMT_GLOBALHEADER) {
-        m_CodecCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-    }
-
-    ret = avcodec_open2(m_CodecCtx, codec, nullptr);
+    // Init video
+    ret = initVideo();
     if (ret < 0) {
-        LOG_AVERROR("avcodec_open2", ret);
-        goto close_codec;
-    }
-
-    ret = avcodec_parameters_from_context(m_VideoStream->codecpar, m_CodecCtx);
-    if (ret < 0) {
-        LOG_AVERROR("avcodec_parameters_from_context", ret);
-        goto close_codec;
+        goto close_avio;
     }
 
     // Write container header
-    ret = avformat_write_header(m_FormatCtx, nullptr);
+    ret = avformat_write_header(m_ContainerCtx, nullptr);
     if (ret < 0) {
         LOG_AVERROR("avformat_write_header", ret);
-        goto close_codec;
-    }
-
-    // Create RGB => YUV420 converter
-    m_SwsCtx = sws_getContext(
-        m_FrameWidth, m_FrameHeight, AV_PIX_FMT_RGB24,
-        m_FrameWidth, m_FrameHeight, AV_PIX_FMT_YUV420P,
-        0, nullptr, nullptr, nullptr);
-    if (!m_SwsCtx) {
-        LOGW(TAG, "sws_getContext() failed");
-        goto close_codec;
+        goto close_avio;
     }
 
     return 0;
 
-close_codec:
-    avcodec_close(m_CodecCtx);
-free_codecctx:
-    avcodec_free_context(&m_CodecCtx);
-    m_CodecCtx = nullptr;
 close_avio:
-    avio_close(m_FormatCtx->pb);
+    avio_close(m_ContainerCtx->pb);
 free_format:
-    avformat_free_context(m_FormatCtx);
-    m_FormatCtx = nullptr;
+    avformat_free_context(m_ContainerCtx);
+    m_ContainerCtx = nullptr;
 
     return -ECANCELED;
 }
@@ -337,23 +367,31 @@ int Recorder::VideoRecorder::stop()
 {
     int ret;
 
-    ret = av_write_trailer(m_FormatCtx);
+    ret = av_write_trailer(m_ContainerCtx);
     if (ret < 0) {
         LOG_AVERROR("av_write_trailer", ret);
     }
 
-    sws_freeContext(m_SwsCtx);
+    clearVideo();
 
-    avcodec_close(m_CodecCtx);
-    avcodec_free_context(&m_CodecCtx);
-
-    avio_close(m_FormatCtx->pb);
-    avformat_free_context(m_FormatCtx);
+    avio_close(m_ContainerCtx->pb);
+    avformat_free_context(m_ContainerCtx);
 
     return 0;
 }
 
-bool Recorder::VideoRecorder::onFrameReceived(const std::shared_ptr<Frame>& rgbFrame)
+bool Recorder::VideoRecorder::onFrameReceived(const std::shared_ptr<Frame>& inputFrame)
+{
+    switch (inputFrame->type) {
+    case FrameType::video:
+        return onVideoFrameReceived(inputFrame);
+
+    default:
+        return true;
+    }
+}
+
+bool Recorder::VideoRecorder::onVideoFrameReceived(const std::shared_ptr<Frame>& inputFrame)
 {
     const int rgbStride = m_FrameWidth * kRgbSampleSize;
     const uint8_t* data;
@@ -366,7 +404,7 @@ bool Recorder::VideoRecorder::onFrameReceived(const std::shared_ptr<Frame>& rgbF
     avFrame->width = m_FrameWidth;
     avFrame->height = m_FrameHeight;
     avFrame->format = AV_PIX_FMT_YUV420P;
-    avFrame->pts = m_FrameIdx++;
+    avFrame->pts = m_VideoFrameIdx++;
 
     ret = av_frame_get_buffer(avFrame, 0);
     if (ret < 0) {
@@ -375,10 +413,10 @@ bool Recorder::VideoRecorder::onFrameReceived(const std::shared_ptr<Frame>& rgbF
     }
 
     // Do convert
-    data = rgbFrame->data();
+    data = inputFrame->payload.data();
 
     ret = sws_scale(
-        m_SwsCtx,
+        m_VideoSwsCtx,
         &data, &rgbStride, 0, m_FrameHeight,
         avFrame->data, avFrame->linesize);
     if (ret != m_FrameHeight) {
@@ -387,7 +425,7 @@ bool Recorder::VideoRecorder::onFrameReceived(const std::shared_ptr<Frame>& rgbF
     }
 
     // Encode frame
-    ret = avcodec_send_frame(m_CodecCtx, avFrame);
+    ret = avcodec_send_frame(m_VideoCodecCtx, avFrame);
     if (ret < 0) {
         LOG_AVERROR("avcodec_send_frame", ret);
         goto free_frame;
@@ -396,7 +434,7 @@ bool Recorder::VideoRecorder::onFrameReceived(const std::shared_ptr<Frame>& rgbF
     while (ret >= 0) {
         AVPacket* pkt = av_packet_alloc();
 
-        ret = avcodec_receive_packet(m_CodecCtx, pkt);
+        ret = avcodec_receive_packet(m_VideoCodecCtx, pkt);
         if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
             av_packet_free(&pkt);
             break;
@@ -406,9 +444,9 @@ bool Recorder::VideoRecorder::onFrameReceived(const std::shared_ptr<Frame>& rgbF
             goto free_frame;
         }
 
-        av_packet_rescale_ts(pkt, m_CodecCtx->time_base, m_VideoStream->time_base);
+        av_packet_rescale_ts(pkt, m_VideoCodecCtx->time_base, m_VideoStream->time_base);
 
-        ret = av_interleaved_write_frame(m_FormatCtx, pkt);
+        ret = av_interleaved_write_frame(m_ContainerCtx, pkt);
         if (ret < 0) {
             LOG_AVERROR("av_interleaved_write_frame", ret);
             av_packet_free(&pkt);
@@ -457,8 +495,8 @@ void Recorder::scanStarted()
 {
     m_Started = true;
 
-    m_BackBuffer = std::make_shared<Frame>(m_ImgSize);
-    m_BackBufferWritter = m_BackBuffer->data();
+    m_BackBuffer = std::make_shared<Frame>(FrameType::video, m_ImgSize);
+    m_BackBufferWritter = m_BackBuffer->payload.data();
 }
 
 void Recorder::drawPixel(const SnesColor& c)
