@@ -20,3 +20,15 @@ uint64_t SchedulerTask::getNextRunCycle()
 {
     return m_NextRunCycle;
 }
+
+void SchedulerTask::dumpToFile(FILE* f)
+{
+    fwrite(&m_State, sizeof(m_State), 1, f);
+    fwrite(&m_NextRunCycle, sizeof(m_NextRunCycle), 1, f);
+}
+
+void SchedulerTask::loadFromFile(FILE* f)
+{
+    fread(&m_State, sizeof(m_State), 1, f);
+    fread(&m_NextRunCycle, sizeof(m_NextRunCycle), 1, f);
+}

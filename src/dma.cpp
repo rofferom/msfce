@@ -270,6 +270,8 @@ void Dma::incrementABusAddress(const DmaChannel* channel, uint32_t* aBusAddress)
 
 void Dma::dumpToFile(FILE* f)
 {
+    SchedulerTask::dumpToFile(f);
+
     fwrite(&m_Vblank, sizeof(m_Vblank), 1, f);
     fwrite(&m_DmaChannels, sizeof(m_DmaChannels), 1, f);
     fwrite(&m_HdmaChannels, sizeof(m_HdmaChannels), 1, f);
@@ -280,6 +282,8 @@ void Dma::dumpToFile(FILE* f)
 
 void Dma::loadFromFile(FILE* f)
 {
+    SchedulerTask::loadFromFile(f);
+
     fread(&m_Vblank, sizeof(m_Vblank), 1, f);
     fread(&m_DmaChannels, sizeof(m_DmaChannels), 1, f);
     fread(&m_HdmaChannels, sizeof(m_HdmaChannels), 1, f);

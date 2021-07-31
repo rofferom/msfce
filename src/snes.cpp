@@ -359,6 +359,7 @@ void Snes::saveState(const std::string& path)
     fwrite(&m_HVIRQ_V, sizeof(m_HVIRQ_V), 1, f);
     fwrite(&m_JoypadAutoread, sizeof(m_JoypadAutoread), 1, f);
     fwrite(&m_Vblank, sizeof(m_Vblank), 1, f);
+    fwrite(&m_MasterClock, sizeof(m_MasterClock), 1, f);
 
     fclose(f);
 }
@@ -387,6 +388,7 @@ void Snes::loadState(const std::string& path)
     fread(&m_HVIRQ_V, sizeof(m_HVIRQ_V), 1, f);
     fread(&m_JoypadAutoread, sizeof(m_JoypadAutoread), 1, f);
     fread(&m_Vblank, sizeof(m_Vblank), 1, f);
+    fread(&m_MasterClock, sizeof(m_MasterClock), 1, f);
 
     fclose(f);
 }

@@ -3897,6 +3897,8 @@ void Cpu65816::addCyclesIndexCross(int *cycles, uint32_t addr, uint32_t shiftedA
 
 void Cpu65816::dumpToFile(FILE* f)
 {
+    SchedulerTask::dumpToFile(f);
+
     fwrite(&m_Registers, sizeof(m_Registers), 1, f);
     fwrite(&m_State, sizeof(m_State), 1, f);
     fwrite(&m_NMI, sizeof(m_NMI), 1, f);
@@ -3905,6 +3907,8 @@ void Cpu65816::dumpToFile(FILE* f)
 
 void Cpu65816::loadFromFile(FILE* f)
 {
+    SchedulerTask::loadFromFile(f);
+
     fread(&m_Registers, sizeof(m_Registers), 1, f);
     fread(&m_State, sizeof(m_State), 1, f);
     fread(&m_NMI, sizeof(m_NMI), 1, f);
