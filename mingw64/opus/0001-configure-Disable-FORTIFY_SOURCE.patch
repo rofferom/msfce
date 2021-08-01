@@ -1,0 +1,59 @@
+From 84ce42e280b42e470f0ed021398b43620b92ea3a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Romain=20Roff=C3=A9?= <rofferom@gmail.com>
+Date: Sun, 1 Aug 2021 18:27:52 +0200
+Subject: [PATCH] configure: Disable FORTIFY_SOURCE
+
+---
+ configure | 36 ------------------------------------
+ 1 file changed, 36 deletions(-)
+
+diff --git a/configure b/configure
+index 6623770..9b7f867 100755
+--- a/configure
++++ b/configure
+@@ -14722,42 +14722,6 @@ rm -f core conftest.err conftest.$ac_objext \
+ 
+ fi
+ 
+-if test x$ac_cv_c_compiler_gnu = xyes; then :
+-
+-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to add -D_FORTIFY_SOURCE=2 to CFLAGS" >&5
+-$as_echo_n "checking whether to add -D_FORTIFY_SOURCE=2 to CFLAGS... " >&6; }
+-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+-/* end confdefs.h.  */
+-
+-
+-                int main() {
+-                #ifndef _FORTIFY_SOURCE
+-                    return 0;
+-                #else
+-                    this_is_an_error;
+-                #endif
+-                }
+-
+-
+-_ACEOF
+-if ac_fn_c_try_link "$LINENO"; then :
+-
+-            { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+-$as_echo "yes" >&6; }
+-            CFLAGS="$CFLAGS -D_FORTIFY_SOURCE=2"
+-
+-else
+-
+-            { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+-$as_echo "no" >&6; }
+-
+-fi
+-rm -f core conftest.err conftest.$ac_objext \
+-    conftest$ac_exeext conftest.$ac_ext
+-
+-
+-fi
+-
+ CFLAGS="$CFLAGS -W"
+ 
+ warn_CFLAGS="-Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes"
+-- 
+2.30.2
+

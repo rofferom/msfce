@@ -152,6 +152,7 @@ if (WIN32)
         avcodec-58.dll
         avformat-58.dll
         avutil-56.dll
+        swresample-3.dll
         swscale-5.dll
 
         SDL2.dll
