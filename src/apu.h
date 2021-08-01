@@ -19,6 +19,7 @@ public:
 
     static constexpr int kSampleSize = 4; // S16 stereo
     static constexpr int kSampleRate = 32000;
+    static constexpr int kChannels = 2;
 
 public:
     Apu(const uint64_t& masterClock, RenderSampleCb renderSampleCb);

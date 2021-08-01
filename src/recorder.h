@@ -12,8 +12,11 @@
 #include "snes_renderer.h"
 
 struct AVCodecContext;
-struct AVStream;
 struct AVFormatContext;
+struct AVAudioFifo;
+struct AVFrame;
+struct AVStream;
+struct SwrContext;
 struct SwsContext;
 
 class Recorder : public SnesRenderer {
@@ -37,11 +40,13 @@ public:
 private:
     enum class FrameType {
         video,
+        audio,
     };
 
     struct Frame {
         FrameType type;
         std::vector<uint8_t> payload;
+        int sampleCount = 0;
 
         Frame(FrameType type, size_t payloadSize)
             : type(type),
@@ -117,6 +122,7 @@ private:
 
         int start() final;
         int stop() final;
+        int getAudioFrameSize() const;
 
         bool onFrameReceived(const std::shared_ptr<Frame>& inputFrame) final;
 
@@ -125,6 +131,12 @@ private:
         int clearVideo();
 
         bool onVideoFrameReceived(const std::shared_ptr<Frame>& inputFrame);
+
+        int initAudio();
+        int clearAudio();
+
+        bool onAudioFrameReceived(const std::shared_ptr<Frame>& inputFrame);
+        int encodeAudioFrame(AVFrame* avFrameSnes);
 
     private:
         std::string m_Basename;
@@ -140,6 +152,16 @@ private:
         AVStream* m_VideoStream = nullptr;
         SwsContext* m_VideoSwsCtx = nullptr;
         int m_VideoFrameIdx = 0;
+
+        // Audio
+        AVCodecContext* m_AudioCodecCtx = nullptr;
+        AVStream* m_AudioStream = nullptr;
+        AVAudioFifo* m_AudioFifo = nullptr;
+        SwrContext* m_AudioSwrCtx = nullptr;
+        int m_AudioFrameIdx = 0;
+        int m_AudioInSamples = 0;
+        int m_AudioOutSamples = 0;
+        int m_AudioSnesFrameSize = 0;
     };
 
 private:
@@ -154,8 +176,16 @@ private:
     const int m_ImgSize;
 
     bool m_Started = false;
+
+    // Video
     std::shared_ptr<Frame> m_BackBuffer;
     uint8_t* m_BackBufferWritter = nullptr;
+    int m_VideoFrameReceived = 0;
+
+    // Audio
+    std::shared_ptr<Frame> m_AudioFrame;
+    size_t m_AudioFrameMaxSize = 0;
+    int m_AudioSampleReceived = 0;
 
     std::unique_ptr<FrameRecorder> m_ImageRecorder;
     std::unique_ptr<FrameRecorder> m_VideoRecorder;

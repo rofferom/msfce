@@ -9,6 +9,7 @@ pkg_check_modules(PKG_AVCODEC REQUIRED libavcodec)
 pkg_check_modules(PKG_AVUTIL REQUIRED libavutil)
 pkg_check_modules(PKG_AVFORMAT REQUIRED libavformat)
 pkg_check_modules(PKG_SWSCALE REQUIRED libswscale)
+pkg_check_modules(PKG_SWRESAMPLE REQUIRED libswresample)
 
 # msfe lib
 add_library(msfe_lib
@@ -82,6 +83,7 @@ target_include_directories(msfe_lib PUBLIC
     ${PKG_AVFORMAT_INCLUDE_DIRS}
     ${PKG_AVUTIL_INCLUDE_DIRS}
     ${PKG_SWSCALE_INCLUDE_DIRS}
+    ${PKG_SWRESAMPLE_INCLUDE_DIRS}
 
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
@@ -94,6 +96,7 @@ target_link_directories(msfe_lib PUBLIC
     ${PKG_AVFORMAT_LIBRARY_DIRS}
     ${PKG_AVUTIL_LIBRARY_DIRS}
     ${PKG_SWSCALE_LIBRARY_DIRS}
+    ${PKG_SWRESAMPLE_LIBRARY_DIRS}
 )
 
 target_link_libraries(msfe_lib PUBLIC
@@ -106,6 +109,7 @@ target_link_libraries(msfe_lib PUBLIC
     ${PKG_AVFORMAT_LIBRARIES}
     ${PKG_AVUTIL_LIBRARIES}
     ${PKG_SWSCALE_LIBRARIES}
+    ${PKG_SWRESAMPLE_LIBRARIES}
 
     -lstdc++fs
     -lpthread
