@@ -7,6 +7,7 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "apu.h"
 #include "controller.h"
 #include "log.h"
 #include "ppu.h"
@@ -227,10 +228,12 @@ FrontendSdl2::~FrontendSdl2()
 
 int FrontendSdl2::init()
 {
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK);
 
+    // Init joystick
     SDL_JoystickEventState(SDL_ENABLE);
 
+    // Init video
     m_WindowWidth = kPpuDisplayWidth * kWindowInitialScale;
     m_WindowHeight = kPpuDisplayHeight * kWindowInitialScale;
 
@@ -246,6 +249,25 @@ int FrontendSdl2::init()
 
     glInitContext();
     glSetViewport();
+
+    // Init audio
+    SDL_AudioSpec spec;
+    SDL_memset(&spec, 0, sizeof(spec));
+    spec.freq = Apu::kSampleRate;
+    spec.format = AUDIO_S16;
+    spec.channels = 2;
+    spec.samples = 512; // 16 ms
+
+    auto cb = [](void* userdata, Uint8* stream, int len) {
+        FrontendSdl2* self = reinterpret_cast<FrontendSdl2*>(userdata);
+        self->onSdlPlayCb(stream, len);
+    };
+
+    spec.callback = cb;
+    spec.userdata = this;
+
+    SDL_AudioDeviceID deviceId = SDL_OpenAudioDevice(NULL, 0, &spec, NULL, 0);
+    SDL_PauseAudioDevice(deviceId, 0);
 
     return 0;
 }
@@ -651,3 +673,29 @@ void FrontendSdl2::checkRecorder()
 
     clearRecorder();
 }
+
+void FrontendSdl2::playAudioSamples(const uint8_t* data, size_t sampleCount)
+{
+    std::unique_lock<std::mutex> lock(m_AudioSamplesMutex);
+
+    const size_t sampleSize = sampleCount * Apu::kSampleSize;
+
+    if (kAudioSamplesSize >= m_AudioSamplesUsed + sampleSize) {
+        memcpy(m_AudioSamples + m_AudioSamplesUsed, data, sampleSize);
+        m_AudioSamplesUsed += sampleSize;
+    }
+}
+
+void FrontendSdl2::onSdlPlayCb(Uint8* stream, int len)
+{
+    std::unique_lock<std::mutex> lock(m_AudioSamplesMutex);
+
+    if ((int) m_AudioSamplesUsed >= len) {
+        memcpy(stream, m_AudioSamples, len);
+        memmove(m_AudioSamples, &m_AudioSamples[len], m_AudioSamplesUsed - len);
+        m_AudioSamplesUsed -= len;
+    } else {
+        memset(stream, 0, len);
+    }
+}
+

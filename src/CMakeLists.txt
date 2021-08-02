@@ -9,6 +9,7 @@ pkg_check_modules(PKG_AVCODEC REQUIRED libavcodec)
 pkg_check_modules(PKG_AVUTIL REQUIRED libavutil)
 pkg_check_modules(PKG_AVFORMAT REQUIRED libavformat)
 pkg_check_modules(PKG_SWSCALE REQUIRED libswscale)
+pkg_check_modules(PKG_SWRESAMPLE REQUIRED libswresample)
 
 # msfe lib
 add_library(msfe_lib
@@ -63,6 +64,16 @@ add_library(msfe_lib
 
 set_property(TARGET msfe_lib PROPERTY CXX_STANDARD 17)
 
+target_compile_options(msfe_lib
+    PRIVATE
+        -Wall
+        -Wextra
+        -Werror
+        -Wno-unused-parameter
+        -Wno-unused-variable
+        -Wno-unused-result
+)
+
 target_include_directories(msfe_lib PUBLIC
     ${PKG_SDL2_INCLUDE_DIRS}
     ${PKG_EPOXY_INCLUDE_DIRS}
@@ -72,6 +83,7 @@ target_include_directories(msfe_lib PUBLIC
     ${PKG_AVFORMAT_INCLUDE_DIRS}
     ${PKG_AVUTIL_INCLUDE_DIRS}
     ${PKG_SWSCALE_INCLUDE_DIRS}
+    ${PKG_SWRESAMPLE_INCLUDE_DIRS}
 
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
@@ -84,9 +96,12 @@ target_link_directories(msfe_lib PUBLIC
     ${PKG_AVFORMAT_LIBRARY_DIRS}
     ${PKG_AVUTIL_LIBRARY_DIRS}
     ${PKG_SWSCALE_LIBRARY_DIRS}
+    ${PKG_SWRESAMPLE_LIBRARY_DIRS}
 )
 
 target_link_libraries(msfe_lib PUBLIC
+    snes_spc
+
     ${PKG_SDL2_LIBRARIES}
     ${PKG_EPOXY_LIBRARIES}
 
@@ -94,6 +109,7 @@ target_link_libraries(msfe_lib PUBLIC
     ${PKG_AVFORMAT_LIBRARIES}
     ${PKG_AVUTIL_LIBRARIES}
     ${PKG_SWSCALE_LIBRARIES}
+    ${PKG_SWRESAMPLE_LIBRARIES}
 
     -lstdc++fs
     -lpthread
@@ -136,6 +152,7 @@ if (WIN32)
         avcodec-58.dll
         avformat-58.dll
         avutil-56.dll
+        swresample-3.dll
         swscale-5.dll
 
         SDL2.dll

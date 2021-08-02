@@ -168,7 +168,13 @@ int Snes::start()
     membus->plugComponent(m_Sram);
     loadSram();
 
-    m_Apu = std::make_shared<Apu>();
+    auto audioRenderCb = [this](const uint8_t* data, size_t sampleCount) {
+        for (const auto& renderer : m_RendererList) {
+            renderer->playAudioSamples(data, sampleCount);
+        }
+    };
+
+    m_Apu = std::make_shared<Apu>(m_MasterClock, audioRenderCb);
     membus->plugComponent(m_Apu);
 
     auto renderCb = [this](const SnesColor& c) {
@@ -269,6 +275,7 @@ int Snes::renderSingleFrame(bool renderPpu)
 
             if (ppuEvents & Ppu::Event_HBlankEnd) {
                 m_HVBJOY &= ~(1 << 6);
+                m_Apu->run();
             }
 
             if (ppuEvents & Ppu::Event_HV_IRQ) {
@@ -359,6 +366,7 @@ void Snes::saveState(const std::string& path)
     fwrite(&m_HVIRQ_V, sizeof(m_HVIRQ_V), 1, f);
     fwrite(&m_JoypadAutoread, sizeof(m_JoypadAutoread), 1, f);
     fwrite(&m_Vblank, sizeof(m_Vblank), 1, f);
+    fwrite(&m_MasterClock, sizeof(m_MasterClock), 1, f);
 
     fclose(f);
 }
@@ -387,6 +395,7 @@ void Snes::loadState(const std::string& path)
     fread(&m_HVIRQ_V, sizeof(m_HVIRQ_V), 1, f);
     fread(&m_JoypadAutoread, sizeof(m_JoypadAutoread), 1, f);
     fread(&m_Vblank, sizeof(m_Vblank), 1, f);
+    fread(&m_MasterClock, sizeof(m_MasterClock), 1, f);
 
     fclose(f);
 }

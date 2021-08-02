@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdio.h>
 #include <cstdint>
 
 class SchedulerTask {
@@ -19,6 +20,9 @@ public:
 
     void setNextRunCycle(uint64_t cycle);
     uint64_t getNextRunCycle();
+
+    void dumpToFile(FILE* f);
+    void loadFromFile(FILE* f);
 
     virtual int run() = 0;
 

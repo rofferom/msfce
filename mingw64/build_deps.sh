@@ -114,6 +114,33 @@ build_x264() {
     cd $init_cwd
 }
 
+build_opus() {
+    local init_cwd=$(pwd)
+
+    local uri="https://archive.mozilla.org/pub/opus/opus-1.3.1.tar.gz"
+    local archive_root='opus-1.3.1'
+    local sha256="65b58e1e25b2a114157014736a3d9dfeaad8d41be1c8179866f144a2fb44ff9d"
+    local work_dir="$WORK_DIR/opus"
+
+    # Get sources
+    download_tarball $uri $sha256 || panic "Fail to get opus sources"
+    mkdir -p $work_dir
+    tar xf "$SRC_DIR/$(basename $uri)" -C $work_dir
+
+    # Build
+    cd "$work_dir/$archive_root"
+
+    patch -p1 < $BASE_DIR/opus/0001-configure-Disable-FORTIFY_SOURCE.patch
+
+    ./configure --host=$CROSS_PREFIX --prefix=$ROOTFS_DIR \
+        --disable-extra-programs --disable-shared
+
+    make -j$NJOBS
+    make install
+
+    cd $init_cwd
+}
+
 build_ffmpeg() {
     local init_cwd=$(pwd)
 
@@ -134,6 +161,7 @@ build_ffmpeg() {
         --enable-gpl --enable-shared --disable-programs --disable-everything --disable-bsfs \
         --enable-swscale \
         --enable-libx264 --enable-encoder=libx264 \
+        --enable-libopus --enable-encoder=libopus \
         --enable-encoder=png \
         --enable-muxer=matroska \
         --enable-muxer=mp4 \
@@ -225,6 +253,7 @@ mkdir -p $ROOTFS_DIR
 # Build libs
 build_zlib
 build_x264
+build_opus
 build_ffmpeg
 build_sdl2
 build_glm

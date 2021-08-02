@@ -2008,6 +2008,8 @@ bool Ppu::getPixelFromObj(int screenX, int screenY, SnesColor* c, int* outPriori
 
 void Ppu::dumpToFile(FILE* f)
 {
+    SchedulerTask::dumpToFile(f);
+
     fwrite(&m_ForcedBlanking, sizeof(m_ForcedBlanking), 1, f);
     fwrite(&m_Brightness, sizeof(m_Brightness), 1, f);
     fwrite(&m_VramIncrementHigh, sizeof(m_VramIncrementHigh), 1, f);
@@ -2063,6 +2065,8 @@ void Ppu::dumpToFile(FILE* f)
 
 void Ppu::loadFromFile(FILE* f)
 {
+    SchedulerTask::loadFromFile(f);
+
     fread(&m_ForcedBlanking, sizeof(m_ForcedBlanking), 1, f);
     fread(&m_Brightness, sizeof(m_Brightness), 1, f);
     fread(&m_VramIncrementHigh, sizeof(m_VramIncrementHigh), 1, f);

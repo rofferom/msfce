@@ -15,4 +15,6 @@ public:
     virtual void scanStarted() = 0;
     virtual void drawPixel(const SnesColor& c) = 0;
     virtual void scanEnded() = 0;
+
+    virtual void playAudioSamples(const uint8_t* data, size_t sampleCount) = 0;
 };

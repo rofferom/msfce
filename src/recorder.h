@@ -12,8 +12,11 @@
 #include "snes_renderer.h"
 
 struct AVCodecContext;
-struct AVStream;
 struct AVFormatContext;
+struct AVAudioFifo;
+struct AVFrame;
+struct AVStream;
+struct SwrContext;
 struct SwsContext;
 
 class Recorder : public SnesRenderer {
@@ -26,6 +29,8 @@ public:
     void drawPixel(const SnesColor& c) final;
     void scanEnded() final;
 
+    void playAudioSamples(const uint8_t* data, size_t sampleCount);
+
     // Control API
     bool active();
 
@@ -33,7 +38,22 @@ public:
     void takeScreenshot();
 
 private:
-    using Frame = std::vector<uint8_t>;
+    enum class FrameType {
+        video,
+        audio,
+    };
+
+    struct Frame {
+        FrameType type;
+        std::vector<uint8_t> payload;
+        int sampleCount = 0;
+
+        Frame(FrameType type, size_t payloadSize)
+            : type(type),
+              payload(payloadSize)
+        {
+        }
+    };
 
     class FrameRecorderBackend {
     public:
@@ -88,7 +108,7 @@ private:
         int start() final;
         int stop() final;
 
-        bool onFrameReceived(const std::shared_ptr<Frame>& frame) final;
+        bool onFrameReceived(const std::shared_ptr<Frame>& inputFrame) final;
 
     private:
         std::string m_Basename;
@@ -102,20 +122,46 @@ private:
 
         int start() final;
         int stop() final;
+        int getAudioFrameSize() const;
 
-        bool onFrameReceived(const std::shared_ptr<Frame>& frame) final;
+        bool onFrameReceived(const std::shared_ptr<Frame>& inputFrame) final;
+
+    private:
+        int initVideo();
+        int clearVideo();
+
+        bool onVideoFrameReceived(const std::shared_ptr<Frame>& inputFrame);
+
+        int initAudio();
+        int clearAudio();
+
+        bool onAudioFrameReceived(const std::shared_ptr<Frame>& inputFrame);
+        int encodeAudioFrame(AVFrame* avFrameSnes);
 
     private:
         std::string m_Basename;
+
+        AVFormatContext* m_ContainerCtx = nullptr;
+
+        // Video
         const int m_FrameWidth;
         const int m_FrameHeight;
         const int m_Framerate;
 
-        AVCodecContext* m_CodecCtx = nullptr;
+        AVCodecContext* m_VideoCodecCtx = nullptr;
         AVStream* m_VideoStream = nullptr;
-        AVFormatContext* m_FormatCtx = nullptr;
-        SwsContext* m_SwsCtx = nullptr;
-        int m_FrameIdx = 0;
+        SwsContext* m_VideoSwsCtx = nullptr;
+        int m_VideoFrameIdx = 0;
+
+        // Audio
+        AVCodecContext* m_AudioCodecCtx = nullptr;
+        AVStream* m_AudioStream = nullptr;
+        AVAudioFifo* m_AudioFifo = nullptr;
+        SwrContext* m_AudioSwrCtx = nullptr;
+        int m_AudioFrameIdx = 0;
+        int m_AudioInSamples = 0;
+        int m_AudioOutSamples = 0;
+        int m_AudioSnesFrameSize = 0;
     };
 
 private:
@@ -130,8 +176,16 @@ private:
     const int m_ImgSize;
 
     bool m_Started = false;
+
+    // Video
     std::shared_ptr<Frame> m_BackBuffer;
     uint8_t* m_BackBufferWritter = nullptr;
+    int m_VideoFrameReceived = 0;
+
+    // Audio
+    std::shared_ptr<Frame> m_AudioFrame;
+    size_t m_AudioFrameMaxSize = 0;
+    int m_AudioSampleReceived = 0;
 
     std::unique_ptr<FrameRecorder> m_ImageRecorder;
     std::unique_ptr<FrameRecorder> m_VideoRecorder;
