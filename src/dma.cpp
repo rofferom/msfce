@@ -257,6 +257,10 @@ void Dma::dmaChannelContinue(int *cycles)
         assert(false);
         break;
     }
+
+    uint8_t* channelCfg = &m_ChannelRegisters[channelId * kChannelCfgLen];
+    channelCfg[kRegDmaDASL] = channel->m_DMAByteCounter & 0xFF;
+    channelCfg[kRegDmaDASH] = (channel->m_DMAByteCounter & 0xFF00) >> 8;
 }
 
 void Dma::incrementABusAddress(int id, DmaChannel* channel, uint32_t* aBusAddress)
