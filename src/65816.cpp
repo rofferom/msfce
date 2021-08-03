@@ -3312,19 +3312,8 @@ void Cpu65816::handleTSB(uint32_t address, int *cycles)
 
 void Cpu65816::handleTSC(uint32_t data, int *cycles)
 {
-    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
-
-    // 0: 16 bits, 1: 8 bits
-    if (accumulatorSize) {
-        m_Registers.A &= 0xFF00;
-        m_Registers.A |= m_Registers.S & 0xFF;
-
-        setNZFlags(m_Registers.A & 0xFF, 0x80);
-    } else {
-        m_Registers.A = m_Registers.S;
-
-        setNZFlags(m_Registers.A, 0x8000);
-    }
+    m_Registers.A = m_Registers.S;
+    setNZFlags(m_Registers.A, 0x8000);
 }
 
 void Cpu65816::handleTSX(uint32_t data, int *cycles)
