@@ -437,7 +437,7 @@ uint8_t Snes::readU8(uint32_t addr)
 
     case kRegTIMEUP: {
         uint8_t ret = m_HVIRQ_Flag << 7;
-        setHVIRQ_Flag(0);
+        setHVIRQ_Flag(false);
         return ret;
     }
 
@@ -485,18 +485,48 @@ void Snes::writeU8(uint32_t addr, uint8_t value)
 
     case kRegisterHTIMEL:
         m_HVIRQ_H = (m_HVIRQ_H & 0xFF00) | value;
+
+        // FIXME: NTSC setting
+        m_HVIRQ_H = std::min(m_HVIRQ_H, static_cast<uint16_t>(339));
+
+        m_Ppu->setHVIRQConfig(
+            static_cast<Ppu::HVIRQConfig>(m_HVIRQ_Config),
+            m_HVIRQ_H,
+            m_HVIRQ_V);
+
         break;
 
     case kRegisterHTIMEH:
         m_HVIRQ_H = (m_HVIRQ_H & 0xFF) | (value << 8);
+
+        m_HVIRQ_H = std::min(m_HVIRQ_H, static_cast<uint16_t>(339));
+
+        m_Ppu->setHVIRQConfig(
+            static_cast<Ppu::HVIRQConfig>(m_HVIRQ_Config),
+            m_HVIRQ_H,
+            m_HVIRQ_V);
+
         break;
 
     case kRegisterVTIMEL:
         m_HVIRQ_V = (m_HVIRQ_V & 0xFF00) | value;
+
+        // FIXME: NTSC setting
+        m_HVIRQ_V = std::min(m_HVIRQ_V, static_cast<uint16_t>(261));
+
+        m_Ppu->setHVIRQConfig(
+            static_cast<Ppu::HVIRQConfig>(m_HVIRQ_Config),
+            m_HVIRQ_H,
+            m_HVIRQ_V);
         break;
 
     case kRegisterVTIMEH:
         m_HVIRQ_V = (m_HVIRQ_V & 0xFF) | (value << 8);
+
+        m_Ppu->setHVIRQConfig(
+            static_cast<Ppu::HVIRQConfig>(m_HVIRQ_Config),
+            m_HVIRQ_H,
+            m_HVIRQ_V);
         break;
     }
 }
