@@ -3852,7 +3852,7 @@ void Cpu65816::handleStackRelativeIndirectIndexedY(
     m_Registers.PC += 1;
 
     uint32_t address = m_Registers.S + static_cast<int8_t>(rawData);
-    address = m_Membus->readU16(address, cycles) + m_Registers.Y;
+    address = (m_Registers.DB << 16) | (m_Membus->readU16(address, cycles) + m_Registers.Y);
 
     *data = address;
 
