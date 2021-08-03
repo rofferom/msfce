@@ -415,6 +415,7 @@ void Dma::onHblank()
                     break;
 
                 case 2:
+                case 6:
                     m_Membus->writeU8(channel->m_bBaseBusAddress,
                         m_Membus->readU8(channel->m_NextDataAddress));
 
@@ -426,6 +427,7 @@ void Dma::onHblank()
                     break;
 
                 case 3:
+                case 7:
                     m_Membus->writeU8(channel->m_bBaseBusAddress,
                         m_Membus->readU8(channel->m_NextDataAddress));
 
