@@ -22,8 +22,11 @@
 
 namespace {
 
-constexpr uint32_t kLowRomHeader_Title = 0x7FC0;
-constexpr uint32_t kLowRomHeader_TitleSize = 21;
+constexpr uint32_t kLowRomHeaderBase = 0x7FB0;
+constexpr uint32_t kHighRomHeaderBase = 0xFFB0;
+
+constexpr uint32_t kHeaderOffset_Title = 0x10;
+constexpr uint32_t kHeader_TitleSize = 21;
 
 constexpr bool kLogTimings = true;
 
@@ -122,12 +125,28 @@ int Snes::plugCartidge(const char* path)
         goto close_f;
     }
 
-    romData = std::move(rom);
+    m_RomData = std::move(rom);
+
+    // Guess rom type
+    int lowRomScore;
+    int highRomScore;
+    int headerAddress;
+
+    lowRomScore = scoreHeader(kLowRomHeaderBase);
+    highRomScore = scoreHeader(kHighRomHeaderBase);
+
+    if (lowRomScore > highRomScore) {
+        m_AddressingType = AddressingType::lowrom;
+        headerAddress = kLowRomHeaderBase;
+    } else {
+        m_AddressingType = AddressingType::highrom;
+        headerAddress = kHighRomHeaderBase;
+    }
 
     // Parse header
-    char title[kLowRomHeader_TitleSize+1];
+    char title[kHeader_TitleSize+1];
     memset(title, 0, sizeof(title));
-    strncpy(title, reinterpret_cast<const char*>(&romData[kLowRomHeader_Title]), kLowRomHeader_TitleSize);
+    strncpy(title, reinterpret_cast<const char*>(&m_RomData[headerAddress + kHeaderOffset_Title]), kHeader_TitleSize);
     LOGI(TAG, "ROM title: '%s'", title);
 
     fclose(f);
@@ -142,6 +161,85 @@ close_f:
     return ret;
 }
 
+int Snes::scoreHeader(uint32_t address)
+{
+    int score = 0;
+
+    if(m_RomData.size() < address + 0x50) {
+        return score;
+    }
+
+    uint8_t  mapMode     = m_RomData[address + 0x25] & ~0x10;  //ignore FastROM bit
+    uint16_t complement  = m_RomData[address + 0x2c] << 0 | m_RomData[address + 0x2d] << 8;
+    uint16_t checksum    = m_RomData[address + 0x2e] << 0 | m_RomData[address + 0x2f] << 8;
+    uint16_t resetVector = m_RomData[address + 0x4c] << 0 | m_RomData[address + 0x4d] << 8;
+
+    if(resetVector < 0x8000) {
+        return score;  //$00:0000-7fff is never ROM data
+    }
+
+    uint8_t opcode = m_RomData[(address & ~0x7fff) | (resetVector & 0x7fff)];  //first instruction executed
+
+    // most likely opcodes
+    if (opcode == 0x78      //sei
+      || opcode == 0x18     //clc (clc; xce)
+      || opcode == 0x38     //sec (sec; xce)
+      || opcode == 0x9c     //stz $nnnn (stz $4200)
+      || opcode == 0x4c     //jmp $nnnn
+      || opcode == 0x5c) {  //jml $nnnnnn
+        score += 8;
+    }
+
+    // plausible opcodes
+    if (opcode == 0xc2    //rep #$nn
+     || opcode == 0xe2    //sep #$nn
+     || opcode == 0xad    //lda $nnnn
+     || opcode == 0xae    //ldx $nnnn
+     || opcode == 0xac    //ldy $nnnn
+     || opcode == 0xaf    //lda $nnnnnn
+     || opcode == 0xa9    //lda #$nn
+     || opcode == 0xa2    //ldx #$nn
+     || opcode == 0xa0    //ldy #$nn
+     || opcode == 0x20    //jsr $nnnn
+     || opcode == 0x22) { //jsl $nnnnnn
+        score += 4;
+    }
+
+    // implausible opcodes
+    if (opcode == 0x40    //rti
+     || opcode == 0x60    //rts
+     || opcode == 0x6b    //rtl
+     || opcode == 0xcd    //cmp $nnnn
+     || opcode == 0xec    //cpx $nnnn
+     || opcode == 0xcc) { //cpy $nnnn
+        score -= 4;
+    }
+
+    // least likely opcodes
+    if (opcode == 0x00    //brk #$nn
+     || opcode == 0x02    //cop #$nn
+     || opcode == 0xdb    //stp
+     || opcode == 0x42    //wdm
+     || opcode == 0xff) { //sbc $nnnnnn,x
+        score -= 8;
+    }
+
+    if (checksum + complement == 0xffff) {
+        score += 4;
+    }
+
+    if (address == 0x7fb0 && mapMode == 0x20) {
+        score += 2;
+    }
+
+    if (address == 0xffb0 && mapMode == 0x21) {
+        score += 2;
+    }
+
+    return std::max(0, score);
+
+}
+
 std::string Snes::getRomBasename() const
 {
     return m_RomBasename;
@@ -149,11 +247,11 @@ std::string Snes::getRomBasename() const
 
 int Snes::start()
 {
-    auto membus = std::make_shared<Membus>(AddressingType::lowrom);
+    auto membus = std::make_shared<Membus>(m_AddressingType);
 
     auto rom = std::make_shared<BufferMemComponent>(
         MemComponentType::rom,
-        std::move(romData));
+        std::move(m_RomData));
     membus->plugComponent(rom);
 
     m_Ram = std::make_shared<Wram>();

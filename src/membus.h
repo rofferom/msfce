@@ -76,6 +76,7 @@ private:
 
 private:
     void initLowRom();
+    void initHighRom();
 
     ComponentHandler *getComponentFromAddr(
         uint32_t addr,
@@ -100,4 +101,5 @@ private:
     const MemoryRange * m_SystemArea[0x8000];
 
     static const MemoryMap s_LowRomMap;
+    static const MemoryMap s_HighRomMap;
 };
