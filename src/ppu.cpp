@@ -2231,7 +2231,7 @@ void Ppu::renderDotMode7(int x, int y)
         if (layer.m_Layer == Layer::background) {
             RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
             rawColor = renderGetColorMode7(x, y);
-            colorValid = true;
+            colorValid = rawColor != 0;
         } else if (layer.m_Layer == Layer::sprite) {
             colorValid = getSpriteCurrentPixel(x, y, m_MainScreenConfig, layer.m_Priority, &rawColor);
         }
