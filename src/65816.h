@@ -89,6 +89,7 @@ private:
     void handleLSR_A(uint32_t data, int *cycles);
     void handleLSR(uint32_t data, int *cycles);
     void handleMVN(uint32_t data, int *cycles);
+    void handleMVP(uint32_t data, int *cycles);
     void handleNOP(uint32_t data, int *cycles);
     void handleORA(uint32_t data, int *cycles);
     void handleORAImmediate(uint32_t data, int *cycles);

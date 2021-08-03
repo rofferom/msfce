@@ -916,6 +916,12 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             OpcodeFlag_Default & ~OpcodeFlag_AutoIncrementPC,
             &Cpu65816::handleMVN,
         }, {
+            "MVP",
+            0x44,
+            Cpu65816::AddressingMode::BlockMove,
+            OpcodeFlag_Default & ~OpcodeFlag_AutoIncrementPC,
+            &Cpu65816::handleMVP,
+        }, {
             "NOP",
             0xEA,
             Cpu65816::AddressingMode::Implied,
@@ -2622,6 +2628,25 @@ void Cpu65816::handleMVN(uint32_t data, int *cycles)
     m_Registers.A--;
     m_Registers.X++;
     m_Registers.Y++;
+
+    if (m_Registers.A == 0xFFFF) {
+        // Skip opcode + parameters
+        m_Registers.PC += 3;
+    }
+}
+
+void Cpu65816::handleMVP(uint32_t data, int *cycles)
+{
+    uint8_t srcBank = data >> 8;
+    m_Registers.DB = data & 0xFF;
+
+    uint32_t srcAddr = (srcBank << 16) | m_Registers.X;
+    uint32_t destAddr = (m_Registers.DB << 16) | m_Registers.Y;
+    m_Membus->writeU8(destAddr, m_Membus->readU8(srcAddr, cycles), cycles);
+
+    m_Registers.A--;
+    m_Registers.X--;
+    m_Registers.Y--;
 
     if (m_Registers.A == 0xFFFF) {
         // Skip opcode + parameters
