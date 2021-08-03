@@ -51,6 +51,7 @@ private:
     void handleBIT(uint32_t data, int *cycles);
     void handleBMI(uint32_t data, int *cycles);
     void handleBRA(uint32_t data, int *cycles);
+    void handleBRK(uint32_t data, int *cycles);
     void handleBRL(uint32_t data, int *cycles);
     void handleBNE(uint32_t data, int *cycles);
     void handleBPL(uint32_t data, int *cycles);

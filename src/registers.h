@@ -6,6 +6,7 @@
 constexpr size_t kRegIV_NMI = 0xFFEA;
 constexpr size_t kRegIV_RESET = 0xFFFC;
 constexpr size_t kRegIV_IRQ = 0xFFEE;
+constexpr size_t kRegIV_BRK = 0xFFE6;
 
 // PPU registers
 constexpr int kPpuDisplayWidth = 256;

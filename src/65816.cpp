@@ -340,6 +340,12 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             OpcodeFlag_Default,
             &Cpu65816::handleBRL,
         }, {
+            "BRK",
+            0x00,
+            Cpu65816::AddressingMode::Immediate,
+            OpcodeFlag_Default,
+            &Cpu65816::handleBRK,
+        }, {
             "BVC",
             0x50,
             Cpu65816::AddressingMode::PcRelative,
@@ -2097,6 +2103,14 @@ void Cpu65816::handleBPL(uint32_t data, int *cycles)
 void Cpu65816::handleBRA(uint32_t data, int *cycles)
 {
     m_Registers.PC = data;
+}
+
+void Cpu65816::handleBRK(uint32_t data, int *cycles)
+{
+    handleInterrupt(kRegIV_BRK, cycles);
+
+    m_Registers.P = setBit(m_Registers.P, kPRegister_I);
+    m_Registers.P = clearBit(m_Registers.P, kPRegister_D);
 }
 
 void Cpu65816::handleBRL(uint32_t data, int *cycles)
