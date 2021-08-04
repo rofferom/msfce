@@ -1613,12 +1613,10 @@ int  Cpu65816::run()
     if (m_NMI) {
         handleNMI(&cycles);
         m_NMI = false;
-        m_WaitInterrupt = false;
     }
 
     if (m_IRQState == State::running && m_IRQ && !getBit(m_Registers.P, kPRegister_I)) {
         handleIRQ(&cycles);
-        m_WaitInterrupt = false;
     }
 
     if (m_WaitInterrupt) {
@@ -3434,11 +3432,13 @@ void Cpu65816::handleWAI(uint32_t data, int *cycles)
 void Cpu65816::setNMI()
 {
     m_NMI = true;
+    m_WaitInterrupt = false;
 }
 
 void Cpu65816::setIRQ(bool value)
 {
     m_IRQ = value;
+    m_WaitInterrupt = false;
 }
 
 void Cpu65816::handleImplied(
