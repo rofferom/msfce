@@ -315,6 +315,7 @@ private:
     uint8_t m_VramIncrementStep = 0;
     uint8_t m_Vram[64 * 1024];
     uint16_t m_VramAddress = 0;
+    uint16_t m_VramPrefetch = 0;
 
     // CGRAM (palette)
     uint16_t m_Cgram[256];

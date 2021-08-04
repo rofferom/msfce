@@ -468,6 +468,30 @@ uint8_t Ppu::readU8(uint32_t addr)
         m_VPosReadFlip = 0;
         return 0x63;
 
+    case kRegRDVRAML: {
+        uint8_t value = m_VramPrefetch & 0xFF;
+
+        if (!m_VramIncrementHigh) {
+            uint16_t address = m_VramAddress * 2;
+            m_VramPrefetch = (m_Vram[address + 1] << 8) | m_Vram[address];
+            incrementVramAddress();
+        }
+
+        return value;
+    }
+
+    case kRegRDVRAMH:  {
+        uint8_t value = m_VramPrefetch >> 8;
+
+        if (m_VramIncrementHigh) {
+            uint16_t address = m_VramAddress * 2;
+            m_VramPrefetch = (m_Vram[address + 1] << 8) | m_Vram[address];
+            incrementVramAddress();
+        }
+
+        return value;
+    }
+
     default:
         LOGW(TAG, "Ignore ReadU8 at %06X", addr);
         assert(false);
@@ -504,13 +528,21 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         m_VramIncrementStep = value & 0b11;
         break;
 
-    case kRegVMADDL:
+    case kRegVMADDL: {
         m_VramAddress = (m_VramAddress & 0xFF00) | value;
-        break;
 
-    case kRegVMADDH:
-        m_VramAddress = (m_VramAddress & 0xFF) | (value << 8);
+        uint16_t address = m_VramAddress * 2;
+        m_VramPrefetch = (m_Vram[address + 1] << 8) | m_Vram[address];
         break;
+    }
+
+    case kRegVMADDH: {
+        m_VramAddress = (m_VramAddress & 0xFF) | (value << 8);
+
+        uint16_t address = m_VramAddress * 2;
+        m_VramPrefetch = (m_Vram[address + 1] << 8) | m_Vram[address];
+        break;
+    }
 
     case kRegVMDATAL: {
         uint16_t address = m_VramAddress * 2;
@@ -2058,6 +2090,7 @@ void Ppu::dumpToFile(FILE* f)
     fwrite(&m_VramIncrementStep, sizeof(m_VramIncrementStep), 1, f);
     fwrite(m_Vram, sizeof(m_Vram), 1, f);
     fwrite(&m_VramAddress, sizeof(m_VramAddress), 1, f);
+    fwrite(&m_VramPrefetch, sizeof(m_VramPrefetch), 1, f);
     fwrite(&m_Cgram, sizeof(m_Cgram), 1, f);
     fwrite(&m_CgdataAddress, sizeof(m_CgdataAddress), 1, f);
     fwrite(&m_CgramLsbSet, sizeof(m_CgramLsbSet), 1, f);
@@ -2119,6 +2152,7 @@ void Ppu::loadFromFile(FILE* f)
     fread(&m_VramIncrementStep, sizeof(m_VramIncrementStep), 1, f);
     fread(m_Vram, sizeof(m_Vram), 1, f);
     fread(&m_VramAddress, sizeof(m_VramAddress), 1, f);
+    fread(&m_VramPrefetch, sizeof(m_VramPrefetch), 1, f);
     fread(&m_Cgram, sizeof(m_Cgram), 1, f);
     fread(&m_CgdataAddress, sizeof(m_CgdataAddress), 1, f);
     fread(&m_CgramLsbSet, sizeof(m_CgramLsbSet), 1, f);
