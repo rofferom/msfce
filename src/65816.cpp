@@ -3618,10 +3618,7 @@ void Cpu65816::handleAbsoluteIndirect(
     uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 2;
 
-    uint32_t address = (m_Registers.DB << 16) | rawData;
-    address = (m_Registers.PB << 16) | m_Membus->readU16(address, cycles);
-
-    *data = address;
+    *data = (m_Registers.PB << 16) | m_Membus->readU16(rawData, cycles);
 
     logInstruction("%s [$%04X] [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
