@@ -505,6 +505,22 @@ uint8_t Ppu::readU8(uint32_t addr)
         return value;
     }
 
+    case kRegRDCGRAM: {
+        uint8_t value;
+
+        if (m_CgramLsbSet) {
+            value = m_Cgram[m_CgdataAddress] >> 8;
+
+            m_CgdataAddress++;
+            m_CgramLsbSet = false;
+        } else {
+            value = m_Cgram[m_CgdataAddress] & 0xFF;
+            m_CgramLsbSet = true;
+        }
+
+        return value;
+    }
+
     default:
         LOGW(TAG, "Ignore ReadU8 at %06X", addr);
         assert(false);
