@@ -1610,14 +1610,15 @@ int  Cpu65816::run()
     int cycles = 0;
 
     // Check if NMI has been raised
-    if (m_State != State::interrupt) {
-        if (m_NMI) {
-            handleNMI(&cycles);
-            m_NMI = false;
-            m_WaitInterrupt = false;
-        } else if (m_IRQ && !getBit(m_Registers.P, kPRegister_I)) {
-            handleIRQ(&cycles);
-        }
+    if (m_NMI) {
+        handleNMI(&cycles);
+        m_NMI = false;
+        m_WaitInterrupt = false;
+    }
+
+    if (m_IRQState == State::running && m_IRQ && !getBit(m_Registers.P, kPRegister_I)) {
+        handleIRQ(&cycles);
+        m_WaitInterrupt = false;
     }
 
     if (m_WaitInterrupt) {
@@ -1731,8 +1732,6 @@ void Cpu65816::handleInterrupt(uint32_t addr, int *cycles)
     // Do jump
     m_Registers.PB = 0;
     m_Registers.PC = handlerAddress;
-
-    m_State = State::interrupt;
 }
 
 void Cpu65816::handleNMI(int *cycles)
@@ -1743,6 +1742,7 @@ void Cpu65816::handleNMI(int *cycles)
 void Cpu65816::handleIRQ(int *cycles)
 {
     handleInterrupt(kRegIV_IRQ, cycles);
+    m_IRQState = State::interrupt;
 }
 
 void Cpu65816::setNFlag(uint16_t value, uint16_t negativeMask)
@@ -2973,7 +2973,7 @@ void Cpu65816::handleRTI(uint32_t data, int *cycles)
         m_Registers.Y &= 0xFF;
     }
 
-    m_State = State::running;
+    m_IRQState = State::running;
 
     *cycles += kTimingCpuOneCycle * 2;
 }
@@ -3886,7 +3886,7 @@ void Cpu65816::dumpToFile(FILE* f)
     SchedulerTask::dumpToFile(f);
 
     fwrite(&m_Registers, sizeof(m_Registers), 1, f);
-    fwrite(&m_State, sizeof(m_State), 1, f);
+    fwrite(&m_IRQState, sizeof(m_IRQState), 1, f);
     fwrite(&m_NMI, sizeof(m_NMI), 1, f);
     fwrite(&m_IRQ, sizeof(m_IRQ), 1, f);
 }
@@ -3896,7 +3896,7 @@ void Cpu65816::loadFromFile(FILE* f)
     SchedulerTask::loadFromFile(f);
 
     fread(&m_Registers, sizeof(m_Registers), 1, f);
-    fread(&m_State, sizeof(m_State), 1, f);
+    fread(&m_IRQState, sizeof(m_IRQState), 1, f);
     fread(&m_NMI, sizeof(m_NMI), 1, f);
     fread(&m_IRQ, sizeof(m_IRQ), 1, f);
 }

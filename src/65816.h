@@ -363,7 +363,7 @@ private:
 
     uint32_t m_CurrentOpcodePC = 0;
 
-    State m_State = State::running;
+    State m_IRQState = State::running;
     bool m_NMI = false;
     bool m_IRQ = false;
     bool m_WaitInterrupt = false;
