@@ -63,6 +63,7 @@ private:
     void handleCLV(uint32_t data, int *cycles);
     void handleCMP(uint32_t data, int *cycles);
     void handleCMPImmediate(uint32_t data, int *cycles);
+    void handleCOP(uint32_t data, int *cycles);
     void handleCPX(uint32_t data, int *cycles);
     void handleCPXImmediate(uint32_t data, int *cycles);
     void handleCPY(uint32_t data, int *cycles);

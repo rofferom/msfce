@@ -472,6 +472,12 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             OpcodeFlag_Default,
             &Cpu65816::handleCMP,
         }, {
+            "COP",
+            0x02,
+            Cpu65816::AddressingMode::Immediate,
+            OpcodeFlag_Default,
+            &Cpu65816::handleCOP,
+        }, {
             "CPX",
             0xE0,
             Cpu65816::AddressingMode::ImmediateIndex,
@@ -2199,6 +2205,14 @@ void Cpu65816::handleCMP(uint32_t data, int *cycles)
 
     setNZFlags(result, negativeMask);
     setCFlag(result);
+}
+
+void Cpu65816::handleCOP(uint32_t data, int *cycles)
+{
+    handleInterrupt(kRegIV_COP, cycles);
+
+    m_Registers.P = setBit(m_Registers.P, kPRegister_I);
+    m_Registers.P = clearBit(m_Registers.P, kPRegister_D);
 }
 
 void Cpu65816::handleCPX(uint32_t data, int *cycles)
