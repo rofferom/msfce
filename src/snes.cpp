@@ -250,6 +250,13 @@ int Snes::renderSingleFrame(bool renderPpu)
             m_Cpu->setNextRunCycle(m_MasterClock + cpuCycles);
         }
 
+        // Check if Joypad autoread is complete
+        if (m_JoypadAutoreadEndcycle && m_MasterClock >= m_JoypadAutoreadEndcycle) {
+            m_HVBJOY &= ~1; // Autoread
+            m_JoypadAutoreadEndcycle = 0;
+            m_ControllerPorts->readController();
+        }
+
         // Always run PPU
         if (m_Ppu->getNextRunCycle() == m_MasterClock) {
             m_PpuTime.begin();
@@ -284,12 +291,13 @@ int Snes::renderSingleFrame(bool renderPpu)
 
             if (ppuEvents & Ppu::Event_VBlankStart) {
                 m_Vblank = true;
-                m_HVBJOY |= 1 << 7;
+                m_HVBJOY |= 1 << 7; // Vblank
 
                 m_Dma->onVblank();
 
                 if (m_JoypadAutoread) {
-                    m_ControllerPorts->readController();
+                    m_HVBJOY |= 1; // Autoread
+                    m_JoypadAutoreadEndcycle = m_MasterClock + 4224;
                 }
 
                 // Dirty hack to avoid vblank to be retriggered
@@ -365,6 +373,8 @@ void Snes::saveState(const std::string& path)
     fwrite(&m_HVIRQ_H, sizeof(m_HVIRQ_H), 1, f);
     fwrite(&m_HVIRQ_V, sizeof(m_HVIRQ_V), 1, f);
     fwrite(&m_JoypadAutoread, sizeof(m_JoypadAutoread), 1, f);
+    fwrite(&m_JoypadAutoreadRunning, sizeof(m_JoypadAutoreadRunning), 1, f);
+    fwrite(&m_JoypadAutoreadEndcycle, sizeof(m_JoypadAutoreadEndcycle), 1, f);
     fwrite(&m_Vblank, sizeof(m_Vblank), 1, f);
     fwrite(&m_MasterClock, sizeof(m_MasterClock), 1, f);
 
@@ -394,6 +404,8 @@ void Snes::loadState(const std::string& path)
     fread(&m_HVIRQ_H, sizeof(m_HVIRQ_H), 1, f);
     fread(&m_HVIRQ_V, sizeof(m_HVIRQ_V), 1, f);
     fread(&m_JoypadAutoread, sizeof(m_JoypadAutoread), 1, f);
+    fread(&m_JoypadAutoreadRunning, sizeof(m_JoypadAutoreadRunning), 1, f);
+    fread(&m_JoypadAutoreadEndcycle, sizeof(m_JoypadAutoreadEndcycle), 1, f);
     fread(&m_Vblank, sizeof(m_Vblank), 1, f);
     fread(&m_MasterClock, sizeof(m_MasterClock), 1, f);
 
