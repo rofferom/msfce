@@ -35,8 +35,8 @@ constexpr size_t kRegOBJSEL = 0x2101;
 
 constexpr size_t kRegOAMADDL = 0x2102;
 constexpr size_t kRegOAMADDH = 0x2103;
-
 constexpr size_t kRegOAMDATA = 0x2104;
+constexpr size_t kRegRDOAM = 0x2138;
 
 constexpr size_t kRegBGMODE = 0x2105;
 

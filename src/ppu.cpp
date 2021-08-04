@@ -468,6 +468,19 @@ uint8_t Ppu::readU8(uint32_t addr)
         m_VPosReadFlip = 0;
         return 0x63;
 
+    case kRegRDOAM: {
+        int address = (m_OamAddress << 1) + (m_OamFlip & 1);
+        uint8_t value = m_Oam[address];
+
+        m_OamFlip ^= 1;
+        if (!m_OamFlip) {
+            m_OamAddress++;
+            m_OamAddress &= 0x1FF;
+        }
+
+        return value;
+    }
+
     case kRegRDVRAML: {
         uint8_t value = m_VramPrefetch & 0xFF;
 
@@ -480,7 +493,7 @@ uint8_t Ppu::readU8(uint32_t addr)
         return value;
     }
 
-    case kRegRDVRAMH:  {
+    case kRegRDVRAMH: {
         uint8_t value = m_VramPrefetch >> 8;
 
         if (m_VramIncrementHigh) {
@@ -593,12 +606,16 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
 
     case kRegOAMADDL:
         m_OamAddress = (m_OamAddress & 0x100) | value;
+        m_OamAddress &= 0x1FF;
+
         m_OamHighestPriorityObj = value >> 1;
         m_OamFlip = 0;
         break;
 
     case kRegOAMADDH:
         m_OamAddress = ((value & 1) << 8) | (m_OamAddress & 0xFF);
+        m_OamAddress &= 0x1FF;
+
         m_OamForcedPriority = value >> 7;
         m_OamFlip = 0;
         break;
