@@ -225,7 +225,7 @@ int Snes::renderSingleFrame(bool renderPpu)
     while (!scanEnded) {
         // DMA has priority over CPU
         if (m_Dma->getState() == SchedulerTask::State::running) {
-            if (m_Dma->getNextRunCycle() == m_MasterClock) {
+            if (m_Dma->getNextRunCycle() <= m_MasterClock) {
                 int dmaCycles = m_Dma->run();
 
                 if (dmaCycles > 0) {
@@ -242,7 +242,7 @@ int Snes::renderSingleFrame(bool renderPpu)
                     m_Cpu->setNextRunCycle(m_MasterClock + cpuSync);
                 }
             }
-        } else if (m_Cpu->getNextRunCycle() == m_MasterClock) {
+        } else if (m_Cpu->getNextRunCycle() <= m_MasterClock) {
             m_CpuTime.begin();
             int cpuCycles = m_Cpu->run();
             m_CpuTime.end();
@@ -251,14 +251,14 @@ int Snes::renderSingleFrame(bool renderPpu)
         }
 
         // Check if Joypad autoread is complete
-        if (m_JoypadAutoreadEndcycle && m_MasterClock >= m_JoypadAutoreadEndcycle) {
+        if (m_JoypadAutoreadEndcycle && m_JoypadAutoreadEndcycle <= m_MasterClock) {
             m_HVBJOY &= ~1; // Autoread
             m_JoypadAutoreadEndcycle = 0;
             m_ControllerPorts->readController();
         }
 
         // Always run PPU
-        if (m_Ppu->getNextRunCycle() == m_MasterClock) {
+        if (m_Ppu->getNextRunCycle() <= m_MasterClock) {
             m_PpuTime.begin();
             int ppuCycles = m_Ppu->run();
             m_PpuTime.end();
