@@ -163,7 +163,7 @@ void Dma::dmaChannelStart(int id, DmaChannel* channel, int *cycles)
     LOGD(TAG, "\tBytes: 0x%04X", channel->m_DMAByteCounter);
 
     if (!channel->m_DMAByteCounter) {
-        return;
+        channel->m_DMAByteCounter = 0x10000;
     }
 
     switch (channel->m_Params.m_Direction) {

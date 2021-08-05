@@ -61,7 +61,7 @@ private:
         uint8_t m_BBusAddress;
         uint32_t m_ABusAddress;
 
-        uint16_t m_DMAByteCounter;
+        uint32_t m_DMAByteCounter;
     };
 
     static constexpr int kUnknownChannelId = -1;
