@@ -1713,9 +1713,6 @@ void Cpu65816::handleInterrupt(uint32_t addr, int *cycles)
 {
     // Bank is forced at 0
     uint16_t handlerAddress = m_Membus->readU16(addr, cycles);
-    if (!handlerAddress) {
-        return;
-    }
 
     // Save registers
     m_Membus->writeU8(m_Registers.S, m_Registers.PB, cycles);
