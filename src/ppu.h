@@ -297,6 +297,8 @@ private:
     bool m_ForcedBlanking = false;
     uint8_t m_Brightness = 0;
 
+    uint8_t m_Ppu2OpenBus = 0;
+
     struct {
         HVIRQConfig m_Config = HVIRQConfig::Disable;
         uint16_t m_H = 0;

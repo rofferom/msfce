@@ -486,35 +486,44 @@ uint8_t Ppu::readU8(uint32_t addr)
         uint8_t value;
 
         if (m_HPosReadFlip) {
-            value = m_HPos >> 8;
+            value = (m_Ppu2OpenBus & ~1) | (m_HPos >> 8);
         } else {
             value = m_HPos & 0xFF;
         }
 
         m_HPosReadFlip ^= 1;
-        return value;
+        return m_Ppu2OpenBus = value;
     }
 
     case kRegOPVCT: {
         uint8_t value;
 
         if (m_VPosReadFlip) {
-            value = m_VPos >> 8;
+            value = (m_Ppu2OpenBus & ~1) | (m_VPos >> 8);
         } else {
             value = m_VPos & 0xFF;
         }
 
         m_VPosReadFlip ^= 1;
-        return value;
+        return m_Ppu2OpenBus = value;
     }
 
     case kRegSTAT77:
         return 1;
 
-    case kRegSTAT78:
+    case kRegSTAT78: {
+        uint8_t value = 0;
+
+        // Ignore bits 7, 6
+        // FIXME: Bit 4 must be changed for PAL versions
+        value |= m_Ppu2OpenBus & (1 << 5);
+        value |= 0b111;
+
         m_HPosReadFlip = 0;
         m_VPosReadFlip = 0;
-        return 0x63;
+
+        return m_Ppu2OpenBus = value;
+    }
 
     case kRegRDOAM: {
         int address = (m_OamAddress << 1) + (m_OamFlip & 1);
@@ -557,7 +566,8 @@ uint8_t Ppu::readU8(uint32_t addr)
         uint8_t value;
 
         if (m_CgramLsbSet) {
-            value = m_Cgram[m_CgdataAddress] >> 8;
+            value = m_Ppu2OpenBus & (1 << 7);
+            value |= m_Cgram[m_CgdataAddress] >> 8;
 
             m_CgdataAddress++;
             m_CgramLsbSet = false;
@@ -566,7 +576,7 @@ uint8_t Ppu::readU8(uint32_t addr)
             m_CgramLsbSet = true;
         }
 
-        return value;
+        return m_Ppu2OpenBus = value;
     }
 
     default:
@@ -2217,6 +2227,7 @@ void Ppu::dumpToFile(FILE* f)
     fwrite(&m_M7X, sizeof(m_M7X), 1, f);
     fwrite(&m_M7Y, sizeof(m_M7Y), 1, f);
     fwrite(&m_MPY, sizeof(m_MPY), 1, f);
+    fwrite(&m_Ppu2OpenBus, sizeof(m_Ppu2OpenBus), 1, f);
 }
 
 void Ppu::loadFromFile(FILE* f)
@@ -2279,6 +2290,7 @@ void Ppu::loadFromFile(FILE* f)
     fread(&m_M7X, sizeof(m_M7X), 1, f);
     fread(&m_M7Y, sizeof(m_M7Y), 1, f);
     fread(&m_MPY, sizeof(m_MPY), 1, f);
+    fread(&m_Ppu2OpenBus, sizeof(m_Ppu2OpenBus), 1, f);
 }
 
 Ppu::WindowConfig::Config Ppu::getWindowConfig(uint32_t value) {
