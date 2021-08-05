@@ -227,8 +227,8 @@ uint16_t Membus::readU16(uint32_t addr, int *cycles)
     }
 
     assert(component->ptr);
-    return (component->ptr->readU8(finalAddr + 1) << 8)
-          | component->ptr->readU8(finalAddr);
+    return (component->ptr->readU8(finalAddr)
+          | component->ptr->readU8(finalAddr + 1) << 8);
 }
 
 uint32_t Membus::readU24(uint32_t addr, int *cycles)
@@ -259,9 +259,9 @@ uint32_t Membus::readU24(uint32_t addr, int *cycles)
     }
 
     assert(component->ptr);
-    return (component->ptr->readU8(finalAddr + 2) << 16)
+    return component->ptr->readU8(finalAddr)
          | (component->ptr->readU8(finalAddr + 1) << 8)
-         |  component->ptr->readU8(finalAddr);
+         | (component->ptr->readU8(finalAddr + 2) << 16);
 }
 
 void Membus::writeU8(uint32_t addr, uint8_t value, int *cycles)
