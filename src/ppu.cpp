@@ -1150,9 +1150,9 @@ void Ppu::updateTileData(const Background* bg, RendererBgInfo* renderBg)
     // the subtile location
     int realPixelX;
     if (!renderBg->horizontalFlip) {
-        realPixelX = renderBg->tileWidthPixel - renderBg->tilePixelX - 1;
-    } else {
         realPixelX = renderBg->tilePixelX;
+    } else {
+        realPixelX = renderBg->tileWidthPixel - renderBg->tilePixelX - 1;
     }
 
     int realPixelY;
@@ -1266,8 +1266,10 @@ bool Ppu::getBackgroundCurrentPixel(
     // Get pixel and draw it
     uint32_t tilePixelColor;
 
-    tilePixelColor = (renderBg->tileDataPlane0[0] >> renderBg->subtilePixelX) & 1;
-    tilePixelColor |= ((renderBg->tileDataPlane0[1] >> renderBg->subtilePixelX) & 1) << 1;
+    int realPixelX = kPpuBaseTileWidth - renderBg->subtilePixelX - 1;
+
+    tilePixelColor = (renderBg->tileDataPlane0[0] >> realPixelX) & 1;
+    tilePixelColor |= ((renderBg->tileDataPlane0[1] >> realPixelX) & 1) << 1;
 
     if (renderBg->tileBpp == 4) {
         if (!renderBg->tileDataPlane1) {
@@ -1276,8 +1278,8 @@ bool Ppu::getBackgroundCurrentPixel(
         }
 
         assert(renderBg->tileDataPlane1);
-        tilePixelColor |= ((renderBg->tileDataPlane1[0] >> renderBg->subtilePixelX) & 1) << 2;
-        tilePixelColor |= ((renderBg->tileDataPlane1[1] >> renderBg->subtilePixelX) & 1) << 3;
+        tilePixelColor |= ((renderBg->tileDataPlane1[0] >> realPixelX) & 1) << 2;
+        tilePixelColor |= ((renderBg->tileDataPlane1[1] >> realPixelX) & 1) << 3;
     } else if (renderBg->tileBpp == 8) {
         if (!renderBg->tileDataPlane1) {
             LOGW(TAG, "%s(): renderBg->tileDataPlane1 == nullptr", __func__);
@@ -1295,16 +1297,16 @@ bool Ppu::getBackgroundCurrentPixel(
         }
 
         assert(renderBg->tileDataPlane1);
-        tilePixelColor |= ((renderBg->tileDataPlane1[0] >> renderBg->subtilePixelX) & 1) << 2;
-        tilePixelColor |= ((renderBg->tileDataPlane1[1] >> renderBg->subtilePixelX) & 1) << 3;
+        tilePixelColor |= ((renderBg->tileDataPlane1[0] >> realPixelX) & 1) << 2;
+        tilePixelColor |= ((renderBg->tileDataPlane1[1] >> realPixelX) & 1) << 3;
 
         assert(renderBg->tileDataPlane2);
-        tilePixelColor |= ((renderBg->tileDataPlane2[0] >> renderBg->subtilePixelX) & 1) << 4;
-        tilePixelColor |= ((renderBg->tileDataPlane2[1] >> renderBg->subtilePixelX) & 1) << 5;
+        tilePixelColor |= ((renderBg->tileDataPlane2[0] >> realPixelX) & 1) << 4;
+        tilePixelColor |= ((renderBg->tileDataPlane2[1] >> realPixelX) & 1) << 5;
 
         assert(renderBg->tileDataPlane3);
-        tilePixelColor |= ((renderBg->tileDataPlane3[0] >> renderBg->subtilePixelX) & 1) << 6;
-        tilePixelColor |= ((renderBg->tileDataPlane3[1] >> renderBg->subtilePixelX) & 1) << 7;
+        tilePixelColor |= ((renderBg->tileDataPlane3[0] >> realPixelX) & 1) << 6;
+        tilePixelColor |= ((renderBg->tileDataPlane3[1] >> realPixelX) & 1) << 7;
     }
 
     if (tilePixelColor == 0) {
@@ -1427,15 +1429,15 @@ void Ppu::moveToNextPixel(RendererBgInfo* renderBg)
     // Go to the next pixel
     if (!renderBg->horizontalFlip) {
         renderBg->tilePixelX = (renderBg->tilePixelX + 1) % renderBg->tileWidthPixel;
-        renderBg->subtilePixelX--;
+        renderBg->subtilePixelX++;
 
         // There is only things to do when we've reached to end of the
         // current subtile
-        if (renderBg->subtilePixelX < 0) {
-            renderBg->subtilePixelX = kPpuBaseTileWidth - 1;
-            renderBg->subtileX--;
+        if (renderBg->subtilePixelX == kPpuBaseTileWidth) {
+            renderBg->subtilePixelX = 0;
+            renderBg->subtileX++;
 
-            if (renderBg->subtileX >= 0) {
+            if (renderBg->subtileX < renderBg->tileWidth) {
                 updateSubtileData(bg, renderBg);
             } else {
                 renderBg->tilemapX = (renderBg->tilemapX + 1) % renderBg->tilemapWidth;
@@ -1446,15 +1448,15 @@ void Ppu::moveToNextPixel(RendererBgInfo* renderBg)
         }
     } else {
         renderBg->tilePixelX = (renderBg->tilePixelX + 1) % renderBg->tileWidthPixel;
-        renderBg->subtilePixelX++;
+        renderBg->subtilePixelX--;
 
         // There is only things to do when we've reached to end of the
         // current subtile
-        if (renderBg->subtilePixelX == kPpuBaseTileWidth) {
-            renderBg->subtilePixelX = 0;
-            renderBg->subtileX++;
+        if (renderBg->subtilePixelX < 0) {
+            renderBg->subtilePixelX = kPpuBaseTileWidth - 1;
+            renderBg->subtileX--;
 
-            if (renderBg->subtileX < renderBg->tileWidth) {
+            if (renderBg->subtileX >= 0) {
                 updateSubtileData(bg, renderBg);
             } else {
                 renderBg->tilemapX = (renderBg->tilemapX + 1) % renderBg->tilemapWidth;
@@ -1568,13 +1570,13 @@ void Ppu::initScreenRender()
         renderBg->background = bg;
 
         // Compute some dimensions that will be ready for future use
-        getTilemapDimension(bg->m_TilemapSize, &renderBg->tilemapWidth, &renderBg->tilemapHeight);
-        renderBg->tilemapWidthPixel = renderBg->tilemapWidth * kPpuBaseTileWidth;
-        renderBg->tilemapHeightPixel = renderBg->tilemapHeight * kPpuBaseTileHeight;
-
         getTileDimension(bg->m_TileSize, &renderBg->tileWidth, &renderBg->tileHeight);
         renderBg->tileWidthPixel = renderBg->tileWidth * kPpuBaseTileWidth;
         renderBg->tileHeightPixel = renderBg->tileHeight * kPpuBaseTileHeight;
+
+        getTilemapDimension(bg->m_TilemapSize, &renderBg->tilemapWidth, &renderBg->tilemapHeight);
+        renderBg->tilemapWidthPixel = renderBg->tilemapWidth * renderBg->tileWidthPixel;
+        renderBg->tilemapHeightPixel = renderBg->tilemapHeight * renderBg->tileHeightPixel;
 
         renderBg->tileBpp = getTileBppFromMode(m_Bgmode, bgIdx);
 
