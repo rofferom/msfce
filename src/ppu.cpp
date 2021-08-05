@@ -306,10 +306,58 @@ void getSpriteSize(uint8_t obselSize, uint8_t objSize, int* width, int* height)
             *width = 2;
             *height = 2;
         }
+    } else if (obselSize == 1) {
+        if (objSize == 0) {
+            *width = 1;
+            *height = 1;
+        } else {
+            *width = 4;
+            *height = 4;
+        }
+    } else if (obselSize == 2) {
+        if (objSize == 0) {
+            *width = 1;
+            *height = 1;
+        } else {
+            *width = 8;
+            *height = 8;
+        }
     } else if (obselSize == 3) {
         if (objSize == 0) {
             *width = 2;
             *height = 2;
+        } else {
+            *width = 4;
+            *height = 4;
+        }
+    } else if (obselSize == 4) {
+        if (objSize == 0) {
+            *width = 2;
+            *height = 2;
+        } else {
+            *width = 8;
+            *height = 8;
+        }
+    } else if (obselSize == 5) {
+        if (objSize == 0) {
+            *width = 4;
+            *height = 4;
+        } else {
+            *width = 8;
+            *height = 8;
+        }
+    } else if (obselSize == 6) {
+        if (objSize == 0) {
+            *width = 2;
+            *height = 4;
+        } else {
+            *width = 4;
+            *height = 8;
+        }
+    } else if (obselSize == 7) {
+        if (objSize == 0) {
+            *width = 2;
+            *height = 4;
         } else {
             *width = 4;
             *height = 4;
