@@ -263,13 +263,13 @@ void Dma::incrementABusAddress(int id, DmaChannel* channel, uint32_t* aBusAddres
 {
     switch (channel->m_ABusStep) {
     case ABusStep::increment:
-        (*aBusAddress)++;
-        channel->m_ABusAddress++;
+        (*aBusAddress) = (*aBusAddress & 0xFF0000) | ((*aBusAddress + 1) & 0xFFFF);
+        channel->m_ABusAddress = (channel->m_ABusAddress & 0xFF0000) | ((channel->m_ABusAddress + 1) & 0xFFFF);
         break;
 
     case ABusStep::decrement:
-        channel->m_ABusAddress--;
-        (*aBusAddress)--;
+        (*aBusAddress) = (*aBusAddress & 0xFF0000) | ((*aBusAddress - 1) & 0xFFFF);
+        channel->m_ABusAddress = (channel->m_ABusAddress & 0xFF0000) | ((channel->m_ABusAddress - 1) & 0xFFFF);
         break;
 
     case ABusStep::fixed:
