@@ -27,6 +27,13 @@ uint8_t IndirectWram::readU8(uint32_t addr)
         return value;
     }
 
+    // Open bus
+    case kRegVMAIN:
+    case kRegVMADDL:
+    case kRegVMDATAL:
+    case kRegVMDATAH:
+        return m_Wram->readU8(m_Address);
+
     default:
         LOGW(TAG, "Ignore ReadU8 at %06X", addr);
         return 0;

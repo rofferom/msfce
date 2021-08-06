@@ -297,17 +297,28 @@ private:
     bool m_ForcedBlanking = false;
     uint8_t m_Brightness = 0;
 
+    uint8_t m_Ppu1OpenBus = 0;
+    uint8_t m_Ppu2OpenBus = 0;
+
     struct {
         HVIRQConfig m_Config = HVIRQConfig::Disable;
         uint16_t m_H = 0;
         uint16_t m_V = 0;
     } m_HVIRQ;
 
+    // Position reader
+    uint16_t m_HPos = 0;
+    uint8_t m_HPosReadFlip = 0;
+
+    uint16_t m_VPos = 0;
+    uint8_t m_VPosReadFlip = 0;
+
     // VRAM
     bool m_VramIncrementHigh = false;
     uint8_t m_VramIncrementStep = 0;
     uint8_t m_Vram[64 * 1024];
     uint16_t m_VramAddress = 0;
+    uint16_t m_VramPrefetch = 0;
 
     // CGRAM (palette)
     uint16_t m_Cgram[256];
@@ -321,6 +332,7 @@ private:
     // OAM (sprites)
     uint8_t m_Oam[2 * 256 + 32];
     uint16_t m_OamAddress = 0;
+    uint16_t m_OamAddressReload = 0;
     int m_OamHighestPriorityObj = 0;
     int m_OamForcedPriority = 0;
 

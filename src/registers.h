@@ -35,8 +35,8 @@ constexpr size_t kRegOBJSEL = 0x2101;
 
 constexpr size_t kRegOAMADDL = 0x2102;
 constexpr size_t kRegOAMADDH = 0x2103;
-
 constexpr size_t kRegOAMDATA = 0x2104;
+constexpr size_t kRegRDOAM = 0x2138;
 
 constexpr size_t kRegBGMODE = 0x2105;
 
@@ -97,6 +97,13 @@ constexpr size_t kRegTS = 0x212D;
 
 constexpr size_t kRegCGWSEL = 0x2130;
 constexpr size_t kRegCGADSUB = 0x2131;
+
+constexpr size_t kRegSLHV = 0x2137;
+constexpr size_t kRegOPHCT = 0x213C;
+constexpr size_t kRegOPVCT = 0x213D;
+
+constexpr size_t kRegSTAT77 = 0x213E;
+constexpr size_t kRegSTAT78 = 0x213F;
 
 // APU registers
 constexpr size_t kRegApuStart = 0x2140;

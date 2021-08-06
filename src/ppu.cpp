@@ -306,10 +306,58 @@ void getSpriteSize(uint8_t obselSize, uint8_t objSize, int* width, int* height)
             *width = 2;
             *height = 2;
         }
+    } else if (obselSize == 1) {
+        if (objSize == 0) {
+            *width = 1;
+            *height = 1;
+        } else {
+            *width = 4;
+            *height = 4;
+        }
+    } else if (obselSize == 2) {
+        if (objSize == 0) {
+            *width = 1;
+            *height = 1;
+        } else {
+            *width = 8;
+            *height = 8;
+        }
     } else if (obselSize == 3) {
         if (objSize == 0) {
             *width = 2;
             *height = 2;
+        } else {
+            *width = 4;
+            *height = 4;
+        }
+    } else if (obselSize == 4) {
+        if (objSize == 0) {
+            *width = 2;
+            *height = 2;
+        } else {
+            *width = 8;
+            *height = 8;
+        }
+    } else if (obselSize == 5) {
+        if (objSize == 0) {
+            *width = 4;
+            *height = 4;
+        } else {
+            *width = 8;
+            *height = 8;
+        }
+    } else if (obselSize == 6) {
+        if (objSize == 0) {
+            *width = 2;
+            *height = 4;
+        } else {
+            *width = 4;
+            *height = 8;
+        }
+    } else if (obselSize == 7) {
+        if (objSize == 0) {
+            *width = 2;
+            *height = 4;
         } else {
             *width = 4;
             *height = 4;
@@ -421,13 +469,141 @@ uint8_t Ppu::readU8(uint32_t addr)
 {
     switch (addr) {
     case kRegMPYL:
-        return m_MPY & 0xFF;
+        return m_Ppu1OpenBus = m_MPY & 0xFF;
 
     case kRegMPYM:
-        return (m_MPY >> 8) & 0xFF;
+        return m_Ppu1OpenBus = (m_MPY >> 8) & 0xFF;
 
     case kRegMPYH:
-        return (m_MPY >> 16) & 0xFF;
+        return m_Ppu1OpenBus = (m_MPY >> 16) & 0xFF;
+
+    case kRegSLHV:
+        m_HPos = m_RenderX;
+        m_VPos = m_RenderY;
+        return 0;
+
+    case kRegOPHCT: {
+        uint8_t value;
+
+        if (m_HPosReadFlip) {
+            value = (m_Ppu2OpenBus & ~1) | (m_HPos >> 8);
+        } else {
+            value = m_HPos & 0xFF;
+        }
+
+        m_HPosReadFlip ^= 1;
+        return m_Ppu2OpenBus = value;
+    }
+
+    case kRegOPVCT: {
+        uint8_t value;
+
+        if (m_VPosReadFlip) {
+            value = (m_Ppu2OpenBus & ~1) | (m_VPos >> 8);
+        } else {
+            value = m_VPos & 0xFF;
+        }
+
+        m_VPosReadFlip ^= 1;
+        return m_Ppu2OpenBus = value;
+    }
+
+    case kRegSTAT77: {
+        uint8_t value = 0;
+
+        value |= m_Ppu1OpenBus & (1 << 4);
+        value |= 0b001; // PPU1 version
+
+        return m_Ppu1OpenBus = value;
+    }
+
+    case kRegSTAT78: {
+        uint8_t value = 0;
+
+        // Ignore bits 7, 6
+        // FIXME: Bit 4 must be changed for PAL versions
+        value |= m_Ppu2OpenBus & (1 << 5);
+        value |= 0b111; // PPU2 version
+
+        m_HPosReadFlip = 0;
+        m_VPosReadFlip = 0;
+
+        return m_Ppu2OpenBus = value;
+    }
+
+    case kRegRDOAM: {
+        int address = (m_OamAddress << 1) + (m_OamFlip & 1);
+        uint8_t value = m_Oam[address];
+
+        m_OamFlip ^= 1;
+        if (!m_OamFlip) {
+            m_OamAddress++;
+            m_OamAddress &= 0x1FF;
+        }
+
+        return m_Ppu1OpenBus = value;
+    }
+
+    case kRegRDVRAML: {
+        uint8_t value = m_VramPrefetch & 0xFF;
+
+        if (!m_VramIncrementHigh) {
+            uint16_t address = m_VramAddress * 2;
+            m_VramPrefetch = (m_Vram[address + 1] << 8) | m_Vram[address];
+            incrementVramAddress();
+        }
+
+        return m_Ppu1OpenBus = value;
+    }
+
+    case kRegRDVRAMH: {
+        uint8_t value = m_VramPrefetch >> 8;
+
+        if (m_VramIncrementHigh) {
+            uint16_t address = m_VramAddress * 2;
+            m_VramPrefetch = (m_Vram[address + 1] << 8) | m_Vram[address];
+            incrementVramAddress();
+        }
+
+        return m_Ppu1OpenBus = value;
+    }
+
+    case kRegRDCGRAM: {
+        uint8_t value;
+
+        if (m_CgramLsbSet) {
+            value = m_Ppu2OpenBus & (1 << 7);
+            value |= m_Cgram[m_CgdataAddress] >> 8;
+
+            m_CgdataAddress++;
+            m_CgramLsbSet = false;
+        } else {
+            value = m_Cgram[m_CgdataAddress] & 0xFF;
+            m_CgramLsbSet = true;
+        }
+
+        return m_Ppu2OpenBus = value;
+    }
+
+    case kRegOAMDATA:
+    case kRegBGMODE:
+    case kRegMOSAIC:
+    case kRegBG2SC:
+    case kRegBG3SC:
+    case kRegBG4SC:
+    case kRegBG4VOFS:
+    case kRegM7SEL:
+    case kRegW34SEL:
+    case kRegWOBJSEL:
+    case kRegWH0:
+    case kRegWH2:
+    case kRegWH3:
+    case kRegWBGLOG:
+    case kRegVMAIN:
+    case kRegVMADDL:
+    case kRegVMDATAL:
+    case kRegVMDATAH:
+        return m_Ppu1OpenBus;
 
     default:
         LOGW(TAG, "Ignore ReadU8 at %06X", addr);
@@ -465,13 +641,21 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         m_VramIncrementStep = value & 0b11;
         break;
 
-    case kRegVMADDL:
+    case kRegVMADDL: {
         m_VramAddress = (m_VramAddress & 0xFF00) | value;
-        break;
 
-    case kRegVMADDH:
-        m_VramAddress = (m_VramAddress & 0xFF) | (value << 8);
+        uint16_t address = m_VramAddress * 2;
+        m_VramPrefetch = (m_Vram[address + 1] << 8) | m_Vram[address];
         break;
+    }
+
+    case kRegVMADDH: {
+        m_VramAddress = (m_VramAddress & 0xFF) | (value << 8);
+
+        uint16_t address = m_VramAddress * 2;
+        m_VramPrefetch = (m_Vram[address + 1] << 8) | m_Vram[address];
+        break;
+    }
 
     case kRegVMDATAL: {
         uint16_t address = m_VramAddress * 2;
@@ -522,12 +706,18 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
 
     case kRegOAMADDL:
         m_OamAddress = (m_OamAddress & 0x100) | value;
+        m_OamAddress &= 0x1FF;
+        m_OamAddressReload = m_OamAddress;
+
         m_OamHighestPriorityObj = value >> 1;
         m_OamFlip = 0;
         break;
 
     case kRegOAMADDH:
         m_OamAddress = ((value & 1) << 8) | (m_OamAddress & 0xFF);
+        m_OamAddress &= 0x1FF;
+        m_OamAddressReload = m_OamAddress;
+
         m_OamForcedPriority = value >> 7;
         m_OamFlip = 0;
         break;
@@ -962,9 +1152,9 @@ void Ppu::updateTileData(const Background* bg, RendererBgInfo* renderBg)
     // the subtile location
     int realPixelX;
     if (!renderBg->horizontalFlip) {
-        realPixelX = renderBg->tileWidthPixel - renderBg->tilePixelX - 1;
-    } else {
         realPixelX = renderBg->tilePixelX;
+    } else {
+        realPixelX = renderBg->tileWidthPixel - renderBg->tilePixelX - 1;
     }
 
     int realPixelY;
@@ -1078,8 +1268,10 @@ bool Ppu::getBackgroundCurrentPixel(
     // Get pixel and draw it
     uint32_t tilePixelColor;
 
-    tilePixelColor = (renderBg->tileDataPlane0[0] >> renderBg->subtilePixelX) & 1;
-    tilePixelColor |= ((renderBg->tileDataPlane0[1] >> renderBg->subtilePixelX) & 1) << 1;
+    int realPixelX = kPpuBaseTileWidth - renderBg->subtilePixelX - 1;
+
+    tilePixelColor = (renderBg->tileDataPlane0[0] >> realPixelX) & 1;
+    tilePixelColor |= ((renderBg->tileDataPlane0[1] >> realPixelX) & 1) << 1;
 
     if (renderBg->tileBpp == 4) {
         if (!renderBg->tileDataPlane1) {
@@ -1088,8 +1280,8 @@ bool Ppu::getBackgroundCurrentPixel(
         }
 
         assert(renderBg->tileDataPlane1);
-        tilePixelColor |= ((renderBg->tileDataPlane1[0] >> renderBg->subtilePixelX) & 1) << 2;
-        tilePixelColor |= ((renderBg->tileDataPlane1[1] >> renderBg->subtilePixelX) & 1) << 3;
+        tilePixelColor |= ((renderBg->tileDataPlane1[0] >> realPixelX) & 1) << 2;
+        tilePixelColor |= ((renderBg->tileDataPlane1[1] >> realPixelX) & 1) << 3;
     } else if (renderBg->tileBpp == 8) {
         if (!renderBg->tileDataPlane1) {
             LOGW(TAG, "%s(): renderBg->tileDataPlane1 == nullptr", __func__);
@@ -1107,16 +1299,16 @@ bool Ppu::getBackgroundCurrentPixel(
         }
 
         assert(renderBg->tileDataPlane1);
-        tilePixelColor |= ((renderBg->tileDataPlane1[0] >> renderBg->subtilePixelX) & 1) << 2;
-        tilePixelColor |= ((renderBg->tileDataPlane1[1] >> renderBg->subtilePixelX) & 1) << 3;
+        tilePixelColor |= ((renderBg->tileDataPlane1[0] >> realPixelX) & 1) << 2;
+        tilePixelColor |= ((renderBg->tileDataPlane1[1] >> realPixelX) & 1) << 3;
 
         assert(renderBg->tileDataPlane2);
-        tilePixelColor |= ((renderBg->tileDataPlane2[0] >> renderBg->subtilePixelX) & 1) << 4;
-        tilePixelColor |= ((renderBg->tileDataPlane2[1] >> renderBg->subtilePixelX) & 1) << 5;
+        tilePixelColor |= ((renderBg->tileDataPlane2[0] >> realPixelX) & 1) << 4;
+        tilePixelColor |= ((renderBg->tileDataPlane2[1] >> realPixelX) & 1) << 5;
 
         assert(renderBg->tileDataPlane3);
-        tilePixelColor |= ((renderBg->tileDataPlane3[0] >> renderBg->subtilePixelX) & 1) << 6;
-        tilePixelColor |= ((renderBg->tileDataPlane3[1] >> renderBg->subtilePixelX) & 1) << 7;
+        tilePixelColor |= ((renderBg->tileDataPlane3[0] >> realPixelX) & 1) << 6;
+        tilePixelColor |= ((renderBg->tileDataPlane3[1] >> realPixelX) & 1) << 7;
     }
 
     if (tilePixelColor == 0) {
@@ -1239,15 +1431,15 @@ void Ppu::moveToNextPixel(RendererBgInfo* renderBg)
     // Go to the next pixel
     if (!renderBg->horizontalFlip) {
         renderBg->tilePixelX = (renderBg->tilePixelX + 1) % renderBg->tileWidthPixel;
-        renderBg->subtilePixelX--;
+        renderBg->subtilePixelX++;
 
         // There is only things to do when we've reached to end of the
         // current subtile
-        if (renderBg->subtilePixelX < 0) {
-            renderBg->subtilePixelX = kPpuBaseTileWidth - 1;
-            renderBg->subtileX--;
+        if (renderBg->subtilePixelX == kPpuBaseTileWidth) {
+            renderBg->subtilePixelX = 0;
+            renderBg->subtileX++;
 
-            if (renderBg->subtileX >= 0) {
+            if (renderBg->subtileX < renderBg->tileWidth) {
                 updateSubtileData(bg, renderBg);
             } else {
                 renderBg->tilemapX = (renderBg->tilemapX + 1) % renderBg->tilemapWidth;
@@ -1258,15 +1450,15 @@ void Ppu::moveToNextPixel(RendererBgInfo* renderBg)
         }
     } else {
         renderBg->tilePixelX = (renderBg->tilePixelX + 1) % renderBg->tileWidthPixel;
-        renderBg->subtilePixelX++;
+        renderBg->subtilePixelX--;
 
         // There is only things to do when we've reached to end of the
         // current subtile
-        if (renderBg->subtilePixelX == kPpuBaseTileWidth) {
-            renderBg->subtilePixelX = 0;
-            renderBg->subtileX++;
+        if (renderBg->subtilePixelX < 0) {
+            renderBg->subtilePixelX = kPpuBaseTileWidth - 1;
+            renderBg->subtileX--;
 
-            if (renderBg->subtileX < renderBg->tileWidth) {
+            if (renderBg->subtileX >= 0) {
                 updateSubtileData(bg, renderBg);
             } else {
                 renderBg->tilemapX = (renderBg->tilemapX + 1) % renderBg->tilemapWidth;
@@ -1323,6 +1515,7 @@ int Ppu::run()
         } else if (m_RenderY == kPpuDisplayHeight) {
             // V-Blank
             m_Events |= Event_VBlankStart;
+            m_OamAddress = m_OamAddressReload;
         } else if (m_RenderY < kPpuDisplayHeight) {
             // New line
             initLineRender(m_RenderY);
@@ -1379,23 +1572,6 @@ void Ppu::initScreenRender()
         renderBg->bgIdx = bgIdx;
         renderBg->background = bg;
 
-        // Compute some dimensions that will be ready for future use
-        getTilemapDimension(bg->m_TilemapSize, &renderBg->tilemapWidth, &renderBg->tilemapHeight);
-        renderBg->tilemapWidthPixel = renderBg->tilemapWidth * kPpuBaseTileWidth;
-        renderBg->tilemapHeightPixel = renderBg->tilemapHeight * kPpuBaseTileHeight;
-
-        getTileDimension(bg->m_TileSize, &renderBg->tileWidth, &renderBg->tileHeight);
-        renderBg->tileWidthPixel = renderBg->tileWidth * kPpuBaseTileWidth;
-        renderBg->tileHeightPixel = renderBg->tileHeight * kPpuBaseTileHeight;
-
-        renderBg->tileBpp = getTileBppFromMode(m_Bgmode, bgIdx);
-
-        // Compute the tile size in bytes. Tiles are always 8x8.
-        // 16x16 tiles are just a composition of multiple 8x8 tiles.
-        renderBg->tileSize = renderBg->tileBpp * 8;
-
-        renderBg->tilemapMapper = getTilemapMapper(bg->m_TilemapSize);
-
         // Setup mosaic if enabled
         if (m_Mosaic.m_Size > 1 && m_Mosaic.m_Backgrounds[bgIdx]) {
             renderBg->mosaic.startX = 1;
@@ -1449,6 +1625,23 @@ void Ppu::initLineRender(int y)
         } else {
             renderY = y;
         }
+
+        // Compute some dimensions that will be ready for future use
+        getTileDimension(bg->m_TileSize, &renderBg->tileWidth, &renderBg->tileHeight);
+        renderBg->tileWidthPixel = renderBg->tileWidth * kPpuBaseTileWidth;
+        renderBg->tileHeightPixel = renderBg->tileHeight * kPpuBaseTileHeight;
+
+        getTilemapDimension(bg->m_TilemapSize, &renderBg->tilemapWidth, &renderBg->tilemapHeight);
+        renderBg->tilemapWidthPixel = renderBg->tilemapWidth * renderBg->tileWidthPixel;
+        renderBg->tilemapHeightPixel = renderBg->tilemapHeight * renderBg->tileHeightPixel;
+
+        renderBg->tileBpp = getTileBppFromMode(m_Bgmode, renderBg->bgIdx);
+
+        // Compute the tile size in bytes. Tiles are always 8x8.
+        // 16x16 tiles are just a composition of multiple 8x8 tiles.
+        renderBg->tileSize = renderBg->tileBpp * 8;
+
+        renderBg->tilemapMapper = getTilemapMapper(bg->m_TilemapSize);
 
         // Compute background start coordinates in pixels at first
         int bgX = bg->m_HOffset % renderBg->tilemapWidthPixel;
@@ -2011,16 +2204,22 @@ void Ppu::dumpToFile(FILE* f)
 
     fwrite(&m_ForcedBlanking, sizeof(m_ForcedBlanking), 1, f);
     fwrite(&m_Brightness, sizeof(m_Brightness), 1, f);
+    fwrite(&m_HPos, sizeof(&m_HPos), 1, f);
+    fwrite(&m_HPosReadFlip, sizeof(&m_HPosReadFlip), 1, f);
+    fwrite(&m_VPos, sizeof(&m_VPos), 1, f);
+    fwrite(&m_VPosReadFlip, sizeof(&m_VPosReadFlip), 1, f);
     fwrite(&m_VramIncrementHigh, sizeof(m_VramIncrementHigh), 1, f);
     fwrite(&m_VramIncrementStep, sizeof(m_VramIncrementStep), 1, f);
     fwrite(m_Vram, sizeof(m_Vram), 1, f);
     fwrite(&m_VramAddress, sizeof(m_VramAddress), 1, f);
+    fwrite(&m_VramPrefetch, sizeof(m_VramPrefetch), 1, f);
     fwrite(&m_Cgram, sizeof(m_Cgram), 1, f);
     fwrite(&m_CgdataAddress, sizeof(m_CgdataAddress), 1, f);
     fwrite(&m_CgramLsbSet, sizeof(m_CgramLsbSet), 1, f);
     fwrite(&m_CgramLsb, sizeof(m_CgramLsb), 1, f);
     fwrite(&m_Oam, sizeof(m_Oam), 1, f);
     fwrite(&m_OamAddress, sizeof(m_OamAddress), 1, f);
+    fwrite(&m_OamAddressReload, sizeof(m_OamAddressReload), 1, f);
     fwrite(&m_OamHighestPriorityObj, sizeof(m_OamHighestPriorityObj), 1, f);
     fwrite(&m_OamForcedPriority, sizeof(m_OamForcedPriority), 1, f);
     fwrite(&m_OamFlip, sizeof(m_OamFlip), 1, f);
@@ -2060,6 +2259,8 @@ void Ppu::dumpToFile(FILE* f)
     fwrite(&m_M7X, sizeof(m_M7X), 1, f);
     fwrite(&m_M7Y, sizeof(m_M7Y), 1, f);
     fwrite(&m_MPY, sizeof(m_MPY), 1, f);
+    fwrite(&m_Ppu1OpenBus, sizeof(m_Ppu1OpenBus), 1, f);
+    fwrite(&m_Ppu2OpenBus, sizeof(m_Ppu2OpenBus), 1, f);
 }
 
 void Ppu::loadFromFile(FILE* f)
@@ -2068,16 +2269,22 @@ void Ppu::loadFromFile(FILE* f)
 
     fread(&m_ForcedBlanking, sizeof(m_ForcedBlanking), 1, f);
     fread(&m_Brightness, sizeof(m_Brightness), 1, f);
+    fread(&m_HPos, sizeof(&m_HPos), 1, f);
+    fread(&m_HPosReadFlip, sizeof(&m_HPosReadFlip), 1, f);
+    fread(&m_VPos, sizeof(&m_VPos), 1, f);
+    fread(&m_VPosReadFlip, sizeof(&m_VPosReadFlip), 1, f);
     fread(&m_VramIncrementHigh, sizeof(m_VramIncrementHigh), 1, f);
     fread(&m_VramIncrementStep, sizeof(m_VramIncrementStep), 1, f);
     fread(m_Vram, sizeof(m_Vram), 1, f);
     fread(&m_VramAddress, sizeof(m_VramAddress), 1, f);
+    fread(&m_VramPrefetch, sizeof(m_VramPrefetch), 1, f);
     fread(&m_Cgram, sizeof(m_Cgram), 1, f);
     fread(&m_CgdataAddress, sizeof(m_CgdataAddress), 1, f);
     fread(&m_CgramLsbSet, sizeof(m_CgramLsbSet), 1, f);
     fread(&m_CgramLsb, sizeof(m_CgramLsb), 1, f);
     fread(&m_Oam, sizeof(m_Oam), 1, f);
     fread(&m_OamAddress, sizeof(m_OamAddress), 1, f);
+    fread(&m_OamAddressReload, sizeof(m_OamAddressReload), 1, f);
     fread(&m_OamHighestPriorityObj, sizeof(m_OamHighestPriorityObj), 1, f);
     fread(&m_OamForcedPriority, sizeof(m_OamForcedPriority), 1, f);
     fread(&m_OamFlip, sizeof(m_OamFlip), 1, f);
@@ -2117,6 +2324,8 @@ void Ppu::loadFromFile(FILE* f)
     fread(&m_M7X, sizeof(m_M7X), 1, f);
     fread(&m_M7Y, sizeof(m_M7Y), 1, f);
     fread(&m_MPY, sizeof(m_MPY), 1, f);
+    fread(&m_Ppu1OpenBus, sizeof(m_Ppu1OpenBus), 1, f);
+    fread(&m_Ppu2OpenBus, sizeof(m_Ppu2OpenBus), 1, f);
 }
 
 Ppu::WindowConfig::Config Ppu::getWindowConfig(uint32_t value) {
@@ -2231,7 +2440,7 @@ void Ppu::renderDotMode7(int x, int y)
         if (layer.m_Layer == Layer::background) {
             RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
             rawColor = renderGetColorMode7(x, y);
-            colorValid = true;
+            colorValid = rawColor != 0;
         } else if (layer.m_Layer == Layer::sprite) {
             colorValid = getSpriteCurrentPixel(x, y, m_MainScreenConfig, layer.m_Priority, &rawColor);
         }
@@ -2239,7 +2448,8 @@ void Ppu::renderDotMode7(int x, int y)
 
     // Get final color
     if (colorValid) {
-        const auto color = rawColorToRgb(rawColor);
+        auto color = rawColorToRgb(rawColor);
+        applyBrightness(&color, m_Brightness);
         m_RenderCb(color);
     } else {
         m_RenderCb({0, 0, 0});
@@ -2248,6 +2458,10 @@ void Ppu::renderDotMode7(int x, int y)
 
 uint32_t Ppu::renderGetColorMode7(int x, int y)
 {
+    if (!m_MainScreenConfig.m_BgEnabled[0]) {
+        return 0;
+    }
+
     if (m_M7HFlip) {
         x = kPpuDisplayWidth - x;
     }
