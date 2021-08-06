@@ -82,8 +82,10 @@ void Membus::initLowRom()
 
     // Plug LowRom specific address converters
     m_Components[enumToInt(MemComponentType::rom)].addrConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
-        if (bank <= 0x7D) {
+        if (bank <= 0x7D && offset >= 0x8000) {
             return bank * 0x8000 + (offset - 0x8000);
+        } else if (0x40 <= bank && bank <= 0x6F && offset < 0x8000) {
+            return bank * 0x8000 + offset;
         } else if (bank >= 0xFE) {
             return (bank - 0xFE + 0x7E) * 0x8000 + (offset - 0x8000);
         } else {
@@ -364,6 +366,7 @@ const Membus::MemoryMap Membus::s_LowRomMap = {
 
         // ROM (cycles are computed in a different way)
         { 0x00, 0x7D, 0x8000, 0xFFFF, MemComponentType::rom, kComponentAccessR, 0 },
+        { 0x40, 0x6F, 0x0000, 0x7FFF, MemComponentType::rom, kComponentAccessR, 0 },
         { 0xFE, 0xFF, 0x8000, 0xFFFF, MemComponentType::rom, kComponentAccessR, 0 },
 
         // SRAM
