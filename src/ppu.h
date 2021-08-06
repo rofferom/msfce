@@ -297,6 +297,7 @@ private:
     bool m_ForcedBlanking = false;
     uint8_t m_Brightness = 0;
 
+    uint8_t m_Ppu1OpenBus = 0;
     uint8_t m_Ppu2OpenBus = 0;
 
     struct {

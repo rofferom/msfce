@@ -469,13 +469,13 @@ uint8_t Ppu::readU8(uint32_t addr)
 {
     switch (addr) {
     case kRegMPYL:
-        return m_MPY & 0xFF;
+        return m_Ppu1OpenBus = m_MPY & 0xFF;
 
     case kRegMPYM:
-        return (m_MPY >> 8) & 0xFF;
+        return m_Ppu1OpenBus = (m_MPY >> 8) & 0xFF;
 
     case kRegMPYH:
-        return (m_MPY >> 16) & 0xFF;
+        return m_Ppu1OpenBus = (m_MPY >> 16) & 0xFF;
 
     case kRegSLHV:
         m_HPos = m_RenderX;
@@ -508,8 +508,14 @@ uint8_t Ppu::readU8(uint32_t addr)
         return m_Ppu2OpenBus = value;
     }
 
-    case kRegSTAT77:
-        return 1;
+    case kRegSTAT77: {
+        uint8_t value = 0;
+
+        value |= m_Ppu1OpenBus & (1 << 4);
+        value |= 0b001; // PPU1 version
+
+        return m_Ppu1OpenBus = value;
+    }
 
     case kRegSTAT78: {
         uint8_t value = 0;
@@ -517,7 +523,7 @@ uint8_t Ppu::readU8(uint32_t addr)
         // Ignore bits 7, 6
         // FIXME: Bit 4 must be changed for PAL versions
         value |= m_Ppu2OpenBus & (1 << 5);
-        value |= 0b111;
+        value |= 0b111; // PPU2 version
 
         m_HPosReadFlip = 0;
         m_VPosReadFlip = 0;
@@ -535,7 +541,7 @@ uint8_t Ppu::readU8(uint32_t addr)
             m_OamAddress &= 0x1FF;
         }
 
-        return value;
+        return m_Ppu1OpenBus = value;
     }
 
     case kRegRDVRAML: {
@@ -547,7 +553,7 @@ uint8_t Ppu::readU8(uint32_t addr)
             incrementVramAddress();
         }
 
-        return value;
+        return m_Ppu1OpenBus = value;
     }
 
     case kRegRDVRAMH: {
@@ -559,7 +565,7 @@ uint8_t Ppu::readU8(uint32_t addr)
             incrementVramAddress();
         }
 
-        return value;
+        return m_Ppu1OpenBus = value;
     }
 
     case kRegRDCGRAM: {
@@ -578,6 +584,26 @@ uint8_t Ppu::readU8(uint32_t addr)
 
         return m_Ppu2OpenBus = value;
     }
+
+    case kRegOAMDATA:
+    case kRegBGMODE:
+    case kRegMOSAIC:
+    case kRegBG2SC:
+    case kRegBG3SC:
+    case kRegBG4SC:
+    case kRegBG4VOFS:
+    case kRegM7SEL:
+    case kRegW34SEL:
+    case kRegWOBJSEL:
+    case kRegWH0:
+    case kRegWH2:
+    case kRegWH3:
+    case kRegWBGLOG:
+    case kRegVMAIN:
+    case kRegVMADDL:
+    case kRegVMDATAL:
+    case kRegVMDATAH:
+        return m_Ppu1OpenBus;
 
     default:
         LOGW(TAG, "Ignore ReadU8 at %06X", addr);
@@ -2227,6 +2253,7 @@ void Ppu::dumpToFile(FILE* f)
     fwrite(&m_M7X, sizeof(m_M7X), 1, f);
     fwrite(&m_M7Y, sizeof(m_M7Y), 1, f);
     fwrite(&m_MPY, sizeof(m_MPY), 1, f);
+    fwrite(&m_Ppu1OpenBus, sizeof(m_Ppu1OpenBus), 1, f);
     fwrite(&m_Ppu2OpenBus, sizeof(m_Ppu2OpenBus), 1, f);
 }
 
@@ -2290,6 +2317,7 @@ void Ppu::loadFromFile(FILE* f)
     fread(&m_M7X, sizeof(m_M7X), 1, f);
     fread(&m_M7Y, sizeof(m_M7Y), 1, f);
     fread(&m_MPY, sizeof(m_MPY), 1, f);
+    fread(&m_Ppu1OpenBus, sizeof(m_Ppu1OpenBus), 1, f);
     fread(&m_Ppu2OpenBus, sizeof(m_Ppu2OpenBus), 1, f);
 }
 
