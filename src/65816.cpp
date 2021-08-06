@@ -340,6 +340,12 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             OpcodeFlag_Default,
             &Cpu65816::handleBRL,
         }, {
+            "BRK",
+            0x00,
+            Cpu65816::AddressingMode::Immediate,
+            OpcodeFlag_Default,
+            &Cpu65816::handleBRK,
+        }, {
             "BVC",
             0x50,
             Cpu65816::AddressingMode::PcRelative,
@@ -465,6 +471,12 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             Cpu65816::AddressingMode::StackRelativeIndirectIndexedY,
             OpcodeFlag_Default,
             &Cpu65816::handleCMP,
+        }, {
+            "COP",
+            0x02,
+            Cpu65816::AddressingMode::Immediate,
+            OpcodeFlag_Default,
+            &Cpu65816::handleCOP,
         }, {
             "CPX",
             0xE0,
@@ -910,6 +922,12 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             OpcodeFlag_Default & ~OpcodeFlag_AutoIncrementPC,
             &Cpu65816::handleMVN,
         }, {
+            "MVP",
+            0x44,
+            Cpu65816::AddressingMode::BlockMove,
+            OpcodeFlag_Default & ~OpcodeFlag_AutoIncrementPC,
+            &Cpu65816::handleMVP,
+        }, {
             "NOP",
             0xEA,
             Cpu65816::AddressingMode::Implied,
@@ -1016,7 +1034,7 @@ Cpu65816::Cpu65816(const std::shared_ptr<Membus> membus)
             0xD4,
             Cpu65816::AddressingMode::DpIndirect,
             OpcodeFlag_Default,
-            &Cpu65816::handlePEA,
+            &Cpu65816::handlePEI,
         }, {
             "PER",
             0x62,
@@ -1610,14 +1628,13 @@ int  Cpu65816::run()
     int cycles = 0;
 
     // Check if NMI has been raised
-    if (m_State != State::interrupt) {
-        if (m_NMI) {
-            handleNMI(&cycles);
-            m_NMI = false;
-            m_WaitInterrupt = false;
-        } else if (m_IRQ && !getBit(m_Registers.P, kPRegister_I)) {
-            handleIRQ(&cycles);
-        }
+    if (m_NMI) {
+        handleNMI(&cycles);
+        m_NMI = false;
+    }
+
+    if (m_IRQState == State::running && m_IRQ && !getBit(m_Registers.P, kPRegister_I)) {
+        handleIRQ(&cycles);
     }
 
     if (m_WaitInterrupt) {
@@ -1714,9 +1731,6 @@ void Cpu65816::handleInterrupt(uint32_t addr, int *cycles)
 {
     // Bank is forced at 0
     uint16_t handlerAddress = m_Membus->readU16(addr, cycles);
-    if (!handlerAddress) {
-        return;
-    }
 
     // Save registers
     m_Membus->writeU8(m_Registers.S, m_Registers.PB, cycles);
@@ -1731,8 +1745,6 @@ void Cpu65816::handleInterrupt(uint32_t addr, int *cycles)
     // Do jump
     m_Registers.PB = 0;
     m_Registers.PC = handlerAddress;
-
-    m_State = State::interrupt;
 }
 
 void Cpu65816::handleNMI(int *cycles)
@@ -1743,6 +1755,7 @@ void Cpu65816::handleNMI(int *cycles)
 void Cpu65816::handleIRQ(int *cycles)
 {
     handleInterrupt(kRegIV_IRQ, cycles);
+    m_IRQState = State::interrupt;
 }
 
 void Cpu65816::setNFlag(uint16_t value, uint16_t negativeMask)
@@ -2104,6 +2117,14 @@ void Cpu65816::handleBRA(uint32_t data, int *cycles)
     m_Registers.PC = data;
 }
 
+void Cpu65816::handleBRK(uint32_t data, int *cycles)
+{
+    handleInterrupt(kRegIV_BRK, cycles);
+
+    m_Registers.P = setBit(m_Registers.P, kPRegister_I);
+    m_Registers.P = clearBit(m_Registers.P, kPRegister_D);
+}
+
 void Cpu65816::handleBRL(uint32_t data, int *cycles)
 {
     m_Registers.PB = data >> 16;
@@ -2184,6 +2205,14 @@ void Cpu65816::handleCMP(uint32_t data, int *cycles)
 
     setNZFlags(result, negativeMask);
     setCFlag(result);
+}
+
+void Cpu65816::handleCOP(uint32_t data, int *cycles)
+{
+    handleInterrupt(kRegIV_COP, cycles);
+
+    m_Registers.P = setBit(m_Registers.P, kPRegister_I);
+    m_Registers.P = clearBit(m_Registers.P, kPRegister_D);
 }
 
 void Cpu65816::handleCPX(uint32_t data, int *cycles)
@@ -2620,6 +2649,25 @@ void Cpu65816::handleMVN(uint32_t data, int *cycles)
     }
 }
 
+void Cpu65816::handleMVP(uint32_t data, int *cycles)
+{
+    uint8_t srcBank = data >> 8;
+    m_Registers.DB = data & 0xFF;
+
+    uint32_t srcAddr = (srcBank << 16) | m_Registers.X;
+    uint32_t destAddr = (m_Registers.DB << 16) | m_Registers.Y;
+    m_Membus->writeU8(destAddr, m_Membus->readU8(srcAddr, cycles), cycles);
+
+    m_Registers.A--;
+    m_Registers.X--;
+    m_Registers.Y--;
+
+    if (m_Registers.A == 0xFFFF) {
+        // Skip opcode + parameters
+        m_Registers.PC += 3;
+    }
+}
+
 void Cpu65816::handleNOP(uint32_t data, int *cycles)
 {
 }
@@ -2973,7 +3021,7 @@ void Cpu65816::handleRTI(uint32_t data, int *cycles)
         m_Registers.Y &= 0xFF;
     }
 
-    m_State = State::running;
+    m_IRQState = State::running;
 
     *cycles += kTimingCpuOneCycle * 2;
 }
@@ -3312,19 +3360,8 @@ void Cpu65816::handleTSB(uint32_t address, int *cycles)
 
 void Cpu65816::handleTSC(uint32_t data, int *cycles)
 {
-    auto accumulatorSize = getBit(m_Registers.P, kPRegister_M);
-
-    // 0: 16 bits, 1: 8 bits
-    if (accumulatorSize) {
-        m_Registers.A &= 0xFF00;
-        m_Registers.A |= m_Registers.S & 0xFF;
-
-        setNZFlags(m_Registers.A & 0xFF, 0x80);
-    } else {
-        m_Registers.A = m_Registers.S;
-
-        setNZFlags(m_Registers.A, 0x8000);
-    }
+    m_Registers.A = m_Registers.S;
+    setNZFlags(m_Registers.A, 0x8000);
 }
 
 void Cpu65816::handleTSX(uint32_t data, int *cycles)
@@ -3445,11 +3482,13 @@ void Cpu65816::handleWAI(uint32_t data, int *cycles)
 void Cpu65816::setNMI()
 {
     m_NMI = true;
+    m_WaitInterrupt = false;
 }
 
 void Cpu65816::setIRQ(bool value)
 {
     m_IRQ = value;
+    m_WaitInterrupt = false;
 }
 
 void Cpu65816::handleImplied(
@@ -3618,10 +3657,7 @@ void Cpu65816::handleAbsoluteIndirect(
     uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 2;
 
-    uint32_t address = (m_Registers.DB << 16) | rawData;
-    address = (m_Registers.DB << 16) | m_Membus->readU16(address, cycles);
-
-    *data = address;
+    *data = (m_Registers.PB << 16) | m_Membus->readU16(rawData, cycles);
 
     logInstruction("%s [$%04X] [%06X]", opcodeDesc.m_Name, rawData, *data);
 }
@@ -3712,7 +3748,7 @@ void Cpu65816::handleDpIndirect(
     uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC++;
 
-    uint32_t address = ((m_Registers.DB << 16) | (m_Registers.D + rawData));
+    uint32_t address = m_Registers.D + rawData;
     address = (m_Registers.DB << 16) | m_Membus->readU16(address, cycles);
 
     *data = address;
@@ -3730,7 +3766,7 @@ void Cpu65816::handleDpIndirectIndexedX(
     uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC++;
 
-    uint32_t address = ((m_Registers.DB << 16) | (m_Registers.D + rawData)) + m_Registers.X;
+    uint32_t address = m_Registers.D + rawData;
     address = ((m_Registers.DB << 16) | m_Membus->readU16(address, cycles));
 
     *data = address;
@@ -3749,7 +3785,7 @@ void Cpu65816::handleDpIndexedIndirectY(
     uint8_t rawData = m_Membus->readU8((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC++;
 
-    uint32_t address = ((m_Registers.DB << 16) | (m_Registers.D + rawData));
+    uint32_t address = m_Registers.D + rawData;
     address = ((m_Registers.DB << 16) | m_Membus->readU16(address, cycles)) + m_Registers.Y;
 
     *data = address;
@@ -3822,7 +3858,7 @@ void Cpu65816::handlePcRelativeLong(
     uint16_t rawData = m_Membus->readU16((m_Registers.PB << 16) | m_Registers.PC, cycles);
     m_Registers.PC += 2;
 
-    *data = m_Registers.PC + rawData;
+    *data = (m_Registers.PC + rawData) & 0xFFFF;
     *data |= m_Registers.PB << 16;
 
     logInstruction("%s $%02X [%06X]", opcodeDesc.m_Name, rawData, *data);
@@ -3852,7 +3888,7 @@ void Cpu65816::handleStackRelativeIndirectIndexedY(
     m_Registers.PC += 1;
 
     uint32_t address = m_Registers.S + static_cast<int8_t>(rawData);
-    address = m_Membus->readU16(address, cycles) + m_Registers.Y;
+    address = (m_Registers.DB << 16) | (m_Membus->readU16(address, cycles) + m_Registers.Y);
 
     *data = address;
 
@@ -3900,7 +3936,7 @@ void Cpu65816::dumpToFile(FILE* f)
     SchedulerTask::dumpToFile(f);
 
     fwrite(&m_Registers, sizeof(m_Registers), 1, f);
-    fwrite(&m_State, sizeof(m_State), 1, f);
+    fwrite(&m_IRQState, sizeof(m_IRQState), 1, f);
     fwrite(&m_NMI, sizeof(m_NMI), 1, f);
     fwrite(&m_IRQ, sizeof(m_IRQ), 1, f);
 }
@@ -3910,7 +3946,7 @@ void Cpu65816::loadFromFile(FILE* f)
     SchedulerTask::loadFromFile(f);
 
     fread(&m_Registers, sizeof(m_Registers), 1, f);
-    fread(&m_State, sizeof(m_State), 1, f);
+    fread(&m_IRQState, sizeof(m_IRQState), 1, f);
     fread(&m_NMI, sizeof(m_NMI), 1, f);
     fread(&m_IRQ, sizeof(m_IRQ), 1, f);
 }

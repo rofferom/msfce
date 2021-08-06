@@ -51,6 +51,7 @@ private:
     void handleBIT(uint32_t data, int *cycles);
     void handleBMI(uint32_t data, int *cycles);
     void handleBRA(uint32_t data, int *cycles);
+    void handleBRK(uint32_t data, int *cycles);
     void handleBRL(uint32_t data, int *cycles);
     void handleBNE(uint32_t data, int *cycles);
     void handleBPL(uint32_t data, int *cycles);
@@ -62,6 +63,7 @@ private:
     void handleCLV(uint32_t data, int *cycles);
     void handleCMP(uint32_t data, int *cycles);
     void handleCMPImmediate(uint32_t data, int *cycles);
+    void handleCOP(uint32_t data, int *cycles);
     void handleCPX(uint32_t data, int *cycles);
     void handleCPXImmediate(uint32_t data, int *cycles);
     void handleCPY(uint32_t data, int *cycles);
@@ -88,6 +90,7 @@ private:
     void handleLSR_A(uint32_t data, int *cycles);
     void handleLSR(uint32_t data, int *cycles);
     void handleMVN(uint32_t data, int *cycles);
+    void handleMVP(uint32_t data, int *cycles);
     void handleNOP(uint32_t data, int *cycles);
     void handleORA(uint32_t data, int *cycles);
     void handleORAImmediate(uint32_t data, int *cycles);
@@ -154,7 +157,7 @@ private:
         uint16_t X = 0;
         uint16_t Y = 0;
 
-        uint16_t S = 0x1FF;
+        uint16_t S = 0x1FD;
         uint8_t DB = 0;
         uint16_t D = 0;
 
@@ -363,7 +366,7 @@ private:
 
     uint32_t m_CurrentOpcodePC = 0;
 
-    State m_State = State::running;
+    State m_IRQState = State::running;
     bool m_NMI = false;
     bool m_IRQ = false;
     bool m_WaitInterrupt = false;
