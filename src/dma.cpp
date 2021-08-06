@@ -45,6 +45,22 @@ void Dma::writeU8(uint32_t addr, uint8_t value)
     } else {
         addr -= kRegDmaStart;
         m_ChannelRegisters[addr] = value;
+
+        int channelId = addr >> 4;
+        int configId = addr & 0xF;
+        auto dmaChannel = &m_DmaChannels[channelId];
+
+        if (configId == kRegDmaA1TL) {
+            dmaChannel->m_ABusAddress &= 0xFFFF00;
+            dmaChannel->m_ABusAddress |= value;
+        } else if (configId == kRegDmaA1TH) {
+            dmaChannel->m_ABusAddress &= 0xFF00FF;
+            dmaChannel->m_ABusAddress |= value << 8;
+        } else if (configId == kRegDmaA1B) {
+            dmaChannel->m_ABusAddress &= 0xFFFF;
+            dmaChannel->m_ABusAddress |= value << 16;
+        }
+
         return;
     }
 
@@ -131,11 +147,6 @@ void Dma::dmaChannelStart(int id, DmaChannel* channel, int *cycles)
     // Addresses
     channel->m_BBusAddress = channelCfg[kRegDmaBBAD];
 
-    channel->m_ABusAddress =
-        channelCfg[kRegDmaA1TL] |
-       (channelCfg[kRegDmaA1TH] << 8) |
-       (channelCfg[kRegDmaA1B] << 16);
-
     channel->m_DMAByteCounter =
         channelCfg[kRegDmaDASL] |
        (channelCfg[kRegDmaDASH] << 8);
@@ -152,7 +163,7 @@ void Dma::dmaChannelStart(int id, DmaChannel* channel, int *cycles)
     LOGD(TAG, "\tBytes: 0x%04X", channel->m_DMAByteCounter);
 
     if (!channel->m_DMAByteCounter) {
-        return;
+        channel->m_DMAByteCounter = 0x10000;
     }
 
     switch (channel->m_Params.m_Direction) {
@@ -185,34 +196,34 @@ void Dma::dmaChannelStart(int id, DmaChannel* channel, int *cycles)
 
 void Dma::dmaChannelContinue(int *cycles)
 {
+    const int channelId = m_DmaRunningCtx.id;
     auto channel = m_DmaRunningCtx.m_Registers;
 
     switch (channel->m_Params.m_Mode) {
     case 0:
         m_Membus->writeU8(m_DmaRunningCtx.m_DestAddress, m_Membus->readU8(m_DmaRunningCtx.m_SrcAddress));
-        incrementABusAddress(channel, m_DmaRunningCtx.m_aBusAddress);
+        incrementABusAddress(channelId, channel, m_DmaRunningCtx.m_aBusAddress);
         channel->m_DMAByteCounter--;
 
         *cycles += kTimingDmaAccess;
         break;
 
     case 1:
-        m_Membus->writeU8(m_DmaRunningCtx.m_DestAddress, m_Membus->readU8(m_DmaRunningCtx.m_SrcAddress));
-        incrementABusAddress(channel, m_DmaRunningCtx.m_aBusAddress);
-        (*m_DmaRunningCtx.m_bBusAddress)++;
-        *cycles += kTimingDmaAccess;
-
-        m_Membus->writeU8(m_DmaRunningCtx.m_DestAddress, m_Membus->readU8(m_DmaRunningCtx.m_SrcAddress));
-        incrementABusAddress(channel, m_DmaRunningCtx.m_aBusAddress);
-        *m_DmaRunningCtx.m_bBusAddress = m_DmaRunningCtx.m_bBaseBusAddress;
-        *cycles += kTimingDmaAccess;
-
         if (channel->m_DMAByteCounter >= 2) {
+            m_Membus->writeU8(m_DmaRunningCtx.m_DestAddress, m_Membus->readU8(m_DmaRunningCtx.m_SrcAddress));
+            incrementABusAddress(channelId, channel, m_DmaRunningCtx.m_aBusAddress);
+            (*m_DmaRunningCtx.m_bBusAddress)++;
+            *cycles += kTimingDmaAccess;
+
+            m_Membus->writeU8(m_DmaRunningCtx.m_DestAddress, m_Membus->readU8(m_DmaRunningCtx.m_SrcAddress));
+            incrementABusAddress(channelId, channel, m_DmaRunningCtx.m_aBusAddress);
+            *m_DmaRunningCtx.m_bBusAddress = m_DmaRunningCtx.m_bBaseBusAddress;
+            *cycles += kTimingDmaAccess;
+
             channel->m_DMAByteCounter -=2;
         } else {
             m_Membus->writeU8(m_DmaRunningCtx.m_DestAddress, m_Membus->readU8(m_DmaRunningCtx.m_SrcAddress));
-            incrementABusAddress(channel, m_DmaRunningCtx.m_aBusAddress);
-            (*m_DmaRunningCtx.m_bBusAddress)++;
+            incrementABusAddress(channelId, channel, m_DmaRunningCtx.m_aBusAddress);
             *cycles += kTimingDmaAccess;
 
             channel->m_DMAByteCounter = 0;
@@ -221,19 +232,19 @@ void Dma::dmaChannelContinue(int *cycles)
 
     case 2:
     case 6:
-        m_Membus->writeU8(m_DmaRunningCtx.m_DestAddress, m_Membus->readU8(m_DmaRunningCtx.m_SrcAddress));
-        incrementABusAddress(channel, m_DmaRunningCtx.m_aBusAddress);
-        *cycles += kTimingDmaAccess;
-
-        m_Membus->writeU8(m_DmaRunningCtx.m_DestAddress, m_Membus->readU8(m_DmaRunningCtx.m_SrcAddress));
-        incrementABusAddress(channel, m_DmaRunningCtx.m_aBusAddress);
-        *cycles += kTimingDmaAccess;
-
         if (channel->m_DMAByteCounter >= 2) {
+            m_Membus->writeU8(m_DmaRunningCtx.m_DestAddress, m_Membus->readU8(m_DmaRunningCtx.m_SrcAddress));
+            incrementABusAddress(channelId, channel, m_DmaRunningCtx.m_aBusAddress);
+            *cycles += kTimingDmaAccess;
+
+            m_Membus->writeU8(m_DmaRunningCtx.m_DestAddress, m_Membus->readU8(m_DmaRunningCtx.m_SrcAddress));
+            incrementABusAddress(channelId, channel, m_DmaRunningCtx.m_aBusAddress);
+            *cycles += kTimingDmaAccess;
+
             channel->m_DMAByteCounter -=2;
         } else {
             m_Membus->writeU8(m_DmaRunningCtx.m_DestAddress, m_Membus->readU8(m_DmaRunningCtx.m_SrcAddress));
-            incrementABusAddress(channel, m_DmaRunningCtx.m_aBusAddress);
+            incrementABusAddress(channelId, channel, m_DmaRunningCtx.m_aBusAddress);
             *cycles += kTimingDmaAccess;
 
             channel->m_DMAByteCounter = 0;
@@ -245,17 +256,23 @@ void Dma::dmaChannelContinue(int *cycles)
         assert(false);
         break;
     }
+
+    uint8_t* channelCfg = &m_ChannelRegisters[channelId * kChannelCfgLen];
+    channelCfg[kRegDmaDASL] = channel->m_DMAByteCounter & 0xFF;
+    channelCfg[kRegDmaDASH] = (channel->m_DMAByteCounter & 0xFF00) >> 8;
 }
 
-void Dma::incrementABusAddress(const DmaChannel* channel, uint32_t* aBusAddress)
+void Dma::incrementABusAddress(int id, DmaChannel* channel, uint32_t* aBusAddress)
 {
     switch (channel->m_ABusStep) {
     case ABusStep::increment:
-        (*aBusAddress)++;
+        (*aBusAddress) = (*aBusAddress & 0xFF0000) | ((*aBusAddress + 1) & 0xFFFF);
+        channel->m_ABusAddress = (channel->m_ABusAddress & 0xFF0000) | ((channel->m_ABusAddress + 1) & 0xFFFF);
         break;
 
     case ABusStep::decrement:
-        (*aBusAddress)--;
+        (*aBusAddress) = (*aBusAddress & 0xFF0000) | ((*aBusAddress - 1) & 0xFFFF);
+        channel->m_ABusAddress = (channel->m_ABusAddress & 0xFF0000) | ((channel->m_ABusAddress - 1) & 0xFFFF);
         break;
 
     case ABusStep::fixed:
@@ -266,6 +283,10 @@ void Dma::incrementABusAddress(const DmaChannel* channel, uint32_t* aBusAddress)
         assert(false);
         break;
     }
+
+    uint8_t* channelCfg = &m_ChannelRegisters[id * kChannelCfgLen];
+    channelCfg[kRegDmaA1TL] = channel->m_ABusAddress & 0xFF;
+    channelCfg[kRegDmaA1TH] = (channel->m_ABusAddress & 0xFF00) >> 8;
 }
 
 void Dma::dumpToFile(FILE* f)
@@ -393,6 +414,7 @@ void Dma::onHblank()
                     break;
 
                 case 2:
+                case 6:
                     m_Membus->writeU8(channel->m_bBaseBusAddress,
                         m_Membus->readU8(channel->m_NextDataAddress));
 
@@ -404,6 +426,7 @@ void Dma::onHblank()
                     break;
 
                 case 3:
+                case 7:
                     m_Membus->writeU8(channel->m_bBaseBusAddress,
                         m_Membus->readU8(channel->m_NextDataAddress));
 

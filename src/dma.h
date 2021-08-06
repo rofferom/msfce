@@ -61,7 +61,7 @@ private:
         uint8_t m_BBusAddress;
         uint32_t m_ABusAddress;
 
-        uint16_t m_DMAByteCounter;
+        uint32_t m_DMAByteCounter;
     };
 
     static constexpr int kUnknownChannelId = -1;
@@ -97,7 +97,7 @@ private:
     void dmaChannelStart(int id, DmaChannel* channel, int *cycles);
     void dmaChannelContinue(int *cycles);
 
-    void incrementABusAddress(const DmaChannel* channel, uint32_t* aBusAddress);
+    void incrementABusAddress(int id, DmaChannel* channel, uint32_t* aBusAddress);
 
 private:
     std::shared_ptr<Scheduler> m_Scheduler;
