@@ -2261,6 +2261,7 @@ void Ppu::dumpToFile(FILE* f)
     fwrite(&m_MPY, sizeof(m_MPY), 1, f);
     fwrite(&m_Ppu1OpenBus, sizeof(m_Ppu1OpenBus), 1, f);
     fwrite(&m_Ppu2OpenBus, sizeof(m_Ppu2OpenBus), 1, f);
+    fwrite(&m_HVIRQ, sizeof(m_HVIRQ), 1, f);
 }
 
 void Ppu::loadFromFile(FILE* f)
@@ -2326,6 +2327,7 @@ void Ppu::loadFromFile(FILE* f)
     fread(&m_MPY, sizeof(m_MPY), 1, f);
     fread(&m_Ppu1OpenBus, sizeof(m_Ppu1OpenBus), 1, f);
     fread(&m_Ppu2OpenBus, sizeof(m_Ppu2OpenBus), 1, f);
+    fread(&m_HVIRQ, sizeof(m_HVIRQ), 1, f);
 }
 
 Ppu::WindowConfig::Config Ppu::getWindowConfig(uint32_t value) {
