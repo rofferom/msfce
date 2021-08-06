@@ -42,6 +42,10 @@ Membus::Membus(AddressingType addrType)
 
     m_Components[enumToInt(MemComponentType::ppu)].addrConverter = dropBankConverter;
     m_Components[enumToInt(MemComponentType::dma)].addrConverter = dropBankConverter;
+    m_Components[enumToInt(MemComponentType::apu)].addrConverter = dropBankConverter;
+    m_Components[enumToInt(MemComponentType::irq)].addrConverter = dropBankConverter;
+    m_Components[enumToInt(MemComponentType::joypads)].addrConverter = dropBankConverter;
+    m_Components[enumToInt(MemComponentType::indirectRam)].addrConverter = dropBankConverter;
 }
 
 void Membus::initLowRom()
