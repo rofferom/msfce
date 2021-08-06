@@ -429,6 +429,12 @@ uint8_t Ppu::readU8(uint32_t addr)
     case kRegMPYH:
         return (m_MPY >> 16) & 0xFF;
 
+    case kRegSTAT77:
+        return 1;
+
+    case kRegSTAT78:
+        return 0x63;
+
     default:
         LOGW(TAG, "Ignore ReadU8 at %06X", addr);
         assert(false);

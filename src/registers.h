@@ -98,6 +98,9 @@ constexpr size_t kRegTS = 0x212D;
 constexpr size_t kRegCGWSEL = 0x2130;
 constexpr size_t kRegCGADSUB = 0x2131;
 
+constexpr size_t kRegSTAT77 = 0x213E;
+constexpr size_t kRegSTAT78 = 0x213F;
+
 // APU registers
 constexpr size_t kRegApuStart = 0x2140;
 constexpr size_t kRegApuEnd = 0x2143;
