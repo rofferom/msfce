@@ -225,7 +225,7 @@ int Snes::renderSingleFrame(bool renderPpu)
     while (!scanEnded) {
         // DMA has priority over CPU
         if (m_Dma->getState() == SchedulerTask::State::running) {
-            if (m_Dma->getNextRunCycle() == m_MasterClock) {
+            if (m_Dma->getNextRunCycle() <= m_MasterClock) {
                 int dmaCycles = m_Dma->run();
 
                 if (dmaCycles > 0) {
@@ -242,7 +242,7 @@ int Snes::renderSingleFrame(bool renderPpu)
                     m_Cpu->setNextRunCycle(m_MasterClock + cpuSync);
                 }
             }
-        } else if (m_Cpu->getNextRunCycle() == m_MasterClock) {
+        } else if (m_Cpu->getNextRunCycle() <= m_MasterClock) {
             m_CpuTime.begin();
             int cpuCycles = m_Cpu->run();
             m_CpuTime.end();
@@ -250,8 +250,15 @@ int Snes::renderSingleFrame(bool renderPpu)
             m_Cpu->setNextRunCycle(m_MasterClock + cpuCycles);
         }
 
+        // Check if Joypad autoread is complete
+        if (m_JoypadAutoreadEndcycle && m_JoypadAutoreadEndcycle <= m_MasterClock) {
+            m_HVBJOY &= ~1; // Autoread
+            m_JoypadAutoreadEndcycle = 0;
+            m_ControllerPorts->readController();
+        }
+
         // Always run PPU
-        if (m_Ppu->getNextRunCycle() == m_MasterClock) {
+        if (m_Ppu->getNextRunCycle() <= m_MasterClock) {
             m_PpuTime.begin();
             int ppuCycles = m_Ppu->run();
             m_PpuTime.end();
@@ -284,12 +291,13 @@ int Snes::renderSingleFrame(bool renderPpu)
 
             if (ppuEvents & Ppu::Event_VBlankStart) {
                 m_Vblank = true;
-                m_HVBJOY |= 1 << 7;
+                m_HVBJOY |= 1 << 7; // Vblank
 
                 m_Dma->onVblank();
 
                 if (m_JoypadAutoread) {
-                    m_ControllerPorts->readController();
+                    m_HVBJOY |= 1; // Autoread
+                    m_JoypadAutoreadEndcycle = m_MasterClock + 4224;
                 }
 
                 // Dirty hack to avoid vblank to be retriggered
@@ -365,6 +373,8 @@ void Snes::saveState(const std::string& path)
     fwrite(&m_HVIRQ_H, sizeof(m_HVIRQ_H), 1, f);
     fwrite(&m_HVIRQ_V, sizeof(m_HVIRQ_V), 1, f);
     fwrite(&m_JoypadAutoread, sizeof(m_JoypadAutoread), 1, f);
+    fwrite(&m_JoypadAutoreadRunning, sizeof(m_JoypadAutoreadRunning), 1, f);
+    fwrite(&m_JoypadAutoreadEndcycle, sizeof(m_JoypadAutoreadEndcycle), 1, f);
     fwrite(&m_Vblank, sizeof(m_Vblank), 1, f);
     fwrite(&m_MasterClock, sizeof(m_MasterClock), 1, f);
 
@@ -394,6 +404,8 @@ void Snes::loadState(const std::string& path)
     fread(&m_HVIRQ_H, sizeof(m_HVIRQ_H), 1, f);
     fread(&m_HVIRQ_V, sizeof(m_HVIRQ_V), 1, f);
     fread(&m_JoypadAutoread, sizeof(m_JoypadAutoread), 1, f);
+    fread(&m_JoypadAutoreadRunning, sizeof(m_JoypadAutoreadRunning), 1, f);
+    fread(&m_JoypadAutoreadEndcycle, sizeof(m_JoypadAutoreadEndcycle), 1, f);
     fread(&m_Vblank, sizeof(m_Vblank), 1, f);
     fread(&m_MasterClock, sizeof(m_MasterClock), 1, f);
 
@@ -437,7 +449,7 @@ uint8_t Snes::readU8(uint32_t addr)
 
     case kRegTIMEUP: {
         uint8_t ret = m_HVIRQ_Flag << 7;
-        setHVIRQ_Flag(0);
+        setHVIRQ_Flag(false);
         return ret;
     }
 
@@ -464,7 +476,6 @@ void Snes::writeU8(uint32_t addr, uint8_t value)
                 static_cast<Ppu::HVIRQConfig>(m_HVIRQ_Config),
                 m_HVIRQ_H,
                 m_HVIRQ_V);
-            break;
         }
 
         // NMI
@@ -486,18 +497,48 @@ void Snes::writeU8(uint32_t addr, uint8_t value)
 
     case kRegisterHTIMEL:
         m_HVIRQ_H = (m_HVIRQ_H & 0xFF00) | value;
+
+        // FIXME: NTSC setting
+        m_HVIRQ_H = std::min(m_HVIRQ_H, static_cast<uint16_t>(339));
+
+        m_Ppu->setHVIRQConfig(
+            static_cast<Ppu::HVIRQConfig>(m_HVIRQ_Config),
+            m_HVIRQ_H,
+            m_HVIRQ_V);
+
         break;
 
     case kRegisterHTIMEH:
         m_HVIRQ_H = (m_HVIRQ_H & 0xFF) | (value << 8);
+
+        m_HVIRQ_H = std::min(m_HVIRQ_H, static_cast<uint16_t>(339));
+
+        m_Ppu->setHVIRQConfig(
+            static_cast<Ppu::HVIRQConfig>(m_HVIRQ_Config),
+            m_HVIRQ_H,
+            m_HVIRQ_V);
+
         break;
 
     case kRegisterVTIMEL:
         m_HVIRQ_V = (m_HVIRQ_V & 0xFF00) | value;
+
+        // FIXME: NTSC setting
+        m_HVIRQ_V = std::min(m_HVIRQ_V, static_cast<uint16_t>(261));
+
+        m_Ppu->setHVIRQConfig(
+            static_cast<Ppu::HVIRQConfig>(m_HVIRQ_Config),
+            m_HVIRQ_H,
+            m_HVIRQ_V);
         break;
 
     case kRegisterVTIMEH:
         m_HVIRQ_V = (m_HVIRQ_V & 0xFF) | (value << 8);
+
+        m_Ppu->setHVIRQConfig(
+            static_cast<Ppu::HVIRQConfig>(m_HVIRQ_Config),
+            m_HVIRQ_H,
+            m_HVIRQ_V);
         break;
     }
 }

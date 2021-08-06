@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "log.h"
 #include "registers.h"
 #include "wram.h"
@@ -11,18 +12,18 @@ Wram::Wram() : BufferMemComponent(
 }
 
 IndirectWram::IndirectWram(const std::shared_ptr<Wram>& wram)
-    : MemComponent(MemComponentType::indirectRam)
+    : MemComponent(MemComponentType::indirectRam),
+      m_Wram(wram)
 {
 }
 
 uint8_t IndirectWram::readU8(uint32_t addr)
 {
-    auto ret = m_Wram->readU8(m_Address);
-
     switch (addr) {
     case kRegisterWMDATA: {
         auto value = m_Wram->readU8(m_Address);
         m_Address++;
+        m_Address &= 0x1ffff;
         return value;
     }
 
@@ -38,22 +39,24 @@ void IndirectWram::writeU8(uint32_t addr, uint8_t value)
     case kRegisterWMDATA: {
         m_Wram->writeU8(m_Address, value);
         m_Address++;
+        m_Address &= 0x1ffff;
         break;
     }
 
     case kRegisterWMADDL:
-        m_Address &= 0xFFFF00;
+        m_Address &= 0x1FFF00;
         m_Address |= value;
         break;
  
     case kRegisterWMADDM:
-        m_Address &= 0xFF00FF;
+        m_Address &= 0x1F00FF;
         m_Address |= value << 8;
         break;
 
     case kRegisterWMADDH:
         m_Address &= 0xFFFF;
         m_Address |= value << 16;
+        m_Address &= 0x1ffff;
         break;
 
     default:

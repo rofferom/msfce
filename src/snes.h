@@ -107,6 +107,8 @@ private:
 
     // Joypad interrupt
     bool m_JoypadAutoread = false;
+    bool m_JoypadAutoreadRunning = false;
+    uint64_t m_JoypadAutoreadEndcycle = 0;
 
     // IRQ
     bool m_Vblank = false;

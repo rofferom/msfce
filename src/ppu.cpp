@@ -1327,7 +1327,6 @@ int Ppu::run()
             // New line
             initLineRender(m_RenderY);
             renderDot(m_RenderX, m_RenderY);
-            setHVIRQ(m_RenderX, m_RenderY);
 
             m_Events |= Event_HBlankEnd;
         }
@@ -1341,9 +1340,9 @@ int Ppu::run()
         // V-Blank
     } else {
         renderDot(m_RenderX, m_RenderY);
-        setHVIRQ(m_RenderX, m_RenderY);
     }
 
+    setHVIRQ(m_RenderX, m_RenderY);
     m_RenderX++;
 
     if (m_RenderX == kPpuScanWidth) {
