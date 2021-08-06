@@ -59,6 +59,10 @@ uint8_t ControllerPorts::readU8(uint32_t addr)
     case kRegisterJoy2H:
     case kRegisterJoyA:
     case kRegisterJoyB:
+    case kRegisterJoy3L:
+    case kRegisterJoy3H:
+    case kRegisterJoy4L:
+    case kRegisterJoy4H:
         return 0;
 
     default:
@@ -70,7 +74,17 @@ uint8_t ControllerPorts::readU8(uint32_t addr)
 
 void ControllerPorts::writeU8(uint32_t addr, uint8_t value)
 {
-    LOGW(TAG, "Ignore WriteU8 %02X at %06X", value, addr);
+    switch (addr) {
+    case kRegisterJoyWr:
+    case kRegisterJoyWrio:
+        break;
+
+    default:
+        LOGW(TAG, "Ignore WriteU8 %02X at %06X", value, addr);
+        assert(false);
+        break;
+    }
+
 }
 
 void ControllerPorts::setController1(const SnesController& controller)

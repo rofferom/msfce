@@ -138,6 +138,12 @@ constexpr size_t kRegisterJoy1H = 0x4219;
 constexpr size_t kRegisterJoy2L = 0x421A;
 constexpr size_t kRegisterJoy2H = 0x421B;
 
+constexpr size_t kRegisterJoy3L = 0x421C;
+constexpr size_t kRegisterJoy3H = 0x421D;
+
+constexpr size_t kRegisterJoy4L = 0x421E;
+constexpr size_t kRegisterJoy4H = 0x421F;
+
 // Maths registers
 constexpr size_t kRegisterWRMPYA = 0x4202;
 constexpr size_t kRegisterWRMPYB = 0x4203;
