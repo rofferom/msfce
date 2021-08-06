@@ -1572,23 +1572,6 @@ void Ppu::initScreenRender()
         renderBg->bgIdx = bgIdx;
         renderBg->background = bg;
 
-        // Compute some dimensions that will be ready for future use
-        getTileDimension(bg->m_TileSize, &renderBg->tileWidth, &renderBg->tileHeight);
-        renderBg->tileWidthPixel = renderBg->tileWidth * kPpuBaseTileWidth;
-        renderBg->tileHeightPixel = renderBg->tileHeight * kPpuBaseTileHeight;
-
-        getTilemapDimension(bg->m_TilemapSize, &renderBg->tilemapWidth, &renderBg->tilemapHeight);
-        renderBg->tilemapWidthPixel = renderBg->tilemapWidth * renderBg->tileWidthPixel;
-        renderBg->tilemapHeightPixel = renderBg->tilemapHeight * renderBg->tileHeightPixel;
-
-        renderBg->tileBpp = getTileBppFromMode(m_Bgmode, bgIdx);
-
-        // Compute the tile size in bytes. Tiles are always 8x8.
-        // 16x16 tiles are just a composition of multiple 8x8 tiles.
-        renderBg->tileSize = renderBg->tileBpp * 8;
-
-        renderBg->tilemapMapper = getTilemapMapper(bg->m_TilemapSize);
-
         // Setup mosaic if enabled
         if (m_Mosaic.m_Size > 1 && m_Mosaic.m_Backgrounds[bgIdx]) {
             renderBg->mosaic.startX = 1;
@@ -1642,6 +1625,23 @@ void Ppu::initLineRender(int y)
         } else {
             renderY = y;
         }
+
+        // Compute some dimensions that will be ready for future use
+        getTileDimension(bg->m_TileSize, &renderBg->tileWidth, &renderBg->tileHeight);
+        renderBg->tileWidthPixel = renderBg->tileWidth * kPpuBaseTileWidth;
+        renderBg->tileHeightPixel = renderBg->tileHeight * kPpuBaseTileHeight;
+
+        getTilemapDimension(bg->m_TilemapSize, &renderBg->tilemapWidth, &renderBg->tilemapHeight);
+        renderBg->tilemapWidthPixel = renderBg->tilemapWidth * renderBg->tileWidthPixel;
+        renderBg->tilemapHeightPixel = renderBg->tilemapHeight * renderBg->tileHeightPixel;
+
+        renderBg->tileBpp = getTileBppFromMode(m_Bgmode, renderBg->bgIdx);
+
+        // Compute the tile size in bytes. Tiles are always 8x8.
+        // 16x16 tiles are just a composition of multiple 8x8 tiles.
+        renderBg->tileSize = renderBg->tileBpp * 8;
+
+        renderBg->tilemapMapper = getTilemapMapper(bg->m_TilemapSize);
 
         // Compute background start coordinates in pixels at first
         int bgX = bg->m_HOffset % renderBg->tilemapWidthPixel;
