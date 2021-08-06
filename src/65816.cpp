@@ -3619,7 +3619,7 @@ void Cpu65816::handleAbsoluteIndirect(
     m_Registers.PC += 2;
 
     uint32_t address = (m_Registers.DB << 16) | rawData;
-    address = (m_Registers.DB << 16) | m_Membus->readU16(address, cycles);
+    address = (m_Registers.PB << 16) | m_Membus->readU16(address, cycles);
 
     *data = address;
 
