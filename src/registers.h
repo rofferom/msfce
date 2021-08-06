@@ -98,6 +98,10 @@ constexpr size_t kRegTS = 0x212D;
 constexpr size_t kRegCGWSEL = 0x2130;
 constexpr size_t kRegCGADSUB = 0x2131;
 
+constexpr size_t kRegSLHV = 0x2137;
+constexpr size_t kRegOPHCT = 0x213C;
+constexpr size_t kRegOPVCT = 0x213D;
+
 constexpr size_t kRegSTAT77 = 0x213E;
 constexpr size_t kRegSTAT78 = 0x213F;
 

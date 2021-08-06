@@ -429,10 +429,43 @@ uint8_t Ppu::readU8(uint32_t addr)
     case kRegMPYH:
         return (m_MPY >> 16) & 0xFF;
 
+    case kRegSLHV:
+        m_HPos = m_RenderX;
+        m_VPos = m_RenderY;
+        return 0;
+
+    case kRegOPHCT: {
+        uint8_t value;
+
+        if (m_HPosReadFlip) {
+            value = m_HPos >> 8;
+        } else {
+            value = m_HPos & 0xFF;
+        }
+
+        m_HPosReadFlip ^= 1;
+        return value;
+    }
+
+    case kRegOPVCT: {
+        uint8_t value;
+
+        if (m_VPosReadFlip) {
+            value = m_VPos >> 8;
+        } else {
+            value = m_VPos & 0xFF;
+        }
+
+        m_VPosReadFlip ^= 1;
+        return value;
+    }
+
     case kRegSTAT77:
         return 1;
 
     case kRegSTAT78:
+        m_HPosReadFlip = 0;
+        m_VPosReadFlip = 0;
         return 0x63;
 
     default:
@@ -2017,6 +2050,10 @@ void Ppu::dumpToFile(FILE* f)
 
     fwrite(&m_ForcedBlanking, sizeof(m_ForcedBlanking), 1, f);
     fwrite(&m_Brightness, sizeof(m_Brightness), 1, f);
+    fwrite(&m_HPos, sizeof(&m_HPos), 1, f);
+    fwrite(&m_HPosReadFlip, sizeof(&m_HPosReadFlip), 1, f);
+    fwrite(&m_VPos, sizeof(&m_VPos), 1, f);
+    fwrite(&m_VPosReadFlip, sizeof(&m_VPosReadFlip), 1, f);
     fwrite(&m_VramIncrementHigh, sizeof(m_VramIncrementHigh), 1, f);
     fwrite(&m_VramIncrementStep, sizeof(m_VramIncrementStep), 1, f);
     fwrite(m_Vram, sizeof(m_Vram), 1, f);
@@ -2074,6 +2111,10 @@ void Ppu::loadFromFile(FILE* f)
 
     fread(&m_ForcedBlanking, sizeof(m_ForcedBlanking), 1, f);
     fread(&m_Brightness, sizeof(m_Brightness), 1, f);
+    fread(&m_HPos, sizeof(&m_HPos), 1, f);
+    fread(&m_HPosReadFlip, sizeof(&m_HPosReadFlip), 1, f);
+    fread(&m_VPos, sizeof(&m_VPos), 1, f);
+    fread(&m_VPosReadFlip, sizeof(&m_VPosReadFlip), 1, f);
     fread(&m_VramIncrementHigh, sizeof(m_VramIncrementHigh), 1, f);
     fread(&m_VramIncrementStep, sizeof(m_VramIncrementStep), 1, f);
     fread(m_Vram, sizeof(m_Vram), 1, f);

@@ -303,6 +303,13 @@ private:
         uint16_t m_V = 0;
     } m_HVIRQ;
 
+    // Position reader
+    uint16_t m_HPos = 0;
+    uint8_t m_HPosReadFlip = 0;
+
+    uint16_t m_VPos = 0;
+    uint8_t m_VPosReadFlip = 0;
+
     // VRAM
     bool m_VramIncrementHigh = false;
     uint8_t m_VramIncrementStep = 0;
