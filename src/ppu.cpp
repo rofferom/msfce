@@ -707,6 +707,7 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegOAMADDL:
         m_OamAddress = (m_OamAddress & 0x100) | value;
         m_OamAddress &= 0x1FF;
+        m_OamAddressReload = m_OamAddress;
 
         m_OamHighestPriorityObj = value >> 1;
         m_OamFlip = 0;
@@ -715,6 +716,7 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegOAMADDH:
         m_OamAddress = ((value & 1) << 8) | (m_OamAddress & 0xFF);
         m_OamAddress &= 0x1FF;
+        m_OamAddressReload = m_OamAddress;
 
         m_OamForcedPriority = value >> 7;
         m_OamFlip = 0;
@@ -1513,6 +1515,7 @@ int Ppu::run()
         } else if (m_RenderY == kPpuDisplayHeight) {
             // V-Blank
             m_Events |= Event_VBlankStart;
+            m_OamAddress = m_OamAddressReload;
         } else if (m_RenderY < kPpuDisplayHeight) {
             // New line
             initLineRender(m_RenderY);
@@ -2216,6 +2219,7 @@ void Ppu::dumpToFile(FILE* f)
     fwrite(&m_CgramLsb, sizeof(m_CgramLsb), 1, f);
     fwrite(&m_Oam, sizeof(m_Oam), 1, f);
     fwrite(&m_OamAddress, sizeof(m_OamAddress), 1, f);
+    fwrite(&m_OamAddressReload, sizeof(m_OamAddressReload), 1, f);
     fwrite(&m_OamHighestPriorityObj, sizeof(m_OamHighestPriorityObj), 1, f);
     fwrite(&m_OamForcedPriority, sizeof(m_OamForcedPriority), 1, f);
     fwrite(&m_OamFlip, sizeof(m_OamFlip), 1, f);
@@ -2280,6 +2284,7 @@ void Ppu::loadFromFile(FILE* f)
     fread(&m_CgramLsb, sizeof(m_CgramLsb), 1, f);
     fread(&m_Oam, sizeof(m_Oam), 1, f);
     fread(&m_OamAddress, sizeof(m_OamAddress), 1, f);
+    fread(&m_OamAddressReload, sizeof(m_OamAddressReload), 1, f);
     fread(&m_OamHighestPriorityObj, sizeof(m_OamHighestPriorityObj), 1, f);
     fread(&m_OamForcedPriority, sizeof(m_OamForcedPriority), 1, f);
     fread(&m_OamFlip, sizeof(m_OamFlip), 1, f);

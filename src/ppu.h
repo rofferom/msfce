@@ -332,6 +332,7 @@ private:
     // OAM (sprites)
     uint8_t m_Oam[2 * 256 + 32];
     uint16_t m_OamAddress = 0;
+    uint16_t m_OamAddressReload = 0;
     int m_OamHighestPriorityObj = 0;
     int m_OamForcedPriority = 0;
 
