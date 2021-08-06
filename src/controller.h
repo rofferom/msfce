@@ -38,7 +38,17 @@ public:
     void loadFromFile(FILE* f);
 
 private:
-    SnesController m_Controller1;
+    static uint16_t packController(const SnesController& controller);
+
+private:
+    // Local controller state (set by Frontend)
+    SnesController m_Controller1_State;
+
+    // Manual read
+    bool m_Controller1_Strobe = false;
+    uint16_t m_Controller1_ReadReg = 0xFFFF;
+
+    // Automatic read
     uint16_t m_Joypad1Register = 0;
 };
 
