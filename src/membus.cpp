@@ -19,6 +19,8 @@ Membus::Membus(AddressingType addrType)
 {
     if (addrType == AddressingType::lowrom) {
         initLowRom();
+    } else if (addrType == AddressingType::highrom) {
+        initHighRom();
     } else {
         assert(false);
     }
@@ -36,9 +38,16 @@ Membus::Membus(AddressingType addrType)
         }
     };
 
-    m_Components[enumToInt(MemComponentType::ppu)].addrConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
+    auto dropBankConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
         return offset;
     };
+
+    m_Components[enumToInt(MemComponentType::ppu)].addrConverter = dropBankConverter;
+    m_Components[enumToInt(MemComponentType::dma)].addrConverter = dropBankConverter;
+    m_Components[enumToInt(MemComponentType::apu)].addrConverter = dropBankConverter;
+    m_Components[enumToInt(MemComponentType::irq)].addrConverter = dropBankConverter;
+    m_Components[enumToInt(MemComponentType::joypads)].addrConverter = dropBankConverter;
+    m_Components[enumToInt(MemComponentType::indirectRam)].addrConverter = dropBankConverter;
 }
 
 void Membus::initLowRom()
@@ -75,8 +84,10 @@ void Membus::initLowRom()
 
     // Plug LowRom specific address converters
     m_Components[enumToInt(MemComponentType::rom)].addrConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
-        if (bank <= 0x7D) {
+        if (bank <= 0x7D && offset >= 0x8000) {
             return bank * 0x8000 + (offset - 0x8000);
+        } else if (0x40 <= bank && bank <= 0x6F && offset < 0x8000) {
+            return bank * 0x8000 + offset;
         } else if (bank >= 0xFE) {
             return (bank - 0xFE + 0x7E) * 0x8000 + (offset - 0x8000);
         } else {
@@ -91,6 +102,59 @@ void Membus::initLowRom()
         } else {
             return (bank - kSramBankStart) * 0x8000 + offset;
         }
+    };
+}
+
+void Membus::initHighRom()
+{
+    // Fill "real" mapping
+    for (const auto& component: s_HighRomMap.components) {
+        for (int i = component.bankStart; i <= component.bankEnd; i++) {
+            if (m_Banks[i].type == BankType::invalid) {
+                m_Banks[i].type = BankType::direct;
+            } else {
+                assert(m_Banks[i].type == BankType::direct);
+            }
+
+            m_Banks[i].ranges.push_back(&component);
+
+            // Fill SystemArea LUT
+            if (i <= 0x3F && component.offsetEnd <= 0x7FFF) {
+                for (int offset = component.offsetStart; offset <= component.offsetEnd; offset++) {
+                    m_SystemArea[offset] = &component;
+                }
+            }
+        }
+    }
+
+    // Fill mirroring info
+    for (const auto& mirror: s_HighRomMap.mirrors) {
+        assert(mirror.srcBankEnd - mirror.srcBankStart == mirror.targetBankEnd - mirror.targetBankStart);
+
+        for (int i = mirror.srcBankStart; i <= mirror.srcBankEnd; i++) {
+            m_Banks[i].type = BankType::mirrored;
+            m_Banks[i].targetBank = mirror.targetBankStart + (i - mirror.srcBankStart);
+        }
+    }
+
+    // Plug LowRom specific address converters
+    m_Components[enumToInt(MemComponentType::rom)].addrConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
+        if (bank <= 0x3F) {
+            return (bank << 16) + offset;
+        } else if (0x80 <= bank && bank <= 0xBF) {
+            return ((bank - 0x80) << 16) + offset;
+        } else if (0x40 <= bank && bank <= 0x7D) {
+            return ((bank - 0x40) << 16) + offset;
+        } else if (bank >= 0xC0) {
+            return ((bank - 0xC0) << 16) + offset;
+        } else {
+            assert(false);
+            return 0;
+        }
+    };
+
+    m_Components[enumToInt(MemComponentType::sram)].addrConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
+        return (bank - 0x20) * 0x2000 + offset - 0x6000;
     };
 }
 
@@ -218,8 +282,8 @@ uint16_t Membus::readU16(uint32_t addr, int *cycles)
     }
 
     assert(component->ptr);
-    return (component->ptr->readU8(finalAddr + 1) << 8)
-          | component->ptr->readU8(finalAddr);
+    return (component->ptr->readU8(finalAddr)
+          | component->ptr->readU8(finalAddr + 1) << 8);
 }
 
 uint32_t Membus::readU24(uint32_t addr, int *cycles)
@@ -250,9 +314,9 @@ uint32_t Membus::readU24(uint32_t addr, int *cycles)
     }
 
     assert(component->ptr);
-    return (component->ptr->readU8(finalAddr + 2) << 16)
+    return component->ptr->readU8(finalAddr)
          | (component->ptr->readU8(finalAddr + 1) << 8)
-         |  component->ptr->readU8(finalAddr);
+         | (component->ptr->readU8(finalAddr + 2) << 16);
 }
 
 void Membus::writeU8(uint32_t addr, uint8_t value, int *cycles)
@@ -357,6 +421,7 @@ const Membus::MemoryMap Membus::s_LowRomMap = {
 
         // ROM (cycles are computed in a different way)
         { 0x00, 0x7D, 0x8000, 0xFFFF, MemComponentType::rom, kComponentAccessR, 0 },
+        { 0x40, 0x6F, 0x0000, 0x7FFF, MemComponentType::rom, kComponentAccessR, 0 },
         { 0xFE, 0xFF, 0x8000, 0xFFFF, MemComponentType::rom, kComponentAccessR, 0 },
 
         // SRAM
@@ -378,3 +443,58 @@ const Membus::MemoryMap Membus::s_LowRomMap = {
     },
 };
 
+const Membus::MemoryMap Membus::s_HighRomMap = {
+    // Components
+    {
+        // WRAM direct access
+        { 0x00, 0x3F, 0x0000, 0x1FFF, MemComponentType::ram, kComponentAccessRW, kTimingRamAccess },
+        { 0x7E, 0x7F, 0x0000, 0xFFFF, MemComponentType::ram, kComponentAccessRW, kTimingRamAccess },
+
+        // WRAM indirect access
+        { 0x00, 0x3F, 0x2180, 0x2180, MemComponentType::indirectRam, kComponentAccessRW, kTimingRamAccess },
+        { 0x00, 0x3F, 0x2181, 0x2183, MemComponentType::indirectRam, kComponentAccessW, kTimingRamAccess },
+
+        // PPU
+        { 0x00, 0x3F, 0x2100, 0x2133, MemComponentType::ppu, kComponentAccessW, kTimingIoFastAccess },
+        { 0x00, 0x3F, 0x2134, 0x213F, MemComponentType::ppu, kComponentAccessR, kTimingIoFastAccess },
+
+        // APU
+        { 0x00, 0x3F, 0x2140, 0x217F, MemComponentType::apu, kComponentAccessRW, kTimingIoFastAccess },
+
+        // DMA
+        { 0x00, 0x3F, 0x4300, 0x437F, MemComponentType::dma, kComponentAccessRW, kTimingIoFastAccess },
+        { 0x00, 0x3F, 0x420B, 0x420C, MemComponentType::dma, kComponentAccessRW, kTimingIoFastAccess },
+
+        // Maths
+        { 0x00, 0x3F, 0x4202, 0x4206, MemComponentType::maths, kComponentAccessW, kTimingIoFastAccess },
+        { 0x00, 0x3F, 0x4214, 0x4217, MemComponentType::maths, kComponentAccessR, kTimingIoFastAccess },
+
+        // IRQ configuration
+        { 0x00, 0x3F, 0x4200, 0x4200, MemComponentType::irq, kComponentAccessRW, kTimingIoFastAccess },
+        { 0x00, 0x3F, 0x4207, 0x420A, MemComponentType::irq, kComponentAccessRW, kTimingIoFastAccess },
+        { 0x00, 0x3F, 0x4210, 0x4212, MemComponentType::irq, kComponentAccessRW, kTimingIoFastAccess },
+
+        // ROM (cycles are computed in a different way)
+        { 0x00, 0x3F, 0x8000, 0xFFFF, MemComponentType::rom, kComponentAccessR, 0 },
+        { 0x40, 0x7D, 0x0000, 0xFFFF, MemComponentType::rom, kComponentAccessR, 0 },
+        { 0xFE, 0xFF, 0x0000, 0xFFFF, MemComponentType::rom, kComponentAccessR, 0 },
+
+        // SRAM
+        { 0x20, 0x3F, 0x6000, 0x7FFF, MemComponentType::sram, kComponentAccessRW, kTimingRamAccess },
+
+        // Membus
+        { 0x00, 0x3F, 0x420D, 0x420D, MemComponentType::membus, kComponentAccessRW, kTimingIoFastAccess },
+
+        // Joypad
+        { 0x00, 0x3F, 0x4016, 0x4017, MemComponentType::joypads, kComponentAccessRW, kTimingIoSlowAccess },
+        { 0x00, 0x3F, 0x4201, 0x4201, MemComponentType::joypads, kComponentAccessRW, kTimingIoFastAccess },
+        { 0x00, 0x3F, 0x4213, 0x4213, MemComponentType::joypads, kComponentAccessRW, kTimingIoFastAccess },
+        { 0x00, 0x3F, 0x4218, 0x421F, MemComponentType::joypads, kComponentAccessRW, kTimingIoFastAccess },
+    },
+    // Mirrors (src bank => target bank)
+    {
+        { 0x80, 0x9F, 0x00, 0x1F },
+        { 0xA0, 0xBF, 0x20, 0x3F },
+        { 0xC0, 0xFD, 0x40, 0x7D },
+    },
+};

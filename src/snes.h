@@ -19,6 +19,8 @@ class Maths;
 class Ppu;
 class Wram;
 
+enum class AddressingType;
+
 class Snes : public MemComponent, public Scheduler, public std::enable_shared_from_this<Snes> {
 public:
     Snes();
@@ -45,7 +47,7 @@ public:
     void writeU8(uint32_t addr, uint8_t value) override;
 
 private:
-    int loadRom(const char* romPath, std::vector<uint8_t>* outRom);
+    int scoreHeader(uint32_t address);
 
     void loadSram();
     void saveSram();
@@ -79,7 +81,8 @@ private:
 
     // Rom
     std::string m_RomBasename;
-    std::vector<uint8_t> romData;
+    std::vector<uint8_t> m_RomData;
+    AddressingType m_AddressingType;
 
     // Components
     std::shared_ptr<Wram> m_Ram;
