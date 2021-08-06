@@ -2248,6 +2248,10 @@ void Ppu::renderDotMode7(int x, int y)
 
 uint32_t Ppu::renderGetColorMode7(int x, int y)
 {
+    if (!m_MainScreenConfig.m_BgEnabled[0]) {
+        return 0;
+    }
+
     if (m_M7HFlip) {
         x = kPpuDisplayWidth - x;
     }
