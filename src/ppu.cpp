@@ -2239,7 +2239,8 @@ void Ppu::renderDotMode7(int x, int y)
 
     // Get final color
     if (colorValid) {
-        const auto color = rawColorToRgb(rawColor);
+        auto color = rawColorToRgb(rawColor);
+        applyBrightness(&color, m_Brightness);
         m_RenderCb(color);
     } else {
         m_RenderCb({0, 0, 0});
