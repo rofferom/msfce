@@ -97,7 +97,7 @@ private:
     void dmaChannelStart(int id, DmaChannel* channel, int *cycles);
     void dmaChannelContinue(int *cycles);
 
-    void incrementABusAddress(const DmaChannel* channel, uint32_t* aBusAddress);
+    void incrementABusAddress(int id, DmaChannel* channel, uint32_t* aBusAddress);
 
 private:
     std::shared_ptr<Scheduler> m_Scheduler;
