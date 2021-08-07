@@ -717,7 +717,7 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
 
     // OAM registers
     case kRegOBJSEL:
-        m_ObjSize = (value >> 5) & 0b11;
+        m_ObjSize = (value >> 5) & 0b111;
 
         m_ObjGapSize = convert4kWorkStep((value >> 3) & 0b11);
         m_ObjBase = convert8kWorkStep(value & 0b111);
