@@ -1326,6 +1326,11 @@ bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, 
         return false;
     }
 
+    // Check if Sprites are enabled
+    if (!screenConfig.m_ObjEnabled) {
+        return false;
+    }
+
     // Check if background is inside window
     bool pixelInWindow = false;
 
