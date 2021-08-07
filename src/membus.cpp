@@ -239,6 +239,9 @@ uint8_t Membus::readU8(uint32_t addr, int *cycles)
     component = getComponentFromAddr(addr, &type, &bank, &offset, cycles, kComponentAccessR);
     if (type == MemComponentType::membus) {
         return internalReadU8(addr);
+    } else if (type == MemComponentType::sram && !component->ptr) {
+        // Handle games that don't have SRAM
+        return 0;
     } else if (!component) {
         assert(false);
         return 0;
@@ -266,6 +269,9 @@ uint16_t Membus::readU16(uint32_t addr, int *cycles)
     component = getComponentFromAddr(addr, &type, &bank, &offset, &singleAccessCycles, kComponentAccessR);
     if (type == MemComponentType::membus) {
         return internalReadU8(addr);
+    } else if (type == MemComponentType::sram && !component->ptr) {
+        // Handle games that don't have SRAM
+        return 0;
     } else if (!component) {
         assert(false);
         return 0;
@@ -298,6 +304,9 @@ uint32_t Membus::readU24(uint32_t addr, int *cycles)
     component = getComponentFromAddr(addr, &type, &bank, &offset, &singleAccessCycles, kComponentAccessR);
     if (type == MemComponentType::membus) {
         return internalReadU8(addr);
+    } else if (type == MemComponentType::sram && !component->ptr) {
+        // Handle games that don't have SRAM
+        return 0;
     } else if (!component) {
         assert(false);
         return 0;
@@ -331,6 +340,9 @@ void Membus::writeU8(uint32_t addr, uint8_t value, int *cycles)
     if (type == MemComponentType::membus) {
         internalWriteU8(addr, value);
         return;
+    } else if (type == MemComponentType::sram && !component->ptr) {
+        // Handle games that don't have SRAM
+        return;
     } else if (!component) {
         assert(false);
         return;
@@ -358,6 +370,9 @@ void Membus::writeU16(uint32_t addr, uint16_t value, int *cycles)
     component = getComponentFromAddr(addr, &type, &bank, &offset, &singleAccessCycles, kComponentAccessW);
     if (type == MemComponentType::membus) {
         internalWriteU8(addr, value);
+        return;
+    } else if (type == MemComponentType::sram && !component->ptr) {
+        // Handle games that don't have SRAM
         return;
     } else if (!component) {
         assert(false);
