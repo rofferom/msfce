@@ -395,12 +395,16 @@ uint16_t translateVramAddress(uint16_t address, uint8_t translate)
 
 // Background priority charts
 const Ppu::LayerPriority Ppu::s_LayerPriorityMode0[] = {
+    {Layer::sprite,    -1, 3},
     {Layer::background, 0, 1},
     {Layer::background, 1, 1},
+    {Layer::sprite,    -1, 2},
     {Layer::background, 0, 0},
     {Layer::background, 1, 0},
+    {Layer::sprite,    -1, 1},
     {Layer::background, 2, 1},
     {Layer::background, 3, 1},
+    {Layer::sprite,    -1, 0},
     {Layer::background, 2, 1},
     {Layer::background, 3, 0},
 
