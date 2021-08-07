@@ -315,6 +315,7 @@ private:
 
     // VRAM
     bool m_VramIncrementHigh = false;
+    uint8_t m_VramAddressTranslate = 0;
     uint8_t m_VramIncrementStep = 0;
     uint8_t m_Vram[64 * 1024];
     uint16_t m_VramAddress = 0;

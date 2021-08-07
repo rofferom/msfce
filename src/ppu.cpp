@@ -369,6 +369,28 @@ void getSpriteSize(uint8_t obselSize, uint8_t objSize, int* width, int* height)
     }
 }
 
+uint16_t translateVramAddress(uint16_t address, uint8_t translate)
+{
+    if (translate == 1) {
+        const int X = address & 0b11111;
+        const int Y = (address >> 5) & 0b111;
+
+        return ((address & 0xFF00) | (X << 3) | Y) * 2;
+    } else if (translate == 2) {
+        const int X = address & 0b111111;
+        const int Y = (address >> 6) & 0b111;
+
+        return ((address & 0xFE00) | (X << 3) | Y) * 2;
+    } else if (translate == 3) {
+        const int X = address & 0b1111111;
+        const int Y = (address >> 7) & 0b111;
+
+        return ((address & 0xFC00) | (X << 3) | Y) * 2;
+    } else {
+        return address * 2;
+    }
+}
+
 } // anonymous namespace
 
 // Background priority charts
@@ -634,17 +656,14 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegVMAIN:
         LOGD(TAG, "VMAIN <= 0x%02X", value);
         m_VramIncrementHigh = value >> 7;
-
-        // Some mode are not supported yet
-        assert(!((value >> 2) & 0b11));
-
+        m_VramAddressTranslate = (value >> 2) & 0b11;
         m_VramIncrementStep = value & 0b11;
         break;
 
     case kRegVMADDL: {
         m_VramAddress = (m_VramAddress & 0xFF00) | value;
 
-        uint16_t address = m_VramAddress * 2;
+        uint16_t address = translateVramAddress(m_VramAddress, m_VramAddressTranslate);
         m_VramPrefetch = (m_Vram[address + 1] << 8) | m_Vram[address];
         break;
     }
@@ -652,13 +671,13 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegVMADDH: {
         m_VramAddress = (m_VramAddress & 0xFF) | (value << 8);
 
-        uint16_t address = m_VramAddress * 2;
+        uint16_t address = translateVramAddress(m_VramAddress, m_VramAddressTranslate);
         m_VramPrefetch = (m_Vram[address + 1] << 8) | m_Vram[address];
         break;
     }
 
     case kRegVMDATAL: {
-        uint16_t address = m_VramAddress * 2;
+        uint16_t address = translateVramAddress(m_VramAddress, m_VramAddressTranslate);
         m_Vram[address] = value;
 
         if (!m_VramIncrementHigh) {
@@ -668,8 +687,8 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     }
 
     case kRegVMDATAH: {
-        uint16_t address = m_VramAddress * 2 + 1;
-        m_Vram[address] = value;
+        uint16_t address = translateVramAddress(m_VramAddress, m_VramAddressTranslate);
+        m_Vram[address + 1] = value;
 
         if (m_VramIncrementHigh) {
             incrementVramAddress();
@@ -2214,6 +2233,7 @@ void Ppu::dumpToFile(FILE* f)
     fwrite(&m_VPos, sizeof(&m_VPos), 1, f);
     fwrite(&m_VPosReadFlip, sizeof(&m_VPosReadFlip), 1, f);
     fwrite(&m_VramIncrementHigh, sizeof(m_VramIncrementHigh), 1, f);
+    fwrite(&m_VramAddressTranslate, sizeof(m_VramAddressTranslate), 1, f);
     fwrite(&m_VramIncrementStep, sizeof(m_VramIncrementStep), 1, f);
     fwrite(m_Vram, sizeof(m_Vram), 1, f);
     fwrite(&m_VramAddress, sizeof(m_VramAddress), 1, f);
@@ -2280,6 +2300,7 @@ void Ppu::loadFromFile(FILE* f)
     fread(&m_VPos, sizeof(&m_VPos), 1, f);
     fread(&m_VPosReadFlip, sizeof(&m_VPosReadFlip), 1, f);
     fread(&m_VramIncrementHigh, sizeof(m_VramIncrementHigh), 1, f);
+    fread(&m_VramAddressTranslate, sizeof(m_VramAddressTranslate), 1, f);
     fread(&m_VramIncrementStep, sizeof(m_VramIncrementStep), 1, f);
     fread(m_Vram, sizeof(m_Vram), 1, f);
     fread(&m_VramAddress, sizeof(m_VramAddress), 1, f);
