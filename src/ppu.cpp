@@ -994,7 +994,7 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
 
     case kRegCGADSUB:
         m_ColorMathOperation = (value >> 6) & 0b11;
-        m_ColorMathBackdrop = (value >> 5) & 0b11;
+        m_ColorMathBackdrop = (value >> 5) & 0b1;
 
         for (int i = 0; i < kBackgroundCount; i++) {
             m_ColorMathBackground[i] = (value >> i) & 1;
@@ -1852,17 +1852,6 @@ void Ppu::renderDot(int x, int y)
 
         // Repack into raw color + saturate
         rawColor = splittedMainColor.toU32();
-
-        // Use backdrop colors if required
-        // 1. MainScreen
-        // 2. SubScreen
-        if (!rawColor) {
-            rawColor = getMainBackdropColor();
-
-            if (!rawColor) {
-                rawColor = m_SubscreenBackdrop;
-            }
-        }
     } else if (!colorValid) {
         rawColor = getMainBackdropColor();
     }
