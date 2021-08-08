@@ -995,6 +995,7 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegCGADSUB:
         m_ColorMathOperation = (value >> 6) & 0b11;
         m_ColorMathBackdrop = (value >> 5) & 0b1;
+        m_ColorMathObj = (value >> 4) & 0b1;
 
         for (int i = 0; i < kBackgroundCount; i++) {
             m_ColorMathBackground[i] = (value >> i) & 1;
@@ -1233,26 +1234,39 @@ bool Ppu::getScreenCurrentPixel(
     int y,
     const ScreenConfig& screenConfig,
     uint32_t* color,
-    Ppu::LayerPriority* priority)
+    BgColorProp* colorProp)
 {
-    bool colorValid = false;
-
-    for (size_t prioIdx = 0; !colorValid && m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
+    for (size_t prioIdx = 0; m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
         const auto& layer = m_RenderLayerPriority[prioIdx];
 
         if (layer.m_Layer == Layer::background) {
             RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
-            colorValid = getBackgroundCurrentPixel(x, screenConfig, renderBg, layer.m_Priority, color);
-        } else if (layer.m_Layer == Layer::sprite) {
-            colorValid = getSpriteCurrentPixel(x, y, screenConfig, layer.m_Priority, color);
-        }
+            bool colorValid = getBackgroundCurrentPixel(x, screenConfig, renderBg, layer.m_Priority, color);
 
-        if (colorValid && priority) {
-            *priority = layer;
+            if (colorValid) {
+                if (colorProp) {
+                    colorProp->m_Layer = Layer::background;
+                    colorProp->m_BgIdx = layer.m_BgIdx;
+                }
+
+                return true;
+            }
+        } else if (layer.m_Layer == Layer::sprite) {
+            int palette;
+            bool colorValid = getSpriteCurrentPixel(x, y, screenConfig, layer.m_Priority, color, &palette);
+
+            if (colorValid) {
+                if (colorProp) {
+                    colorProp->m_Layer = Layer::sprite;
+                    colorProp->m_Palette = palette;
+                }
+
+                return true;
+            }
         }
     }
 
-    return colorValid;
+    return false;
 }
 
 bool Ppu::getBackgroundCurrentPixel(
@@ -1343,7 +1357,7 @@ bool Ppu::getBackgroundCurrentPixel(
     return true;
 }
 
-bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, int priority, uint32_t* c)
+bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, int priority, uint32_t* c, int* palette)
 {
     if (!m_RenderObjInfo[y].m_ObjCount) {
         return false;
@@ -1445,6 +1459,10 @@ bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, 
         }
 
         *c = getObjColorFromCgram(prop->m_Palette, color);
+
+        if (palette) {
+            *palette = prop->m_Palette;
+        }
 
         return true;
     }
@@ -1724,7 +1742,7 @@ void Ppu::renderDot(int x, int y)
     }
 
     // Render MainScreen
-    Ppu::LayerPriority priority;
+    BgColorProp colorProp;
     uint32_t rawColor;
     bool colorValid;
 
@@ -1733,7 +1751,7 @@ void Ppu::renderDot(int x, int y)
         y,
         m_MainScreenConfig,
         &rawColor,
-        &priority);
+        &colorProp);
 
     // Check if color math is enabled and pixel is in the window
     bool insideMathWindow;
@@ -1760,8 +1778,10 @@ void Ppu::renderDot(int x, int y)
     if (insideMathWindow) {
         if (!colorValid) {
             doMath = m_ColorMathBackdrop;
-        } else if (priority.m_Layer == Ppu::Layer::background) {
-            doMath = m_ColorMathBackground[priority.m_BgIdx];
+        } else if (colorProp.m_Layer == Ppu::Layer::background) {
+            doMath = m_ColorMathBackground[colorProp.m_BgIdx];
+        } else if (colorProp.m_Layer == Ppu::Layer::sprite) {
+            doMath = m_ColorMathObj && colorProp.m_Palette >= 4;
         } else {
             doMath = false;
         }
@@ -2262,6 +2282,7 @@ void Ppu::dumpToFile(FILE* f)
     fwrite(&m_SubscreenEnabled, sizeof(m_SubscreenEnabled), 1, f);
     fwrite(&m_ColorMathOperation, sizeof(m_ColorMathOperation), 1, f);
     fwrite(&m_ColorMathBackground, sizeof(m_ColorMathBackground), 1, f);
+    fwrite(&m_ColorMathObj, sizeof(m_ColorMathObj), 1, f);
     fwrite(&m_ColorMathBackdrop, sizeof(m_ColorMathBackdrop), 1, f);
     fwrite(&m_Mosaic, sizeof(m_Mosaic), 1, f);
     fwrite(&m_M7ScreenOver, sizeof(m_M7ScreenOver), 1, f);
@@ -2329,6 +2350,7 @@ void Ppu::loadFromFile(FILE* f)
     fread(&m_SubscreenEnabled, sizeof(m_SubscreenEnabled), 1, f);
     fread(&m_ColorMathOperation, sizeof(m_ColorMathOperation), 1, f);
     fread(&m_ColorMathBackground, sizeof(m_ColorMathBackground), 1, f);
+    fread(&m_ColorMathObj, sizeof(m_ColorMathObj), 1, f);
     fread(&m_ColorMathBackdrop, sizeof(m_ColorMathBackdrop), 1, f);
     fread(&m_Mosaic, sizeof(m_Mosaic), 1, f);
     fread(&m_M7ScreenOver, sizeof(m_M7ScreenOver), 1, f);
