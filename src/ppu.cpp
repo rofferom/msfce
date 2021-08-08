@@ -1830,12 +1830,12 @@ void Ppu::renderDot(int x, int y)
             }
 
             uint32_t toU32() const {
-                constexpr int kMask = 0b11111;
+                constexpr uint32_t kMaxFrag = 0b11111;
                 uint32_t c;
 
-                c = r & kMask;
-                c |= (g & kMask) << 5;
-                c |= (b & kMask) << 10;
+                c = std::min(r, kMaxFrag);
+                c |= std::min(g, kMaxFrag) << 5;
+                c |= std::min(b, kMaxFrag) << 10;
 
                 return c;
             }
@@ -1858,9 +1858,9 @@ void Ppu::renderDot(int x, int y)
             splittedMainColor.g = subCb(splittedMainColor.g, splittedSubColor.g);
             splittedMainColor.b = subCb(splittedMainColor.b, splittedSubColor.b);
         } else {
-            splittedMainColor.r = splittedMainColor.r + splittedSubColor.r;
-            splittedMainColor.g = splittedMainColor.g + splittedSubColor.g;
-            splittedMainColor.b = splittedMainColor.b + splittedSubColor.b;
+            splittedMainColor.r += splittedSubColor.r;
+            splittedMainColor.g += splittedSubColor.g;
+            splittedMainColor.b += splittedSubColor.b;
         }
 
         // Divide
