@@ -1390,9 +1390,11 @@ bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, 
         auto searchProp = m_RenderObjInfo[y].m_Obj[i];
         assert(searchProp);
 
-        if (searchProp->m_Priority != priority) {
+        if (x < searchProp->m_X || searchProp->m_xEnd <= x) {
             continue;
-        } else if (x < searchProp->m_X || searchProp->m_xEnd <= x) {
+        }
+
+        if (searchProp->m_Priority < priority) {
             continue;
         }
 
