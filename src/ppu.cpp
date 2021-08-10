@@ -1404,7 +1404,11 @@ bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, 
 
         // Extract the pixel coordinates in the tile
         int tileX = x - prop->m_X;
+
         int tileY = y - prop->m_Y;
+        if (tileY < 0) {
+            tileY += 0x100;
+        }
 
         // Use the flip status to point to the correct subtile
         // Then compute the subtile coordinate to be able to compute
@@ -1907,19 +1911,19 @@ void Ppu::renderDot(int x, int y)
 void Ppu::loadObjs()
 {
     int firstObj = m_OamForcedPriority ? m_OamHighestPriorityObj : 0;
-    int i = firstObj;
+    int objIdx = firstObj;
 
     do {
-        ObjProperty& prop = m_Objs[i];
+        ObjProperty& prop = m_Objs[objIdx];
 
         // Attributes are 4 bytes long
-        const uint8_t* objBase = m_Oam + i * 4;
+        const uint8_t* objBase = m_Oam + objIdx * 4;
 
         // Other parts of the attributes are located after the first 512 bytes.
         // Each byte has 2 bits for 4 sprites. Bytes are ordered like this:
         // | 3 2 1 0 | 7 6 5 4 | 11 10 9 8 | ... |
-        uint8_t extra = m_Oam[512 + i / 4];
-        extra >>= 2 * (i % 4);
+        uint8_t extra = m_Oam[512 + objIdx / 4];
+        extra >>= 2 * (objIdx % 4);
         extra &= 0b11;
 
         prop.m_X = objBase[0];
@@ -1956,7 +1960,7 @@ void Ppu::loadObjs()
             prop.m_OnScreen = false;
         } else if (prop.m_X > kPpuDisplayWidth) {
             prop.m_OnScreen = false;
-        } else if (prop.m_Y > kPpuDisplayHeight) {
+        } else if (prop.m_Y > kPpuDisplayHeight && prop.m_Y + prop.m_HeightPixel < 0x100) {
             prop.m_OnScreen = false;
         } else {
             prop.m_OnScreen = true;
@@ -1965,9 +1969,9 @@ void Ppu::loadObjs()
         if (prop.m_OnScreen) {
             // Save the lines where the sprite could be displayed
             for (int16_t i = 0; i < prop.m_HeightPixel; i++) {
-                int16_t y = prop.m_Y + i;
+                int16_t y = (i + prop.m_Y) % 0x100;
                 if (y >= kPpuDisplayHeight) {
-                    break;
+                    continue;
                 }
 
                 assert(static_cast<size_t>(i) < SIZEOF_ARRAY(m_RenderObjInfo));
@@ -1977,8 +1981,8 @@ void Ppu::loadObjs()
             }
         }
 
-        i = (i + 1) % kObjCount;
-    } while (i != firstObj);
+        objIdx = (objIdx + 1) % kObjCount;
+    } while (objIdx != firstObj);
 }
 
 void Ppu::printObjsCoordinates()
@@ -2175,6 +2179,9 @@ bool Ppu::getPixelFromObj(int screenX, int screenY, SnesColor* c, int* outPriori
     // Extract the pixel coordinates in the tile
     int tileX = screenX - obj->m_X;
     int tileY = screenY - obj->m_Y;
+    if (tileY < 0) {
+        tileY += 0x100;
+    }
 
     // Use the flip status to point to the correct subtile
     // Then compute the subtile coordinate to be able to compute
