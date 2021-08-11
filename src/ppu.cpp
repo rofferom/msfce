@@ -1742,23 +1742,6 @@ void Ppu::renderDot(int x, int y)
         return;
     }
 
-    if (m_Bgmode == 7) {
-        renderDotMode7(x, y);
-        return;
-    }
-
-    // Render MainScreen
-    BgColorProp colorProp;
-    uint32_t rawColor;
-    bool colorValid;
-
-    colorValid = getScreenCurrentPixel(
-        x,
-        y,
-        m_MainScreenConfig,
-        &rawColor,
-        &colorProp);
-
     // Check if color math is enabled and pixel is in the window
     bool insideMathWindow;
 
@@ -1776,6 +1759,22 @@ void Ppu::renderDot(int x, int y)
         if (m_ColorMathEnabled == ColorMathConfig::NotMathWin) {
             insideMathWindow = !insideMathWindow;
         }
+    }
+
+    // Render MainScreen
+    BgColorProp colorProp;
+    uint32_t rawColor;
+    bool colorValid;
+
+    if (m_Bgmode == 7) {
+        colorValid = renderDotMode7(x, y, &rawColor, &colorProp);
+    } else {
+        colorValid = getScreenCurrentPixel(
+            x,
+            y,
+            m_MainScreenConfig,
+            &rawColor,
+            &colorProp);
     }
 
     // Check if color math should be applied to this color
@@ -1888,24 +1887,26 @@ void Ppu::renderDot(int x, int y)
 
     m_RenderCb(color);
 
-    // Move to next pixel
-    const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
-    for (size_t i = 0; i < bgCount; i++) {
-        RendererBgInfo* renderBg = &m_RenderBgInfo[i];
+    if (m_Bgmode != 7) {
+        // Move to next pixel
+        const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
+        for (size_t i = 0; i < bgCount; i++) {
+            RendererBgInfo* renderBg = &m_RenderBgInfo[i];
 
-        // If mosaic is enabled, redraw the same line N times
-        if (renderBg->mosaic.size > 1) {
-            const int nextBlockX = renderBg->mosaic.startX + renderBg->mosaic.size;
-            if (x == nextBlockX) {
-                renderBg->mosaic.startX = x;
+            // If mosaic is enabled, redraw the same line N times
+            if (renderBg->mosaic.size > 1) {
+                const int nextBlockX = renderBg->mosaic.startX + renderBg->mosaic.size;
+                if (x == nextBlockX) {
+                    renderBg->mosaic.startX = x;
 
-                // Move to the next block start
-                for (int j = 0; j < renderBg->mosaic.size; j++) {
-                    moveToNextPixel(renderBg);
+                    // Move to the next block start
+                    for (int j = 0; j < renderBg->mosaic.size; j++) {
+                        moveToNextPixel(renderBg);
+                    }
                 }
+            } else {
+                moveToNextPixel(renderBg);
             }
-        } else {
-            moveToNextPixel(renderBg);
         }
     }
 }
@@ -2481,37 +2482,54 @@ void Ppu::initLineRenderMode7(int y)
 }
 
 // https://github.com/bsnes-emu/bsnes/blob/master/bsnes/sfc/ppu/mode7.cpp
-void Ppu::renderDotMode7(int x, int y)
+bool Ppu::renderDotMode7(int x, int y, uint32_t* color, BgColorProp* colorProp)
 {
-    uint32_t rawColor;
-    bool colorValid = false;
-
-    for (size_t prioIdx = 0; !colorValid && m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
+    for (size_t prioIdx = 0; m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
         const auto& layer = m_RenderLayerPriority[prioIdx];
 
         if (layer.m_Layer == Layer::background) {
             RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
-            rawColor = renderGetColorMode7(x, y);
-            colorValid = rawColor != 0;
+            *color = renderGetColorMode7(x, y);
+
+            if (*color != 0) {
+                colorProp->m_Layer = Layer::background;
+                colorProp->m_BgIdx = 0;
+                return true;
+            }
         } else if (layer.m_Layer == Layer::sprite) {
-            colorValid = getSpriteCurrentPixel(x, y, m_MainScreenConfig, layer.m_Priority, &rawColor);
+            int palette;
+            bool colorValid = getSpriteCurrentPixel(x, y, m_MainScreenConfig, layer.m_Priority, color, &palette);
+
+            if (colorValid) {
+                colorProp->m_Layer = Layer::sprite;
+                colorProp->m_Palette = palette;
+                return true;
+            }
         }
     }
 
-    // Get final color
-    if (colorValid) {
-        auto color = rawColorToRgb(rawColor);
-        applyBrightness(&color, m_Brightness);
-        m_RenderCb(color);
-    } else {
-        m_RenderCb({0, 0, 0});
-    }
+    return false;
 }
 
 uint32_t Ppu::renderGetColorMode7(int x, int y)
 {
     if (!m_MainScreenConfig.m_BgEnabled[0]) {
         return 0;
+    }
+
+    // Check if background is inside window
+    bool pixelInWindow = false;
+
+    if (m_MainScreenConfig.m_Window_BgDisable[0]) {
+        pixelInWindow = applyWindowLogic(
+            x,
+            m_Window1Config.m_BackgroundConfig[0],
+            m_Window2Config.m_BackgroundConfig[0],
+            m_WindowLogicBackground[0]);
+    }
+
+    if (pixelInWindow) {
+        return false;
     }
 
     if (m_M7HFlip) {
