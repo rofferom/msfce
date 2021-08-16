@@ -14,8 +14,9 @@ constexpr uint32_t kComponentAccessRW = kComponentAccessR | kComponentAccessW;
 
 } // anonymous namespace
 
-Membus::Membus(AddressingType addrType)
-    : m_AddrType(addrType)
+Membus::Membus(AddressingType addrType, bool fastRom)
+    : m_AddrType(addrType),
+      m_FastRom(fastRom)
 {
     if (addrType == AddressingType::lowrom) {
         initLowRom();
@@ -218,7 +219,7 @@ Membus::ComponentHandler *Membus::getComponentFromAddr(
 
 int Membus::getRomTiming(uint8_t bank)
 {
-    return kTimingRomSlowAccess;
+    return m_FastRom ? kTimingRomFastAccess : kTimingRomSlowAccess;
 }
 
 int Membus::plugComponent(const std::shared_ptr<MemComponent>& component)
@@ -396,7 +397,15 @@ void Membus::writeU16(uint32_t addr, uint16_t value, int *cycles)
 
 uint8_t Membus::internalReadU8(uint32_t addr)
 {
-    return 0;
+    switch (addr) {
+    case kRegisterMemsel:
+        return m_FastRom & 1;
+
+    default:
+        LOGW(TAG, "Ignore ReadU8 at %06X", addr);
+        assert(false);
+        return 0;
+    }
 }
 
 void Membus::internalWriteU8(uint32_t addr, uint8_t value)

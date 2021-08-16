@@ -14,7 +14,7 @@ enum class AddressingType {
 
 class Membus {
 public:
-    Membus(AddressingType addrType);
+    Membus(AddressingType addrType, bool fastRom);
     ~Membus() = default;
 
     int plugComponent(const std::shared_ptr<MemComponent>& component);
@@ -94,6 +94,8 @@ private:
 
 private:
     AddressingType m_AddrType;
+    bool m_FastRom = false;
+
     Bank m_Banks[0x100];
     ComponentHandler m_Components[kComponentTypeCount];
 
