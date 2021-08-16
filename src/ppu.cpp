@@ -928,8 +928,8 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         break;
 
     case kRegWOBJLOG:
-        m_WindowLogicObj = static_cast<WindowLogic>(value & 0b1);
-        m_WindowLogicMath = static_cast<WindowLogic>((value >> 1) & 1);
+        m_WindowLogicObj = static_cast<WindowLogic>(value & 0b11);
+        m_WindowLogicMath = static_cast<WindowLogic>((value >> 2) & 0b11);
         break;
 
     case kRegTMW:
