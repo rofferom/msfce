@@ -1742,23 +1742,24 @@ void Ppu::renderDot(int x, int y)
         return;
     }
 
+    // Check if current pixel is inside the color math window
+    const bool insideMathWindow = applyWindowLogic(
+        x,
+        m_Window1Config.m_MathConfig,
+        m_Window2Config.m_MathConfig,
+        m_WindowLogicMath);
+
     // Check if color math is enabled and pixel is in the window
-    bool insideMathWindow;
+    bool colorMathEnable;
 
     if (m_ColorMathEnabled == ColorMathConfig::Never) {
-        insideMathWindow = false;
+        colorMathEnable = false;
     } else if (m_ColorMathEnabled == ColorMathConfig::Always) {
-        insideMathWindow = true;
+        colorMathEnable = true;
+    } else if (m_ColorMathEnabled == ColorMathConfig::MathWin) {
+        colorMathEnable = insideMathWindow;
     } else {
-        insideMathWindow = applyWindowLogic(
-            x,
-            m_Window1Config.m_MathConfig,
-            m_Window2Config.m_MathConfig,
-            m_WindowLogicMath);
-
-        if (m_ColorMathEnabled == ColorMathConfig::NotMathWin) {
-            insideMathWindow = !insideMathWindow;
-        }
+        colorMathEnable = !insideMathWindow;
     }
 
     // Render MainScreen
@@ -1766,21 +1767,28 @@ void Ppu::renderDot(int x, int y)
     uint32_t rawColor;
     bool colorValid;
 
-    if (m_Bgmode == 7) {
-        colorValid = renderDotMode7(x, y, &rawColor, &colorProp);
+    if ((m_ForceMainScreenBlack == ColorMathConfig::Always) ||
+        (m_ForceMainScreenBlack == ColorMathConfig::MathWin && insideMathWindow) ||
+        (m_ForceMainScreenBlack == ColorMathConfig::NotMathWin && !insideMathWindow)) {
+        rawColor = 0;
+        colorValid = true;
     } else {
-        colorValid = getScreenCurrentPixel(
-            x,
-            y,
-            m_MainScreenConfig,
-            &rawColor,
-            &colorProp);
+        if (m_Bgmode == 7) {
+            colorValid = renderDotMode7(x, y, &rawColor, &colorProp);
+        } else {
+            colorValid = getScreenCurrentPixel(
+                x,
+                y,
+                m_MainScreenConfig,
+                &rawColor,
+                &colorProp);
+        }
     }
 
     // Check if color math should be applied to this color
     bool doMath;
 
-    if (insideMathWindow) {
+    if (colorMathEnable) {
         if (!colorValid) {
             doMath = m_ColorMathBackdrop;
         } else if (colorProp.m_Layer == Ppu::Layer::background) {
