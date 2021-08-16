@@ -95,6 +95,13 @@ static const std::unordered_map<SDL_GameControllerButton, SnesControllerMapping>
     { SDL_CONTROLLER_BUTTON_A, { "A", offsetof(SnesController, a) } },
 };
 
+static const std::unordered_map<uint8_t, SnesControllerMapping> s_HatMapping = {
+    { SDL_HAT_UP,    { "Up",    offsetof(SnesController, up) } },
+    { SDL_HAT_DOWN,  { "Down",  offsetof(SnesController, down) } },
+    { SDL_HAT_LEFT,  { "Left",  offsetof(SnesController, left) } },
+    { SDL_HAT_RIGHT, { "Right", offsetof(SnesController, right) } },
+};
+
 bool* controllerGetButton(
     SnesController* controller,
     const SnesControllerMapping& mapping)
@@ -153,6 +160,19 @@ bool handleJoystickKey(
 
     auto buttonValue = controllerGetButton(controller, mapping);
     *buttonValue = pressed;
+
+    return true;
+}
+
+bool handleHatMotion(
+    SnesController* controller,
+    uint8_t hat,
+    uint8_t value)
+{
+    for (auto& it: s_HatMapping) {
+        auto buttonValue = controllerGetButton(controller, it.second);
+        *buttonValue = value & it.first;
+    }
 
     return true;
 }
@@ -347,6 +367,14 @@ int FrontendSdl2::run()
             case SDL_JOYDEVICEREMOVED:
                 onJoystickRemoved(event.jdevice.which);
                 break;
+
+            case SDL_JOYHATMOTION: {
+                handleHatMotion(
+                    &m_Controller1,
+                    event.jhat.hat,
+                    event.jhat.value);
+                break;
+            }
 
             case SDL_JOYBUTTONDOWN:
                 handleJoystickKey(
