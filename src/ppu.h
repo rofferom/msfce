@@ -229,6 +229,16 @@ private:
         Always,
     };
 
+    struct BgColorProp {
+        Layer m_Layer;
+
+        // Background attributes
+        int m_BgIdx;
+
+        // Sprite attributes
+        int m_Palette;
+    };
+
 private:
     void setHVIRQ(int x, int y);
 
@@ -242,7 +252,7 @@ private:
         int y,
         const ScreenConfig& screenConfig,
         uint32_t* color,
-        Ppu::LayerPriority* priority);
+        BgColorProp* colorProp);
 
     bool getBackgroundCurrentPixel(
         int x,
@@ -256,7 +266,8 @@ private:
         int y,
         const ScreenConfig& screenConfig,
         int priority,
-        uint32_t* color);
+        uint32_t* color,
+        int* palette = nullptr);
 
     void moveToNextPixel(RendererBgInfo* renderBg);
     void incrementVramAddress();
@@ -286,7 +297,9 @@ private:
 
     void initScreenRenderMode7();
     void initLineRenderMode7(int y);
-    void renderDotMode7(int x, int y);
+
+    bool renderDotMode7(int x, int y, uint32_t* color, BgColorProp* colorProp);
+
     uint32_t renderGetColorMode7(int x, int y);
 
 private:
@@ -315,6 +328,7 @@ private:
 
     // VRAM
     bool m_VramIncrementHigh = false;
+    uint8_t m_VramAddressTranslate = 0;
     uint8_t m_VramIncrementStep = 0;
     uint8_t m_Vram[64 * 1024];
     uint16_t m_VramAddress = 0;
@@ -376,6 +390,7 @@ private:
 
     uint8_t m_ColorMathOperation = 0;
     bool m_ColorMathBackground[kBackgroundCount];
+    bool m_ColorMathObj = false;
     bool m_ColorMathBackdrop = false;
 
     // Mode 7

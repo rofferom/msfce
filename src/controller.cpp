@@ -88,7 +88,9 @@ void ControllerPorts::writeU8(uint32_t addr, uint8_t value)
         m_Controller1_Strobe = value;
 
         // Read controller
-        m_Controller1_ReadReg = packController(m_Controller1_State);
+        if (m_Controller1_Strobe == 1) {
+            m_Controller1_ReadReg = packController(m_Controller1_State);
+        }
         break;
 
     case kRegisterJoyWrio:

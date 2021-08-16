@@ -58,6 +58,9 @@ add_library(msfe_lib
     snes.h
     snes.cpp
 
+    sram.h
+    sram.cpp
+
     wram.h
     wram.cpp
 )

@@ -369,16 +369,42 @@ void getSpriteSize(uint8_t obselSize, uint8_t objSize, int* width, int* height)
     }
 }
 
+uint16_t translateVramAddress(uint16_t address, uint8_t translate)
+{
+    if (translate == 1) {
+        const int X = address & 0b11111;
+        const int Y = (address >> 5) & 0b111;
+
+        return ((address & 0xFF00) | (X << 3) | Y) * 2;
+    } else if (translate == 2) {
+        const int X = address & 0b111111;
+        const int Y = (address >> 6) & 0b111;
+
+        return ((address & 0xFE00) | (X << 3) | Y) * 2;
+    } else if (translate == 3) {
+        const int X = address & 0b1111111;
+        const int Y = (address >> 7) & 0b111;
+
+        return ((address & 0xFC00) | (X << 3) | Y) * 2;
+    } else {
+        return address * 2;
+    }
+}
+
 } // anonymous namespace
 
 // Background priority charts
 const Ppu::LayerPriority Ppu::s_LayerPriorityMode0[] = {
+    {Layer::sprite,    -1, 3},
     {Layer::background, 0, 1},
     {Layer::background, 1, 1},
+    {Layer::sprite,    -1, 2},
     {Layer::background, 0, 0},
     {Layer::background, 1, 0},
+    {Layer::sprite,    -1, 1},
     {Layer::background, 2, 1},
     {Layer::background, 3, 1},
+    {Layer::sprite,    -1, 0},
     {Layer::background, 2, 1},
     {Layer::background, 3, 0},
 
@@ -392,8 +418,8 @@ const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_On[] = {
     {Layer::background, 1,   1},
     {Layer::sprite,    -1,   2},
     {Layer::background, 0,   0},
-    {Layer::sprite,    -1,   1},
     {Layer::background, 1,   0},
+    {Layer::sprite,    -1,   1},
     {Layer::sprite,    -1,   0},
     {Layer::background, 2,   0},
 
@@ -634,17 +660,14 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegVMAIN:
         LOGD(TAG, "VMAIN <= 0x%02X", value);
         m_VramIncrementHigh = value >> 7;
-
-        // Some mode are not supported yet
-        assert(!((value >> 2) & 0b11));
-
+        m_VramAddressTranslate = (value >> 2) & 0b11;
         m_VramIncrementStep = value & 0b11;
         break;
 
     case kRegVMADDL: {
         m_VramAddress = (m_VramAddress & 0xFF00) | value;
 
-        uint16_t address = m_VramAddress * 2;
+        uint16_t address = translateVramAddress(m_VramAddress, m_VramAddressTranslate);
         m_VramPrefetch = (m_Vram[address + 1] << 8) | m_Vram[address];
         break;
     }
@@ -652,13 +675,13 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegVMADDH: {
         m_VramAddress = (m_VramAddress & 0xFF) | (value << 8);
 
-        uint16_t address = m_VramAddress * 2;
+        uint16_t address = translateVramAddress(m_VramAddress, m_VramAddressTranslate);
         m_VramPrefetch = (m_Vram[address + 1] << 8) | m_Vram[address];
         break;
     }
 
     case kRegVMDATAL: {
-        uint16_t address = m_VramAddress * 2;
+        uint16_t address = translateVramAddress(m_VramAddress, m_VramAddressTranslate);
         m_Vram[address] = value;
 
         if (!m_VramIncrementHigh) {
@@ -668,8 +691,8 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     }
 
     case kRegVMDATAH: {
-        uint16_t address = m_VramAddress * 2 + 1;
-        m_Vram[address] = value;
+        uint16_t address = translateVramAddress(m_VramAddress, m_VramAddressTranslate);
+        m_Vram[address + 1] = value;
 
         if (m_VramIncrementHigh) {
             incrementVramAddress();
@@ -698,7 +721,7 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
 
     // OAM registers
     case kRegOBJSEL:
-        m_ObjSize = (value >> 5) & 0b11;
+        m_ObjSize = (value >> 5) & 0b111;
 
         m_ObjGapSize = convert4kWorkStep((value >> 3) & 0b11);
         m_ObjBase = convert8kWorkStep(value & 0b111);
@@ -905,8 +928,8 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         break;
 
     case kRegWOBJLOG:
-        m_WindowLogicObj = static_cast<WindowLogic>(value & 0b1);
-        m_WindowLogicMath = static_cast<WindowLogic>((value >> 1) & 1);
+        m_WindowLogicObj = static_cast<WindowLogic>(value & 0b11);
+        m_WindowLogicMath = static_cast<WindowLogic>((value >> 2) & 0b11);
         break;
 
     case kRegTMW:
@@ -971,7 +994,8 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
 
     case kRegCGADSUB:
         m_ColorMathOperation = (value >> 6) & 0b11;
-        m_ColorMathBackdrop = (value >> 5) & 0b11;
+        m_ColorMathBackdrop = (value >> 5) & 0b1;
+        m_ColorMathObj = (value >> 4) & 0b1;
 
         for (int i = 0; i < kBackgroundCount; i++) {
             m_ColorMathBackground[i] = (value >> i) & 1;
@@ -1210,26 +1234,39 @@ bool Ppu::getScreenCurrentPixel(
     int y,
     const ScreenConfig& screenConfig,
     uint32_t* color,
-    Ppu::LayerPriority* priority)
+    BgColorProp* colorProp)
 {
-    bool colorValid = false;
-
-    for (size_t prioIdx = 0; !colorValid && m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
+    for (size_t prioIdx = 0; m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
         const auto& layer = m_RenderLayerPriority[prioIdx];
 
         if (layer.m_Layer == Layer::background) {
             RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
-            colorValid = getBackgroundCurrentPixel(x, screenConfig, renderBg, layer.m_Priority, color);
-        } else if (layer.m_Layer == Layer::sprite) {
-            colorValid = getSpriteCurrentPixel(x, y, screenConfig, layer.m_Priority, color);
-        }
+            bool colorValid = getBackgroundCurrentPixel(x, screenConfig, renderBg, layer.m_Priority, color);
 
-        if (colorValid && priority) {
-            *priority = layer;
+            if (colorValid) {
+                if (colorProp) {
+                    colorProp->m_Layer = Layer::background;
+                    colorProp->m_BgIdx = layer.m_BgIdx;
+                }
+
+                return true;
+            }
+        } else if (layer.m_Layer == Layer::sprite) {
+            int palette;
+            bool colorValid = getSpriteCurrentPixel(x, y, screenConfig, layer.m_Priority, color, &palette);
+
+            if (colorValid) {
+                if (colorProp) {
+                    colorProp->m_Layer = Layer::sprite;
+                    colorProp->m_Palette = palette;
+                }
+
+                return true;
+            }
         }
     }
 
-    return colorValid;
+    return false;
 }
 
 bool Ppu::getBackgroundCurrentPixel(
@@ -1320,9 +1357,14 @@ bool Ppu::getBackgroundCurrentPixel(
     return true;
 }
 
-bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, int priority, uint32_t* c)
+bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, int priority, uint32_t* c, int* palette)
 {
     if (!m_RenderObjInfo[y].m_ObjCount) {
+        return false;
+    }
+
+    // Check if Sprites are enabled
+    if (!screenConfig.m_ObjEnabled) {
         return false;
     }
 
@@ -1348,9 +1390,11 @@ bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, 
         auto searchProp = m_RenderObjInfo[y].m_Obj[i];
         assert(searchProp);
 
-        if (searchProp->m_Priority != priority) {
+        if (x < searchProp->m_X || searchProp->m_xEnd <= x) {
             continue;
-        } else if (x < searchProp->m_X || searchProp->m_xEnd <= x) {
+        }
+
+        if (searchProp->m_Priority < priority) {
             continue;
         }
 
@@ -1362,7 +1406,11 @@ bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, 
 
         // Extract the pixel coordinates in the tile
         int tileX = x - prop->m_X;
+
         int tileY = y - prop->m_Y;
+        if (tileY < 0) {
+            tileY += 0x100;
+        }
 
         // Use the flip status to point to the correct subtile
         // Then compute the subtile coordinate to be able to compute
@@ -1417,6 +1465,10 @@ bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, 
         }
 
         *c = getObjColorFromCgram(prop->m_Palette, color);
+
+        if (palette) {
+            *palette = prop->m_Palette;
+        }
 
         return true;
     }
@@ -1690,50 +1742,59 @@ void Ppu::renderDot(int x, int y)
         return;
     }
 
-    if (m_Bgmode == 7) {
-        renderDotMode7(x, y);
-        return;
+    // Check if current pixel is inside the color math window
+    const bool insideMathWindow = applyWindowLogic(
+        x,
+        m_Window1Config.m_MathConfig,
+        m_Window2Config.m_MathConfig,
+        m_WindowLogicMath);
+
+    // Check if color math is enabled and pixel is in the window
+    bool colorMathEnable;
+
+    if (m_ColorMathEnabled == ColorMathConfig::Never) {
+        colorMathEnable = false;
+    } else if (m_ColorMathEnabled == ColorMathConfig::Always) {
+        colorMathEnable = true;
+    } else if (m_ColorMathEnabled == ColorMathConfig::MathWin) {
+        colorMathEnable = insideMathWindow;
+    } else {
+        colorMathEnable = !insideMathWindow;
     }
 
     // Render MainScreen
-    Ppu::LayerPriority priority;
+    BgColorProp colorProp;
     uint32_t rawColor;
     bool colorValid;
 
-    colorValid = getScreenCurrentPixel(
-        x,
-        y,
-        m_MainScreenConfig,
-        &rawColor,
-        &priority);
-
-    // Check if color math is enabled and pixel is in the window
-    bool insideMathWindow;
-
-    if (m_ColorMathEnabled == ColorMathConfig::Never) {
-        insideMathWindow = false;
-    } else if (m_ColorMathEnabled == ColorMathConfig::Always) {
-        insideMathWindow = true;
+    if ((m_ForceMainScreenBlack == ColorMathConfig::Always) ||
+        (m_ForceMainScreenBlack == ColorMathConfig::MathWin && insideMathWindow) ||
+        (m_ForceMainScreenBlack == ColorMathConfig::NotMathWin && !insideMathWindow)) {
+        rawColor = 0;
+        colorValid = true;
     } else {
-        insideMathWindow = applyWindowLogic(
-            x,
-            m_Window1Config.m_MathConfig,
-            m_Window2Config.m_MathConfig,
-            m_WindowLogicMath);
-
-        if (m_ColorMathEnabled == ColorMathConfig::NotMathWin) {
-            insideMathWindow = !insideMathWindow;
+        if (m_Bgmode == 7) {
+            colorValid = renderDotMode7(x, y, &rawColor, &colorProp);
+        } else {
+            colorValid = getScreenCurrentPixel(
+                x,
+                y,
+                m_MainScreenConfig,
+                &rawColor,
+                &colorProp);
         }
     }
 
     // Check if color math should be applied to this color
     bool doMath;
 
-    if (insideMathWindow) {
+    if (colorMathEnable) {
         if (!colorValid) {
             doMath = m_ColorMathBackdrop;
-        } else if (priority.m_Layer == Ppu::Layer::background) {
-            doMath = m_ColorMathBackground[priority.m_BgIdx];
+        } else if (colorProp.m_Layer == Ppu::Layer::background) {
+            doMath = m_ColorMathBackground[colorProp.m_BgIdx];
+        } else if (colorProp.m_Layer == Ppu::Layer::sprite) {
+            doMath = m_ColorMathObj && colorProp.m_Palette >= 4;
         } else {
             doMath = false;
         }
@@ -1782,12 +1843,12 @@ void Ppu::renderDot(int x, int y)
             }
 
             uint32_t toU32() const {
-                constexpr int kMask = 0b11111;
+                constexpr uint32_t kMaxFrag = 0b11111;
                 uint32_t c;
 
-                c = r & kMask;
-                c |= (g & kMask) << 5;
-                c |= (b & kMask) << 10;
+                c = std::min(r, kMaxFrag);
+                c |= std::min(g, kMaxFrag) << 5;
+                c |= std::min(b, kMaxFrag) << 10;
 
                 return c;
             }
@@ -1810,9 +1871,9 @@ void Ppu::renderDot(int x, int y)
             splittedMainColor.g = subCb(splittedMainColor.g, splittedSubColor.g);
             splittedMainColor.b = subCb(splittedMainColor.b, splittedSubColor.b);
         } else {
-            splittedMainColor.r = splittedMainColor.r + splittedSubColor.r;
-            splittedMainColor.g = splittedMainColor.g + splittedSubColor.g;
-            splittedMainColor.b = splittedMainColor.b + splittedSubColor.b;
+            splittedMainColor.r += splittedSubColor.r;
+            splittedMainColor.g += splittedSubColor.g;
+            splittedMainColor.b += splittedSubColor.b;
         }
 
         // Divide
@@ -1824,17 +1885,6 @@ void Ppu::renderDot(int x, int y)
 
         // Repack into raw color + saturate
         rawColor = splittedMainColor.toU32();
-
-        // Use backdrop colors if required
-        // 1. MainScreen
-        // 2. SubScreen
-        if (!rawColor) {
-            rawColor = getMainBackdropColor();
-
-            if (!rawColor) {
-                rawColor = m_SubscreenBackdrop;
-            }
-        }
     } else if (!colorValid) {
         rawColor = getMainBackdropColor();
     }
@@ -1845,24 +1895,26 @@ void Ppu::renderDot(int x, int y)
 
     m_RenderCb(color);
 
-    // Move to next pixel
-    const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
-    for (size_t i = 0; i < bgCount; i++) {
-        RendererBgInfo* renderBg = &m_RenderBgInfo[i];
+    if (m_Bgmode != 7) {
+        // Move to next pixel
+        const size_t bgCount = getBackgroundCountFromMode(m_Bgmode);
+        for (size_t i = 0; i < bgCount; i++) {
+            RendererBgInfo* renderBg = &m_RenderBgInfo[i];
 
-        // If mosaic is enabled, redraw the same line N times
-        if (renderBg->mosaic.size > 1) {
-            const int nextBlockX = renderBg->mosaic.startX + renderBg->mosaic.size;
-            if (x == nextBlockX) {
-                renderBg->mosaic.startX = x;
+            // If mosaic is enabled, redraw the same line N times
+            if (renderBg->mosaic.size > 1) {
+                const int nextBlockX = renderBg->mosaic.startX + renderBg->mosaic.size;
+                if (x == nextBlockX) {
+                    renderBg->mosaic.startX = x;
 
-                // Move to the next block start
-                for (int j = 0; j < renderBg->mosaic.size; j++) {
-                    moveToNextPixel(renderBg);
+                    // Move to the next block start
+                    for (int j = 0; j < renderBg->mosaic.size; j++) {
+                        moveToNextPixel(renderBg);
+                    }
                 }
+            } else {
+                moveToNextPixel(renderBg);
             }
-        } else {
-            moveToNextPixel(renderBg);
         }
     }
 }
@@ -1870,19 +1922,19 @@ void Ppu::renderDot(int x, int y)
 void Ppu::loadObjs()
 {
     int firstObj = m_OamForcedPriority ? m_OamHighestPriorityObj : 0;
-    int i = firstObj;
+    int objIdx = firstObj;
 
     do {
-        ObjProperty& prop = m_Objs[i];
+        ObjProperty& prop = m_Objs[objIdx];
 
         // Attributes are 4 bytes long
-        const uint8_t* objBase = m_Oam + i * 4;
+        const uint8_t* objBase = m_Oam + objIdx * 4;
 
         // Other parts of the attributes are located after the first 512 bytes.
         // Each byte has 2 bits for 4 sprites. Bytes are ordered like this:
         // | 3 2 1 0 | 7 6 5 4 | 11 10 9 8 | ... |
-        uint8_t extra = m_Oam[512 + i / 4];
-        extra >>= 2 * (i % 4);
+        uint8_t extra = m_Oam[512 + objIdx / 4];
+        extra >>= 2 * (objIdx % 4);
         extra &= 0b11;
 
         prop.m_X = objBase[0];
@@ -1919,7 +1971,7 @@ void Ppu::loadObjs()
             prop.m_OnScreen = false;
         } else if (prop.m_X > kPpuDisplayWidth) {
             prop.m_OnScreen = false;
-        } else if (prop.m_Y > kPpuDisplayHeight) {
+        } else if (prop.m_Y > kPpuDisplayHeight && prop.m_Y + prop.m_HeightPixel < 0x100) {
             prop.m_OnScreen = false;
         } else {
             prop.m_OnScreen = true;
@@ -1928,9 +1980,9 @@ void Ppu::loadObjs()
         if (prop.m_OnScreen) {
             // Save the lines where the sprite could be displayed
             for (int16_t i = 0; i < prop.m_HeightPixel; i++) {
-                int16_t y = prop.m_Y + i;
+                int16_t y = (i + prop.m_Y) % 0x100;
                 if (y >= kPpuDisplayHeight) {
-                    break;
+                    continue;
                 }
 
                 assert(static_cast<size_t>(i) < SIZEOF_ARRAY(m_RenderObjInfo));
@@ -1940,8 +1992,8 @@ void Ppu::loadObjs()
             }
         }
 
-        i = (i + 1) % kObjCount;
-    } while (i != firstObj);
+        objIdx = (objIdx + 1) % kObjCount;
+    } while (objIdx != firstObj);
 }
 
 void Ppu::printObjsCoordinates()
@@ -2138,6 +2190,9 @@ bool Ppu::getPixelFromObj(int screenX, int screenY, SnesColor* c, int* outPriori
     // Extract the pixel coordinates in the tile
     int tileX = screenX - obj->m_X;
     int tileY = screenY - obj->m_Y;
+    if (tileY < 0) {
+        tileY += 0x100;
+    }
 
     // Use the flip status to point to the correct subtile
     // Then compute the subtile coordinate to be able to compute
@@ -2209,6 +2264,7 @@ void Ppu::dumpToFile(FILE* f)
     fwrite(&m_VPos, sizeof(&m_VPos), 1, f);
     fwrite(&m_VPosReadFlip, sizeof(&m_VPosReadFlip), 1, f);
     fwrite(&m_VramIncrementHigh, sizeof(m_VramIncrementHigh), 1, f);
+    fwrite(&m_VramAddressTranslate, sizeof(m_VramAddressTranslate), 1, f);
     fwrite(&m_VramIncrementStep, sizeof(m_VramIncrementStep), 1, f);
     fwrite(m_Vram, sizeof(m_Vram), 1, f);
     fwrite(&m_VramAddress, sizeof(m_VramAddress), 1, f);
@@ -2244,6 +2300,7 @@ void Ppu::dumpToFile(FILE* f)
     fwrite(&m_SubscreenEnabled, sizeof(m_SubscreenEnabled), 1, f);
     fwrite(&m_ColorMathOperation, sizeof(m_ColorMathOperation), 1, f);
     fwrite(&m_ColorMathBackground, sizeof(m_ColorMathBackground), 1, f);
+    fwrite(&m_ColorMathObj, sizeof(m_ColorMathObj), 1, f);
     fwrite(&m_ColorMathBackdrop, sizeof(m_ColorMathBackdrop), 1, f);
     fwrite(&m_Mosaic, sizeof(m_Mosaic), 1, f);
     fwrite(&m_M7ScreenOver, sizeof(m_M7ScreenOver), 1, f);
@@ -2275,6 +2332,7 @@ void Ppu::loadFromFile(FILE* f)
     fread(&m_VPos, sizeof(&m_VPos), 1, f);
     fread(&m_VPosReadFlip, sizeof(&m_VPosReadFlip), 1, f);
     fread(&m_VramIncrementHigh, sizeof(m_VramIncrementHigh), 1, f);
+    fread(&m_VramAddressTranslate, sizeof(m_VramAddressTranslate), 1, f);
     fread(&m_VramIncrementStep, sizeof(m_VramIncrementStep), 1, f);
     fread(m_Vram, sizeof(m_Vram), 1, f);
     fread(&m_VramAddress, sizeof(m_VramAddress), 1, f);
@@ -2310,6 +2368,7 @@ void Ppu::loadFromFile(FILE* f)
     fread(&m_SubscreenEnabled, sizeof(m_SubscreenEnabled), 1, f);
     fread(&m_ColorMathOperation, sizeof(m_ColorMathOperation), 1, f);
     fread(&m_ColorMathBackground, sizeof(m_ColorMathBackground), 1, f);
+    fread(&m_ColorMathObj, sizeof(m_ColorMathObj), 1, f);
     fread(&m_ColorMathBackdrop, sizeof(m_ColorMathBackdrop), 1, f);
     fread(&m_Mosaic, sizeof(m_Mosaic), 1, f);
     fread(&m_M7ScreenOver, sizeof(m_M7ScreenOver), 1, f);
@@ -2431,37 +2490,54 @@ void Ppu::initLineRenderMode7(int y)
 }
 
 // https://github.com/bsnes-emu/bsnes/blob/master/bsnes/sfc/ppu/mode7.cpp
-void Ppu::renderDotMode7(int x, int y)
+bool Ppu::renderDotMode7(int x, int y, uint32_t* color, BgColorProp* colorProp)
 {
-    uint32_t rawColor;
-    bool colorValid = false;
-
-    for (size_t prioIdx = 0; !colorValid && m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
+    for (size_t prioIdx = 0; m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
         const auto& layer = m_RenderLayerPriority[prioIdx];
 
         if (layer.m_Layer == Layer::background) {
             RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
-            rawColor = renderGetColorMode7(x, y);
-            colorValid = rawColor != 0;
+            *color = renderGetColorMode7(x, y);
+
+            if (*color != 0) {
+                colorProp->m_Layer = Layer::background;
+                colorProp->m_BgIdx = 0;
+                return true;
+            }
         } else if (layer.m_Layer == Layer::sprite) {
-            colorValid = getSpriteCurrentPixel(x, y, m_MainScreenConfig, layer.m_Priority, &rawColor);
+            int palette;
+            bool colorValid = getSpriteCurrentPixel(x, y, m_MainScreenConfig, layer.m_Priority, color, &palette);
+
+            if (colorValid) {
+                colorProp->m_Layer = Layer::sprite;
+                colorProp->m_Palette = palette;
+                return true;
+            }
         }
     }
 
-    // Get final color
-    if (colorValid) {
-        auto color = rawColorToRgb(rawColor);
-        applyBrightness(&color, m_Brightness);
-        m_RenderCb(color);
-    } else {
-        m_RenderCb({0, 0, 0});
-    }
+    return false;
 }
 
 uint32_t Ppu::renderGetColorMode7(int x, int y)
 {
     if (!m_MainScreenConfig.m_BgEnabled[0]) {
         return 0;
+    }
+
+    // Check if background is inside window
+    bool pixelInWindow = false;
+
+    if (m_MainScreenConfig.m_Window_BgDisable[0]) {
+        pixelInWindow = applyWindowLogic(
+            x,
+            m_Window1Config.m_BackgroundConfig[0],
+            m_Window2Config.m_BackgroundConfig[0],
+            m_WindowLogicBackground[0]);
+    }
+
+    if (pixelInWindow) {
+        return false;
     }
 
     if (m_M7HFlip) {

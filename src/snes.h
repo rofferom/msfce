@@ -17,6 +17,7 @@ class Dma;
 class IndirectWram;
 class Maths;
 class Ppu;
+class Sram;
 class Wram;
 
 enum class AddressingType;
@@ -49,9 +50,6 @@ public:
 private:
     int scoreHeader(uint32_t address);
 
-    void loadSram();
-    void saveSram();
-
     void setHVIRQ_Flag(bool v);
 
 private:
@@ -83,11 +81,12 @@ private:
     std::string m_RomBasename;
     std::vector<uint8_t> m_RomData;
     AddressingType m_AddressingType;
+    int m_SramSize = 0;
 
     // Components
     std::shared_ptr<Wram> m_Ram;
     std::shared_ptr<IndirectWram> m_IndirectWram;
-    std::shared_ptr<BufferMemComponent> m_Sram;
+    std::shared_ptr<Sram> m_Sram;
     std::shared_ptr<Apu> m_Apu;
     std::shared_ptr<ControllerPorts> m_ControllerPorts;
     std::shared_ptr<Cpu65816> m_Cpu;

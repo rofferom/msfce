@@ -14,6 +14,7 @@
 #include "membus.h"
 #include "ppu.h"
 #include "registers.h"
+#include "sram.h"
 #include "wram.h"
 
 #include "snes.h"
@@ -26,6 +27,8 @@ constexpr uint32_t kLowRomHeaderBase = 0x7FB0;
 constexpr uint32_t kHighRomHeaderBase = 0xFFB0;
 
 constexpr uint32_t kHeaderOffset_Title = 0x10;
+constexpr uint32_t kHeaderOffset_RomRamInfo = 0x26;
+constexpr uint32_t kHeaderOffset_SramSize = 0x28;
 constexpr uint32_t kHeader_TitleSize = 21;
 
 constexpr bool kLogTimings = true;
@@ -93,6 +96,7 @@ int Snes::removeRenderer(const std::shared_ptr<SnesRenderer>& renderer)
 
 int Snes::plugCartidge(const char* path)
 {
+    uint8_t romRamInfo;
     int ret;
 
     // Open file and get its size
@@ -148,6 +152,13 @@ int Snes::plugCartidge(const char* path)
     memset(title, 0, sizeof(title));
     strncpy(title, reinterpret_cast<const char*>(&m_RomData[headerAddress + kHeaderOffset_Title]), kHeader_TitleSize);
     LOGI(TAG, "ROM title: '%s'", title);
+
+    romRamInfo = m_RomData[headerAddress + kHeaderOffset_RomRamInfo];
+    if (romRamInfo != 0) {
+        m_SramSize = (1 << m_RomData[headerAddress + kHeaderOffset_SramSize]) * 1024;
+    }
+
+    LOGI(TAG, "SRAM size: %d Bytes", m_SramSize);
 
     fclose(f);
 
@@ -260,11 +271,11 @@ int Snes::start()
     m_IndirectWram = std::make_shared<IndirectWram>(m_Ram);
     membus->plugComponent(m_IndirectWram);
 
-    m_Sram = std::make_shared<BufferMemComponent>(
-        MemComponentType::sram,
-        kSramSize);
-    membus->plugComponent(m_Sram);
-    loadSram();
+    if (m_SramSize > 0) {
+        m_Sram = std::make_shared<Sram>(m_SramSize);
+        membus->plugComponent(m_Sram);
+        m_Sram->load(m_RomBasename + ".srm");
+    }
 
     auto audioRenderCb = [this](const uint8_t* data, size_t sampleCount) {
         for (const auto& renderer : m_RendererList) {
@@ -305,7 +316,9 @@ int Snes::start()
 
 int Snes::stop()
 {
-    saveSram();
+    if (m_Sram) {
+        m_Sram->save(m_RomBasename + ".srm");
+    }
 
     return 0;
 }
@@ -507,34 +520,6 @@ void Snes::loadState(const std::string& path)
     fread(&m_Vblank, sizeof(m_Vblank), 1, f);
     fread(&m_MasterClock, sizeof(m_MasterClock), 1, f);
 
-    fclose(f);
-}
-
-void Snes::loadSram()
-{
-    auto srmPath = m_RomBasename + ".srm";
-
-    FILE* f = fopen(srmPath.c_str(), "rb");
-    if (!f) {
-        return;
-    }
-
-    LOGI(TAG, "Loading srm %s", srmPath.c_str());
-    m_Sram->loadFromFile(f);
-    fclose(f);
-}
-
-void Snes::saveSram()
-{
-    auto srmPath = m_RomBasename + ".srm";
-
-    FILE* f = fopen(srmPath.c_str(), "wb");
-    if (!f) {
-        return;
-    }
-
-    LOGI(TAG, "Saving to srm %s", srmPath.c_str());
-    m_Sram->dumpToFile(f);
     fclose(f);
 }
 

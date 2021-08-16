@@ -126,8 +126,6 @@ constexpr size_t kRegisterWMADDM = 0x2182;
 constexpr size_t kRegisterWMADDH = 0x2183;
 
 // SRAM registers
-constexpr size_t kSramSize = 512 * 1024; // 512 kbytes
-
 constexpr size_t kSramBankStart = 0x70;
 constexpr size_t kSramBankEnd = 0x7D;
 
