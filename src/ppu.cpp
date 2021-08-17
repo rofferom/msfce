@@ -1107,8 +1107,10 @@ void Ppu::setDrawConfig(DrawConfig config)
 void Ppu::setHVIRQConfig(HVIRQConfig config, uint16_t H, uint16_t V)
 {
     m_HVIRQ.m_Config = config;
-    m_HVIRQ.m_H = H;
-    m_HVIRQ.m_V = V;
+
+    // FIXME: NTSC setting
+    m_HVIRQ.m_H = std::min(H, static_cast<uint16_t>(339));
+    m_HVIRQ.m_V = std::min(V, static_cast<uint16_t>(261));
 }
 
 void Ppu::incrementVramAddress()
