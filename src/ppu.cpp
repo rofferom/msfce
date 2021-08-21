@@ -2563,11 +2563,11 @@ bool Ppu::renderGetColorMode7(int x, int y, const ScreenConfig& screenConfig, ui
     }
 
     if (m_M7HFlip) {
-        x = kPpuDisplayWidth - x;
+        x = 256 - x;
     }
 
     if (m_M7VFlip) {
-        y = kPpuDisplayHeight - y;
+        y = 256 - y;
     }
 
     auto int13ToInt = [](int16_t value) -> int {
