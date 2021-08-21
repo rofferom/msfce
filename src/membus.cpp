@@ -260,73 +260,15 @@ uint8_t Membus::readU8(uint32_t addr, int *cycles)
 
 uint16_t Membus::readU16(uint32_t addr, int *cycles)
 {
-    ComponentHandler *component;
-    MemComponentType type;
-    uint8_t bank;
-    uint16_t offset;
-    uint32_t finalAddr;
-    int singleAccessCycles = 0;
-
-    component = getComponentFromAddr(addr, &type, &bank, &offset, &singleAccessCycles, kComponentAccessR);
-    if (!component) {
-        assert(false);
-        return 0;
-    } else if (type == MemComponentType::membus) {
-        return internalReadU8(addr);
-    } else if (type == MemComponentType::sram && !component->ptr) {
-        // Handle games that don't have SRAM
-        return 0;
-    }
-
-    if (component->addrConverter) {
-        finalAddr = component->addrConverter(bank, offset);
-    } else {
-        finalAddr = (bank << 16) | offset;
-    }
-
-    if (cycles) {
-        *cycles += singleAccessCycles * 2;
-    }
-
-    assert(component->ptr);
-    return (component->ptr->readU8(finalAddr)
-          | component->ptr->readU8(finalAddr + 1) << 8);
+    return readU8(addr, cycles)
+        | (readU8(addr + 1, cycles) << 8);
 }
 
 uint32_t Membus::readU24(uint32_t addr, int *cycles)
 {
-    ComponentHandler *component;
-    MemComponentType type;
-    uint8_t bank;
-    uint16_t offset;
-    uint32_t finalAddr;
-    int singleAccessCycles = 0;
-
-    component = getComponentFromAddr(addr, &type, &bank, &offset, &singleAccessCycles, kComponentAccessR);
-    if (!component) {
-        assert(false);
-        return 0;
-    } else if (type == MemComponentType::membus) {
-        return internalReadU8(addr);
-    } else if (type == MemComponentType::sram && !component->ptr) {
-        // Handle games that don't have SRAM
-        return 0;
-    }
-
-    if (component->addrConverter) {
-        finalAddr = component->addrConverter(bank, offset);
-    } else {
-        finalAddr = (bank << 16) | offset;
-    }
-
-    if (cycles) {
-        *cycles += singleAccessCycles * 3;
-    }
-
-    assert(component->ptr);
-    return component->ptr->readU8(finalAddr)
-         | (component->ptr->readU8(finalAddr + 1) << 8)
-         | (component->ptr->readU8(finalAddr + 2) << 16);
+    return readU8(addr, cycles)
+        | (readU8(addr + 1, cycles) << 8)
+        | (readU8(addr + 2, cycles) << 16);
 }
 
 void Membus::writeU8(uint32_t addr, uint8_t value, int *cycles)
@@ -361,38 +303,8 @@ void Membus::writeU8(uint32_t addr, uint8_t value, int *cycles)
 
 void Membus::writeU16(uint32_t addr, uint16_t value, int *cycles)
 {
-    ComponentHandler *component;
-    MemComponentType type;
-    uint8_t bank;
-    uint16_t offset;
-    uint32_t finalAddr;
-    int singleAccessCycles = 0;
-
-    component = getComponentFromAddr(addr, &type, &bank, &offset, &singleAccessCycles, kComponentAccessW);
-    if (!component) {
-        assert(false);
-        return;
-    } else if (type == MemComponentType::membus) {
-        internalWriteU8(addr, value);
-        return;
-    } else if (type == MemComponentType::sram && !component->ptr) {
-        // Handle games that don't have SRAM
-        return;
-    }
-
-    if (component->addrConverter) {
-        finalAddr = component->addrConverter(bank, offset);
-    } else {
-        finalAddr = (bank << 16) | offset;
-    }
-
-    if (cycles) {
-        *cycles += singleAccessCycles * 2;
-    }
-
-    assert(component->ptr);
-    component->ptr->writeU8(finalAddr, value & 0xFF);
-    component->ptr->writeU8(finalAddr + 1, value >> 8);
+    writeU8(addr, value & 0xFF, cycles);
+    writeU8(addr + 1, value >> 8, cycles);
 }
 
 uint8_t Membus::internalReadU8(uint32_t addr)
