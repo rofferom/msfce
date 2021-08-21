@@ -2513,9 +2513,9 @@ bool Ppu::renderDotMode7(int x, int y, const ScreenConfig& screenConfig, uint32_
 
         if (layer.m_Layer == Layer::background) {
             RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
-            *color = renderGetColorMode7(x, y, screenConfig);
+            bool colorValid = renderGetColorMode7(x, y, screenConfig, color);
 
-            if (*color != 0) {
+            if (colorValid) {
                 if (colorProp) {
                     colorProp->m_Layer = Layer::background;
                     colorProp->m_BgIdx = 0;
@@ -2541,10 +2541,10 @@ bool Ppu::renderDotMode7(int x, int y, const ScreenConfig& screenConfig, uint32_
     return false;
 }
 
-uint32_t Ppu::renderGetColorMode7(int x, int y, const ScreenConfig& screenConfig)
+bool Ppu::renderGetColorMode7(int x, int y, const ScreenConfig& screenConfig, uint32_t* c)
 {
     if (!screenConfig.m_BgEnabled[0]) {
-        return 0;
+        return false;
     }
 
     // Check if background is inside window
@@ -2668,6 +2668,10 @@ uint32_t Ppu::renderGetColorMode7(int x, int y, const ScreenConfig& screenConfig
     // Read palette index
     const int tileBaseAddr = charIdx * 0x80 + 1;
     const uint32_t cgramIdx = m_Vram[tileBaseAddr + tileY * 0x10 + tileX * 2];
+    if (cgramIdx == 0) {
+        return false;
+    }
 
-    return m_Cgram[cgramIdx];
+    *c = m_Cgram[cgramIdx];
+    return true;
 }

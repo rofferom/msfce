@@ -300,7 +300,7 @@ private:
 
     bool renderDotMode7(int x, int y, const ScreenConfig& screenConfig, uint32_t* color, BgColorProp* colorProp);
 
-    uint32_t renderGetColorMode7(int x, int y, const ScreenConfig& screenConfig);
+    bool renderGetColorMode7(int x, int y, const ScreenConfig& screenConfig, uint32_t* color);
 
 private:
     RenderCb m_RenderCb;
