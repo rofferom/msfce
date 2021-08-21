@@ -298,9 +298,9 @@ private:
     void initScreenRenderMode7();
     void initLineRenderMode7(int y);
 
-    bool renderDotMode7(int x, int y, uint32_t* color, BgColorProp* colorProp);
+    bool renderDotMode7(int x, int y, const ScreenConfig& screenConfig, uint32_t* color, BgColorProp* colorProp);
 
-    uint32_t renderGetColorMode7(int x, int y);
+    uint32_t renderGetColorMode7(int x, int y, const ScreenConfig& screenConfig);
 
 private:
     RenderCb m_RenderCb;

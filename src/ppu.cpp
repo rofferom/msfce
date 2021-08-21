@@ -1776,7 +1776,12 @@ void Ppu::renderDot(int x, int y)
         colorValid = true;
     } else {
         if (m_Bgmode == 7) {
-            colorValid = renderDotMode7(x, y, &rawColor, &colorProp);
+            colorValid = renderDotMode7(
+                x,
+                y,
+                m_MainScreenConfig,
+                &rawColor,
+                &colorProp);
         } else {
             colorValid = getScreenCurrentPixel(
                 x,
@@ -1817,12 +1822,21 @@ void Ppu::renderDot(int x, int y)
         if (m_SubscreenEnabled) {
             bool subscreenColorValid;
 
-            subscreenColorValid = getScreenCurrentPixel(
-                x,
-                y,
-                m_SubScreenConfig,
-                &subscreenRawColor,
-                nullptr);
+            if (m_Bgmode == 7) {
+                subscreenColorValid = renderDotMode7(
+                    x,
+                    y,
+                    m_SubScreenConfig,
+                    &subscreenRawColor,
+                    nullptr);
+            } else {
+                subscreenColorValid = getScreenCurrentPixel(
+                    x,
+                    y,
+                    m_SubScreenConfig,
+                    &subscreenRawColor,
+                    nullptr);
+            }
 
             if (!subscreenColorValid) {
                 subscreenRawColor = m_SubscreenBackdrop;
@@ -2492,27 +2506,33 @@ void Ppu::initLineRenderMode7(int y)
 }
 
 // https://github.com/bsnes-emu/bsnes/blob/master/bsnes/sfc/ppu/mode7.cpp
-bool Ppu::renderDotMode7(int x, int y, uint32_t* color, BgColorProp* colorProp)
+bool Ppu::renderDotMode7(int x, int y, const ScreenConfig& screenConfig, uint32_t* color, BgColorProp* colorProp)
 {
     for (size_t prioIdx = 0; m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
         const auto& layer = m_RenderLayerPriority[prioIdx];
 
         if (layer.m_Layer == Layer::background) {
             RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
-            *color = renderGetColorMode7(x, y);
+            *color = renderGetColorMode7(x, y, screenConfig);
 
             if (*color != 0) {
-                colorProp->m_Layer = Layer::background;
-                colorProp->m_BgIdx = 0;
+                if (colorProp) {
+                    colorProp->m_Layer = Layer::background;
+                    colorProp->m_BgIdx = 0;
+                }
+
                 return true;
             }
         } else if (layer.m_Layer == Layer::sprite) {
             int palette;
-            bool colorValid = getSpriteCurrentPixel(x, y, m_MainScreenConfig, layer.m_Priority, color, &palette);
+            bool colorValid = getSpriteCurrentPixel(x, y, screenConfig, layer.m_Priority, color, &palette);
 
             if (colorValid) {
-                colorProp->m_Layer = Layer::sprite;
-                colorProp->m_Palette = palette;
+                if (colorProp) {
+                    colorProp->m_Layer = Layer::sprite;
+                    colorProp->m_Palette = palette;
+                }
+
                 return true;
             }
         }
@@ -2521,9 +2541,9 @@ bool Ppu::renderDotMode7(int x, int y, uint32_t* color, BgColorProp* colorProp)
     return false;
 }
 
-uint32_t Ppu::renderGetColorMode7(int x, int y)
+uint32_t Ppu::renderGetColorMode7(int x, int y, const ScreenConfig& screenConfig)
 {
-    if (!m_MainScreenConfig.m_BgEnabled[0]) {
+    if (!screenConfig.m_BgEnabled[0]) {
         return 0;
     }
 
