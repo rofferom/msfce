@@ -9,7 +9,7 @@
 namespace {
 
 struct RegisterMapping {
-    off64_t offset;
+    off_t offset;
     int bit;
 };
 

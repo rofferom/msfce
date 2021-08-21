@@ -51,7 +51,7 @@ public:
     void loadState(const std::string& path) final;
 
     // Scheduler methods
-    void resumeTask(SchedulerTask* task, int cycles);
+    void resumeTask(SchedulerTask* task, int cycles) final;
 
     // MemComponent methods
     uint8_t readU8(uint32_t addr) override;

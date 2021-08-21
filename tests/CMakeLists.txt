@@ -4,6 +4,10 @@ add_executable(msfce_tests
     tests.cpp
 )
 
+set_target_properties(msfce_tests PROPERTIES
+    CXX_STANDARD 17
+)
+
 target_include_directories(msfce_tests
     PRIVATE
         ${CMAKE_SOURCE_DIR}/core/src

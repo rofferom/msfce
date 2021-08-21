@@ -58,7 +58,6 @@ private:
     AVStream* m_AudioStream = nullptr;
     AVAudioFifo* m_AudioFifo = nullptr;
     SwrContext* m_AudioSwrCtx = nullptr;
-    int m_AudioFrameIdx = 0;
     int m_AudioInSamples = 0;
     int m_AudioOutSamples = 0;
     int m_AudioSnesFrameSize = 0;
