@@ -567,6 +567,10 @@ void Snes::writeU8(uint32_t addr, uint8_t value)
                 static_cast<Ppu::HVIRQConfig>(m_HVIRQ_Config),
                 m_HVIRQ_H,
                 m_HVIRQ_V);
+
+            if (m_HVIRQ_Config == 0) {
+                m_Cpu->setIRQ(false);
+            }
         }
 
         // NMI
