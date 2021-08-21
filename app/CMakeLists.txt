@@ -93,7 +93,6 @@ target_link_libraries(msfce
         ${PKG_SWSCALE_LIBRARIES}
         ${PKG_SWRESAMPLE_LIBRARIES}
 
-        -lstdc++fs
         -lpthread
 )
 

@@ -15,7 +15,7 @@
 namespace msfce::recorder {
 
 struct Frame;
-struct FrameRecorder;
+class FrameRecorder;
 
 class Recorder : public msfce::core::Renderer {
 public:

@@ -41,7 +41,12 @@ enum LogLevel : uint32_t {
 typedef void (
     *log_cb_t)(uint32_t prio, const char* tag, const char* fmt, va_list ap);
 
+#if defined(__GNUC__) && !defined(__clang__)
 void __log(uint32_t prio, const char* tag, const char* fmt, ...)
     __attribute__((format(gnu_printf, 3, 4)));
+#else
+void __log(uint32_t prio, const char* tag, const char* fmt, ...)
+    __attribute__((format(printf, 3, 4)));
+#endif
 
 void logSetLevel(uint32_t prio);
