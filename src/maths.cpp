@@ -45,7 +45,7 @@ void Maths::writeU8(uint32_t addr, uint8_t value)
     case kRegisterWRMPYB:
         m_Multiplier = value;
         m_RemainderProduct = m_Multiplicand * m_Multiplier;
-        m_Dividend = m_Multiplier;
+        m_Quotient = m_Multiplier;
 
         LOGD(TAG, "Multiply: 0x%04X * 0x%02X => 0x%04X",
              m_Multiplicand, m_Multiplier, m_RemainderProduct);
