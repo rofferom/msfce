@@ -7,6 +7,7 @@
 #include <SDL.h>
 
 #include "controller.h"
+#include "registers.h"
 #include "snes_renderer.h"
 
 #include "frontend.h"
@@ -75,9 +76,11 @@ private:
     GLint m_ScaleMatrixUniform = -1;
     GLuint m_VAO = 0;
     GLsizei m_VAO_ElemSize = 0;
-    GLuint m_PBO = 0;
     GLuint m_Texture = 0;
-    GLubyte* m_TextureData = nullptr;
+
+    static constexpr int kTextureSize = kPpuDisplayWidth * kPpuDisplayHeight * 3;
+    GLubyte m_TextureData[kTextureSize];
+    GLubyte* m_TextureDataWriter = nullptr;
 
     // Audio
     std::mutex m_AudioSamplesMutex;

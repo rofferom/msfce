@@ -24,8 +24,6 @@ constexpr int kWindowInitialScale = 2;
 constexpr auto kRenderPeriod = std::chrono::microseconds(16666);
 constexpr int kSpeedupFrameSkip = 3; // x4 (skip 3 frames)
 
-constexpr int kTextureSize = kPpuDisplayWidth * kPpuDisplayHeight * 3;
-
 const char *vertexShader =
     "#version 330 core\n"
     "layout (location = 0) in vec3 aPos;"
@@ -408,19 +406,9 @@ int FrontendSdl2::run()
 
             // Render texture
             glBindTexture(GL_TEXTURE_2D, m_Texture);
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_PBO);
-
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 224, GL_RGB, GL_UNSIGNED_BYTE, 0);
-
-            glBufferData(GL_PIXEL_UNPACK_BUFFER, kTextureSize, 0, GL_STREAM_DRAW);
-            m_TextureData = (GLubyte*)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, kPpuDisplayWidth, kPpuDisplayHeight, GL_RGB, GL_UNSIGNED_BYTE, m_TextureData);
 
             m_Snes->renderSingleFrame();
-
-            glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-
-            glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-            glBindTexture(GL_TEXTURE_2D, 0);
         }
 
         // Render screen
@@ -452,15 +440,16 @@ void FrontendSdl2::setSnes(const std::shared_ptr<Snes>& snes)
 
 void FrontendSdl2::scanStarted()
 {
+    m_TextureDataWriter = m_TextureData;
 }
 
 void FrontendSdl2::drawPixel(const SnesColor& c)
 {
-    m_TextureData[0] = c.r;
-    m_TextureData[1] = c.g;
-    m_TextureData[2] = c.b;
+    m_TextureDataWriter[0] = c.r;
+    m_TextureDataWriter[1] = c.g;
+    m_TextureDataWriter[2] = c.b;
 
-    m_TextureData += 3;
+    m_TextureDataWriter += 3;
 }
 
 void FrontendSdl2::scanEnded()
@@ -612,12 +601,6 @@ int FrontendSdl2::glInitContext()
         nullptr);
 
     glBindTexture(GL_TEXTURE_2D, 0);
-
-    // Create PBO
-    glGenBuffers(1, &m_PBO);
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_PBO);
-    glBufferData(GL_PIXEL_UNPACK_BUFFER, kTextureSize, 0, GL_STREAM_DRAW);
-    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
     return 0;
 }
