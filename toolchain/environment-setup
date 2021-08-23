@@ -1,0 +1,16 @@
+export TOOLCHAIN_PATH=/opt/raspi1-toolchain
+export PATH=$TOOLCHAIN_PATH/host_sysroot/bin:$PATH
+export PKG_CONFIG_SYSROOT_DIR=$TOOLCHAIN_PATH/target_sysroot
+export PKG_CONFIG_LIBDIR=$TOOLCHAIN_PATH/target_sysroot/usr/lib/arm-linux-gnueabihf/pkgconfig:$TOOLCHAIN_PATH/target_sysroot/usr/share/pkgconfig
+export CC="arm-linux-gnueabihf-gcc --sysroot=$TOOLCHAIN_PATH/target_sysroot"
+export CXX="arm-linux-gnueabihf-g++ --sysroot=$TOOLCHAIN_PATH/target_sysroot"
+export AS=arm-linux-gnueabihf-as
+export LD="arm-linux-gnueabihf-ld --sysroot=$TOOLCHAIN_PATH/target_sysroot"
+export LDFLAGS="-Wl,--as-needed -Wl,-rpath-link=$TOOLCHAIN_PATH/target_sysroot/lib/arm-linux-gnueabihf:$TOOLCHAIN_PATH/target_sysroot/usr/lib/arm-linux-gnueabihf:$TOOLCHAIN_PATH/target_sysroot/usr/lib/arm-linux-gnueabihf/pulseaudio"
+export STRIP=arm-linux-gnueabihf-strip
+export RANLIB=arm-linux-gnueabihf-ranlib
+export OBJCOPY=arm-linux-gnueabihf-objcopy
+export OBJDUMP=arm-linux-gnueabihf-objdump
+export READELF=arm-linux-gnueabihf-readelf
+export AR=arm-linux-gnueabihf-ar
+export NM=arm-linux-gnueabihf-nm
