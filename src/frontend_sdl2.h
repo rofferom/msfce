@@ -74,8 +74,8 @@ private:
     bool m_FirstFrame = true;
     GLuint m_Shader = 0;
     GLint m_ScaleMatrixUniform = -1;
-    GLuint m_VAO = 0;
-    GLsizei m_VAO_ElemSize = 0;
+    GLint positionLoc = -1;
+    GLint texCoordLoc = -1;
     GLuint m_Texture = 0;
 
     static constexpr int kTextureSize = kPpuDisplayWidth * kPpuDisplayHeight * 3;

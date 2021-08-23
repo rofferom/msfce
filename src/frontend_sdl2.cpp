@@ -25,31 +25,28 @@ constexpr auto kRenderPeriod = std::chrono::microseconds(16666);
 constexpr int kSpeedupFrameSkip = 3; // x4 (skip 3 frames)
 
 const char *vertexShader =
-    "#version 330 core\n"
-    "layout (location = 0) in vec3 aPos;"
-    "layout (location = 1) in vec2 aTexCoord;"
+    "attribute vec4 a_Pos;"
+    "attribute vec2 a_TexCoord;"
 
-    "uniform mat4 scaleMatrix;"
-    "out vec2 TexCoord;"
+    "varying vec2 v_TexCoord;"
 
     "void main()"
     "{"
-    "    gl_Position = scaleMatrix * vec4(aPos, 1.0);"
-    "    TexCoord = vec2(aTexCoord.x, aTexCoord.y);"
+    "    gl_Position = a_Pos;"
+    "    v_TexCoord = a_TexCoord;"
     "}";
 
+
 const char *fragmentShader =
-    "#version 330 core\n"
-    "out vec4 FragColor;"
+    "precision mediump float;\n"
 
-    "in vec3 ourColor;"
-    "in vec2 TexCoord;"
+    "varying vec2 v_TexCoord;"
 
-    "uniform sampler2D texture1;"
+    "uniform sampler2D texture;"
 
     "void main()"
     "{"
-    "    FragColor = texture(texture1, TexCoord);"
+    "    gl_FragColor = texture2D(texture, v_TexCoord);"
     "}";
 
 struct SnesControllerMapping {
@@ -262,6 +259,10 @@ int FrontendSdl2::init()
         SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     assert(m_Window);
 
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+
     m_GlContext = SDL_GL_CreateContext(m_Window);
     assert(m_GlContext);
 
@@ -420,10 +421,28 @@ int FrontendSdl2::run()
         }
 
         glBindTexture(GL_TEXTURE_2D, m_Texture);
-
         glUseProgram(m_Shader);
-        glBindVertexArray(m_VAO);
-        glDrawElements(GL_TRIANGLES, m_VAO_ElemSize, GL_UNSIGNED_INT, 0);
+
+        static const float vertices[] = {
+             // Coords            // Texture
+             1.0f,  1.0f, 0.0f,   1.0f, 0.0f,
+             1.0f, -1.0f, 0.0f,   1.0f, 1.0f,
+            -1.0f, -1.0f, 0.0f,   0.0f, 1.0f,
+            -1.0f,  1.0f, 0.0f,   0.0f, 0.0f
+        };
+
+        static const GLuint indices[] = {
+            0, 1, 3,
+            1, 2, 3
+        };
+
+        glVertexAttribPointer(positionLoc, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), vertices);
+        glEnableVertexAttribArray(positionLoc);
+
+        glVertexAttribPointer(texCoordLoc, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), vertices + 3);
+        glEnableVertexAttribArray(texCoordLoc);
+
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, indices);
 
         std::this_thread::sleep_until(presentTp);
         SDL_GL_SwapWindow(m_Window);
@@ -546,39 +565,8 @@ int FrontendSdl2::glInitContext()
     m_Shader = compileShader(vertexShader, fragmentShader);
     m_ScaleMatrixUniform = glGetUniformLocation(m_Shader, "scaleMatrix");
 
-    // Create VAO
-    static const float vertices[] = {
-         // Coords            // Texture
-         1.0f,  1.0f, 0.0f,   1.0f, 0.0f,
-         1.0f, -1.0f, 0.0f,   1.0f, 1.0f,
-        -1.0f, -1.0f, 0.0f,   0.0f, 1.0f,
-        -1.0f,  1.0f, 0.0f,   0.0f, 0.0f
-    };
-
-    static const GLuint indices[] = {
-        0, 1, 3,
-        1, 2, 3
-    };
-
-    GLuint VBO, EBO;
-    glGenVertexArrays(1, &m_VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
-
-    glBindVertexArray(m_VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-    m_VAO_ElemSize = SIZEOF_ARRAY(indices);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
+    positionLoc = glGetAttribLocation(m_Shader, "a_Pos");
+    texCoordLoc = glGetAttribLocation(m_Shader, "a_TexCoord");
 
     // Create texture
     glGenTextures(1, &m_Texture);
