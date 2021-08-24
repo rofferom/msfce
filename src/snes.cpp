@@ -27,8 +27,10 @@ constexpr uint32_t kLowRomHeaderBase = 0x7FB0;
 constexpr uint32_t kHighRomHeaderBase = 0xFFB0;
 
 constexpr uint32_t kHeaderOffset_Title = 0x10;
+constexpr uint32_t kHeaderOffset_RomSpeedAndMode = 0x25;
 constexpr uint32_t kHeaderOffset_RomRamInfo = 0x26;
 constexpr uint32_t kHeaderOffset_SramSize = 0x28;
+
 constexpr uint32_t kHeader_TitleSize = 21;
 
 constexpr bool kLogTimings = true;
@@ -97,6 +99,7 @@ int Snes::removeRenderer(const std::shared_ptr<SnesRenderer>& renderer)
 int Snes::plugCartidge(const char* path)
 {
     uint8_t romRamInfo;
+    uint8_t romSpeedAndMode;
     int ret;
 
     // Open file and get its size
@@ -153,6 +156,11 @@ int Snes::plugCartidge(const char* path)
     strncpy(title, reinterpret_cast<const char*>(&m_RomData[headerAddress + kHeaderOffset_Title]), kHeader_TitleSize);
     LOGI(TAG, "ROM title: '%s'", title);
 
+    // Get Rom speed
+    romSpeedAndMode = m_RomData[headerAddress + kHeaderOffset_RomSpeedAndMode];
+    m_FastRom = romSpeedAndMode & (1 << 4);
+
+    // Get Ram size
     romRamInfo = m_RomData[headerAddress + kHeaderOffset_RomRamInfo];
     if (romRamInfo != 0) {
         m_SramSize = (1 << m_RomData[headerAddress + kHeaderOffset_SramSize]) * 1024;
@@ -258,7 +266,7 @@ std::string Snes::getRomBasename() const
 
 int Snes::start()
 {
-    auto membus = std::make_shared<Membus>(m_AddressingType);
+    auto membus = std::make_shared<Membus>(m_AddressingType, m_FastRom);
 
     auto rom = std::make_shared<BufferMemComponent>(
         MemComponentType::rom,
@@ -581,9 +589,6 @@ void Snes::writeU8(uint32_t addr, uint8_t value)
     case kRegisterHTIMEL:
         m_HVIRQ_H = (m_HVIRQ_H & 0xFF00) | value;
 
-        // FIXME: NTSC setting
-        m_HVIRQ_H = std::min(m_HVIRQ_H, static_cast<uint16_t>(339));
-
         m_Ppu->setHVIRQConfig(
             static_cast<Ppu::HVIRQConfig>(m_HVIRQ_Config),
             m_HVIRQ_H,
@@ -594,8 +599,6 @@ void Snes::writeU8(uint32_t addr, uint8_t value)
     case kRegisterHTIMEH:
         m_HVIRQ_H = (m_HVIRQ_H & 0xFF) | (value << 8);
 
-        m_HVIRQ_H = std::min(m_HVIRQ_H, static_cast<uint16_t>(339));
-
         m_Ppu->setHVIRQConfig(
             static_cast<Ppu::HVIRQConfig>(m_HVIRQ_Config),
             m_HVIRQ_H,
@@ -605,9 +608,6 @@ void Snes::writeU8(uint32_t addr, uint8_t value)
 
     case kRegisterVTIMEL:
         m_HVIRQ_V = (m_HVIRQ_V & 0xFF00) | value;
-
-        // FIXME: NTSC setting
-        m_HVIRQ_V = std::min(m_HVIRQ_V, static_cast<uint16_t>(261));
 
         m_Ppu->setHVIRQConfig(
             static_cast<Ppu::HVIRQConfig>(m_HVIRQ_Config),

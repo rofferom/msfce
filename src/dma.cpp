@@ -251,6 +251,20 @@ void Dma::dmaChannelContinue(int *cycles)
         }
         break;
 
+    case 4:
+        for (int i = 0; i < 4; i++) {
+            m_Membus->writeU8(m_DmaRunningCtx.m_DestAddress, m_Membus->readU8(m_DmaRunningCtx.m_SrcAddress));
+
+            incrementABusAddress(channelId, channel, m_DmaRunningCtx.m_aBusAddress);
+            (*m_DmaRunningCtx.m_bBusAddress)++;
+
+            *cycles += kTimingDmaAccess;
+            channel->m_DMAByteCounter--;
+        }
+
+        *m_DmaRunningCtx.m_bBusAddress = m_DmaRunningCtx.m_bBaseBusAddress;
+        break;
+
     default:
         LOGC(TAG, "Unimplemented mode %d", channel->m_Params.m_Mode);
         assert(false);

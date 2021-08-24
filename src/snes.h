@@ -81,6 +81,7 @@ private:
     std::string m_RomBasename;
     std::vector<uint8_t> m_RomData;
     AddressingType m_AddressingType;
+    bool m_FastRom = false;
     int m_SramSize = 0;
 
     // Components

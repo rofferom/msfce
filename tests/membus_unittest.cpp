@@ -19,7 +19,7 @@ public:
 class MembusTest : public testing::Test {
 public:
     void SetUp() {
-        membus = std::make_unique<Membus>(AddressingType::lowrom);
+        membus = std::make_unique<Membus>(AddressingType::lowrom, false);
 
         ram = std::make_shared<BufferMemComponent>(MemComponentType::ram, 128 * 1024);
         membus->plugComponent(ram);
