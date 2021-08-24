@@ -147,11 +147,6 @@ private:
     void handleWAI(uint32_t data, int *cycles);
 
 private:
-    enum class State {
-        running,
-        interrupt,
-    };
-
     struct Registers {
         uint16_t A = 0;
         uint16_t X = 0;
@@ -366,7 +361,6 @@ private:
 
     uint32_t m_CurrentOpcodePC = 0;
 
-    State m_IRQState = State::running;
     bool m_NMI = false;
     bool m_IRQ = false;
     bool m_WaitInterrupt = false;
