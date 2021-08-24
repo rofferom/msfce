@@ -461,9 +461,11 @@ const Ppu::LayerPriority Ppu::s_LayerPriorityMode7[] = {
     {Layer::none, 0, 0},
 };
 
-Ppu::Ppu(RenderCb renderCb)
+Ppu::Ppu(ScanStartedCb scanStartedCb, ScanStartedCb scanEndedCb, RenderCb renderCb)
     : MemComponent(MemComponentType::ppu),
       SchedulerTask(),
+      m_ScanStartedCb(scanStartedCb),
+      m_ScanEndedCb(scanEndedCb),
       m_RenderCb(renderCb)
 {
 }
@@ -1565,7 +1567,12 @@ int Ppu::run()
         if (m_RenderY == 0) {
             // Start of screen
             initScreenRender();
+            initLineRender(m_RenderY);
+
             m_Events |= Event_ScanStarted;
+            m_ScanStartedCb();
+
+            renderDot(m_RenderX, m_RenderY);
         } else if (m_RenderY == kPpuDisplayHeight) {
             // V-Blank
             m_Events |= Event_VBlankStart;
@@ -1582,7 +1589,6 @@ int Ppu::run()
         if (m_RenderX == kPpuDisplayWidth) {
             m_Events |= Event_HBlankStart;
         }
-
     } else if (m_RenderY >= kPpuDisplayHeight) {
         // V-Blank
     } else {
@@ -1598,6 +1604,7 @@ int Ppu::run()
 
         if (m_RenderY == 0) {
             m_Events |= Event_ScanEnded;
+            m_ScanEndedCb();
         }
     }
 

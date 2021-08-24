@@ -294,13 +294,25 @@ int Snes::start()
     m_Apu = std::make_shared<Apu>(m_MasterClock, audioRenderCb);
     membus->plugComponent(m_Apu);
 
+    auto scanStartedCb = [this]() {
+        for (const auto& renderer : m_RendererList) {
+            renderer->scanStarted();
+        }
+    };
+
+    auto scanEndedCb = [this]() {
+        for (const auto& renderer : m_RendererList) {
+            renderer->scanEnded();
+        }
+    };
+
     auto renderCb = [this](const SnesColor& c) {
         for (const auto& renderer : m_RendererList) {
             renderer->drawPixel(c);
         }
     };
 
-    m_Ppu = std::make_shared<Ppu>(renderCb);
+    m_Ppu = std::make_shared<Ppu>(scanStartedCb, scanEndedCb, renderCb);
     membus->plugComponent(m_Ppu);
 
     m_Maths = std::make_shared<Maths>();
@@ -386,10 +398,6 @@ int Snes::renderSingleFrame(bool renderPpu)
             auto ppuEvents = m_Ppu->getEvents();
 
             if (ppuEvents & Ppu::Event_ScanStarted) {
-                for (const auto& renderer : m_RendererList) {
-                    renderer->scanStarted();
-                }
-
                 m_Dma->onScanStarted();
             }
 
@@ -436,10 +444,6 @@ int Snes::renderSingleFrame(bool renderPpu)
 
                     m_CpuTime.reset();
                     m_PpuTime.reset();
-                }
-
-                for (const auto& renderer : m_RendererList) {
-                    renderer->scanEnded();
                 }
 
                 scanEnded = true;

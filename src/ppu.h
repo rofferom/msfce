@@ -34,10 +34,12 @@ public:
         HV = 3,
     };
 
+    using ScanStartedCb = std::function<void()>;
+    using ScanEndedCb = std::function<void()>;
     using RenderCb = std::function<void(const SnesColor& c)>;
 
 public:
-    Ppu(RenderCb renderCb);
+    Ppu(ScanStartedCb scanStartedCb, ScanEndedCb scanEndedCb, RenderCb renderCb);
     ~Ppu() = default;
 
     void dump() const;
@@ -303,6 +305,8 @@ private:
     bool renderGetColorMode7(int x, int y, const ScreenConfig& screenConfig, uint32_t* color);
 
 private:
+    ScanStartedCb m_ScanStartedCb;
+    ScanEndedCb m_ScanEndedCb;
     RenderCb m_RenderCb;
     DrawConfig m_DrawConfig = DrawConfig::Draw;
     uint32_t m_Events = 0;
