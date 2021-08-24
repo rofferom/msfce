@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <assert.h>
-#include "frontend.h"
 #include "log.h"
 #include "registers.h"
 #include "timings.h"

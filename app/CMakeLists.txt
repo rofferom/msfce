@@ -1,4 +1,3 @@
-# Find dependencies
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(PKG_SDL2 REQUIRED sdl2)
@@ -11,20 +10,7 @@ pkg_check_modules(PKG_AVFORMAT REQUIRED libavformat)
 pkg_check_modules(PKG_SWSCALE REQUIRED libswscale)
 pkg_check_modules(PKG_SWRESAMPLE REQUIRED libswresample)
 
-# msfce lib
-add_library(msfce_lib
-    65816.h
-    65816.cpp
-
-    apu.h
-    apu.cpp
-
-    controller.h
-    controller.cpp
-
-    dma.h
-    dma.cpp
-
+add_executable(msfce
     frontend.h
 
     frontend_dummy.h
@@ -33,41 +19,18 @@ add_library(msfce_lib
     frontend_sdl2.h
     frontend_sdl2.cpp
 
-    log.h
-    log.cpp
-
-    maths.h
-    maths.cpp
-
-    membus.h
-    membus.cpp
-
-    memcomponent.h
-    memcomponent.cpp
-
-    ppu.h
-    ppu.cpp
-
     recorder.h
     recorder.cpp
 
-    scheduler.h
-    schedulertask.h
-    schedulertask.cpp
-
-    snes.h
-    snes.cpp
-
-    sram.h
-    sram.cpp
-
-    wram.h
-    wram.cpp
+    main.cpp
 )
 
-set_property(TARGET msfce_lib PROPERTY CXX_STANDARD 17)
+set_target_properties(msfce
+    PROPERTIES
+        CXX_STANDARD 17
+)
 
-target_compile_options(msfce_lib
+target_compile_options(msfce
     PRIVATE
         -Wall
         -Wextra
@@ -77,60 +40,58 @@ target_compile_options(msfce_lib
         -Wno-unused-result
 )
 
-target_include_directories(msfce_lib PUBLIC
-    ${PKG_SDL2_INCLUDE_DIRS}
-    ${PKG_EPOXY_INCLUDE_DIRS}
-    ${PKG_GLM_INCLUDE_DIRS}
+target_include_directories(msfce
+    PRIVATE
+        ${PKG_SDL2_INCLUDE_DIRS}
+        ${PKG_EPOXY_INCLUDE_DIRS}
+        ${PKG_GLM_INCLUDE_DIRS}
 
-    ${PKG_AVCODEC_INCLUDE_DIRS}
-    ${PKG_AVFORMAT_INCLUDE_DIRS}
-    ${PKG_AVUTIL_INCLUDE_DIRS}
-    ${PKG_SWSCALE_INCLUDE_DIRS}
-    ${PKG_SWRESAMPLE_INCLUDE_DIRS}
-
-    ${CMAKE_CURRENT_SOURCE_DIR}
+        ${PKG_AVCODEC_INCLUDE_DIRS}
+        ${PKG_AVFORMAT_INCLUDE_DIRS}
+        ${PKG_AVUTIL_INCLUDE_DIRS}
+        ${PKG_SWSCALE_INCLUDE_DIRS}
+        ${PKG_SWRESAMPLE_INCLUDE_DIRS}
 )
 
-target_link_directories(msfce_lib PUBLIC
-    ${PKG_SDL2_LIBRARY_DIRS}
-    ${PKG_EPOXY_LIBRARY_DIRS}
+target_link_directories(msfce
+    PRIVATE
+        ${PKG_SDL2_LIBRARY_DIRS}
+        ${PKG_EPOXY_LIBRARY_DIRS}
 
-    ${PKG_AVCODEC_LIBRARY_DIRS}
-    ${PKG_AVFORMAT_LIBRARY_DIRS}
-    ${PKG_AVUTIL_LIBRARY_DIRS}
-    ${PKG_SWSCALE_LIBRARY_DIRS}
-    ${PKG_SWRESAMPLE_LIBRARY_DIRS}
+        ${PKG_AVCODEC_LIBRARY_DIRS}
+        ${PKG_AVFORMAT_LIBRARY_DIRS}
+        ${PKG_AVUTIL_LIBRARY_DIRS}
+        ${PKG_SWSCALE_LIBRARY_DIRS}
+        ${PKG_SWRESAMPLE_LIBRARY_DIRS}
 )
 
-target_link_libraries(msfce_lib PUBLIC
-    snes_spc
+target_link_libraries(msfce
+    PRIVATE
+        msfce_core
 
-    ${PKG_SDL2_LIBRARIES}
-    ${PKG_EPOXY_LIBRARIES}
+        ${PKG_SDL2_LIBRARIES}
+        ${PKG_EPOXY_LIBRARIES}
 
-    ${PKG_AVCODEC_LIBRARIES}
-    ${PKG_AVFORMAT_LIBRARIES}
-    ${PKG_AVUTIL_LIBRARIES}
-    ${PKG_SWSCALE_LIBRARIES}
-    ${PKG_SWRESAMPLE_LIBRARIES}
+        ${PKG_AVCODEC_LIBRARIES}
+        ${PKG_AVFORMAT_LIBRARIES}
+        ${PKG_AVUTIL_LIBRARIES}
+        ${PKG_SWSCALE_LIBRARIES}
+        ${PKG_SWRESAMPLE_LIBRARIES}
 
-    -lstdc++fs
-    -lpthread
+        -lstdc++fs
+        -lpthread
 )
-
-# msfce
-add_executable(msfce main.cpp)
-target_link_libraries(msfce msfce_lib)
 
 if (WIN32)
-    target_compile_definitions(msfce_lib
+    target_compile_definitions(msfce_core
         PRIVATE
-        __USE_MINGW_ANSI_STDIO=1
+            __USE_MINGW_ANSI_STDIO=1
     )
 
     target_link_libraries(msfce
-        -static-libgcc
-        -static-libstdc++
+        PRIVATE
+            -static-libgcc
+            -static-libstdc++
     )
 
     # Install mingw64 DLLs
