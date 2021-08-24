@@ -549,7 +549,7 @@ bool FrontendSdl2::handleShortcut(
 
 std::string FrontendSdl2::getSavestateName() const
 {
-    return m_Snes->getRomBasename() + ".msfe";
+    return m_Snes->getRomBasename() + ".msfce";
 }
 
 int FrontendSdl2::glInitContext()

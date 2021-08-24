@@ -11,8 +11,8 @@ pkg_check_modules(PKG_AVFORMAT REQUIRED libavformat)
 pkg_check_modules(PKG_SWSCALE REQUIRED libswscale)
 pkg_check_modules(PKG_SWRESAMPLE REQUIRED libswresample)
 
-# msfe lib
-add_library(msfe_lib
+# msfce lib
+add_library(msfce_lib
     65816.h
     65816.cpp
 
@@ -65,9 +65,9 @@ add_library(msfe_lib
     wram.cpp
 )
 
-set_property(TARGET msfe_lib PROPERTY CXX_STANDARD 17)
+set_property(TARGET msfce_lib PROPERTY CXX_STANDARD 17)
 
-target_compile_options(msfe_lib
+target_compile_options(msfce_lib
     PRIVATE
         -Wall
         -Wextra
@@ -77,7 +77,7 @@ target_compile_options(msfe_lib
         -Wno-unused-result
 )
 
-target_include_directories(msfe_lib PUBLIC
+target_include_directories(msfce_lib PUBLIC
     ${PKG_SDL2_INCLUDE_DIRS}
     ${PKG_EPOXY_INCLUDE_DIRS}
     ${PKG_GLM_INCLUDE_DIRS}
@@ -91,7 +91,7 @@ target_include_directories(msfe_lib PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_link_directories(msfe_lib PUBLIC
+target_link_directories(msfce_lib PUBLIC
     ${PKG_SDL2_LIBRARY_DIRS}
     ${PKG_EPOXY_LIBRARY_DIRS}
 
@@ -102,7 +102,7 @@ target_link_directories(msfe_lib PUBLIC
     ${PKG_SWRESAMPLE_LIBRARY_DIRS}
 )
 
-target_link_libraries(msfe_lib PUBLIC
+target_link_libraries(msfce_lib PUBLIC
     snes_spc
 
     ${PKG_SDL2_LIBRARIES}
@@ -118,17 +118,17 @@ target_link_libraries(msfe_lib PUBLIC
     -lpthread
 )
 
-# msfe
-add_executable(msfe main.cpp)
-target_link_libraries(msfe msfe_lib)
+# msfce
+add_executable(msfce main.cpp)
+target_link_libraries(msfce msfce_lib)
 
 if (WIN32)
-    target_compile_definitions(msfe_lib
+    target_compile_definitions(msfce_lib
         PRIVATE
         __USE_MINGW_ANSI_STDIO=1
     )
 
-    target_link_libraries(msfe
+    target_link_libraries(msfce
         -static-libgcc
         -static-libstdc++
     )
@@ -140,7 +140,7 @@ if (WIN32)
 
     foreach(DLL_NAME ${MINGW_DLL_LIST})
         add_custom_command(
-            TARGET msfe POST_BUILD
+            TARGET msfce POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 /usr/${TOOLCHAIN_PREFIX}/lib/${DLL_NAME}
                 ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${DLL_NAME}
@@ -163,7 +163,7 @@ if (WIN32)
 
     foreach(DLL_NAME ${DLL_LIST})
         add_custom_command(
-            TARGET msfe POST_BUILD
+            TARGET msfce POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 ${DEPS_BINARY_DIR}/${DLL_NAME}
                 ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${DLL_NAME}
