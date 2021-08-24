@@ -1627,16 +1627,16 @@ int  Cpu65816::run()
 {
     int cycles = 0;
 
+    if (m_WaitInterrupt) {
+        return cycles;
+    }
+
     // Check if NMI has been raised
     if (m_NMI) {
         handleNMI(&cycles);
         m_NMI = false;
     } else if (m_IRQ && !getBit(m_Registers.P, kPRegister_I)) {
         handleIRQ(&cycles);
-    }
-
-    if (m_WaitInterrupt) {
-        return cycles;
     }
 
     // Debug stuff
