@@ -1,13 +1,13 @@
-set(MSFE_TEST_SOURCES
+set(MSFCE_TEST_SOURCES
     membus_unittest.cpp
 
     tests.cpp
 )
 
-add_executable(mfse_tests ${MSFE_TEST_SOURCES})
+add_executable(msfce_tests ${MSFCE_TEST_SOURCES})
 
-target_link_libraries(mfse_tests PUBLIC
-    msfe_lib
+target_link_libraries(msfce_tests PUBLIC
+    msfce_lib
     gmock
     gtest
 )
