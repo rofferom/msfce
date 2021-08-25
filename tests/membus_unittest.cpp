@@ -6,10 +6,11 @@
 #include "membus.h"
 
 using ::testing::Return;
+using namespace msfce::core;
 
-class MockComponent : public MemComponent {
+class MockComponent : public msfce::core::MemComponent {
 public:
-    MockComponent(MemComponentType type)  : MemComponent(type) {
+    MockComponent(MemComponentType type) : MemComponent(type) {
     }
 
     MOCK_METHOD(uint8_t, readU8, (uint32_t address), (override));
