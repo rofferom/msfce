@@ -21,9 +21,7 @@ constexpr int kSpeedupFrameSkip = 3; // x4 (skip 3 frames)
 
 } // anonymous namespace
 
-FrontendSdl2::FrontendSdl2()
-    : Frontend(),
-      msfce::core::Renderer()
+FrontendSdl2::FrontendSdl2() : Frontend(), msfce::core::Renderer()
 {
 }
 
@@ -51,8 +49,10 @@ int FrontendSdl2::init(const std::shared_ptr<msfce::core::Snes>& snes)
 
     m_Window = SDL_CreateWindow(
         "Monkey Super Famicom Emulator",
-        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        m_WindowWidth, m_WindowHeight,
+        SDL_WINDOWPOS_CENTERED,
+        SDL_WINDOWPOS_CENTERED,
+        m_WindowWidth,
+        m_WindowHeight,
         SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
     assert(m_Window);
 
@@ -112,13 +112,15 @@ int FrontendSdl2::run()
                     if (m_WindowWidth != event.window.data1) {
                         m_WindowWidth = event.window.data1;
 
-                        m_GlRenderer->setWindowSize(m_WindowWidth, m_WindowHeight);
+                        m_GlRenderer->setWindowSize(
+                            m_WindowWidth, m_WindowHeight);
                     }
 
                     if (m_WindowHeight != event.window.data2) {
                         m_WindowHeight = event.window.data2;
 
-                        m_GlRenderer->setWindowSize(m_WindowWidth, m_WindowHeight);
+                        m_GlRenderer->setWindowSize(
+                            m_WindowWidth, m_WindowHeight);
                     }
                     break;
 
@@ -130,7 +132,8 @@ int FrontendSdl2::run()
             }
 
             case SDL_KEYDOWN:
-                keyHandled = handleContollerKey(&m_Controller1, event.key.keysym.scancode, true);
+                keyHandled = handleContollerKey(
+                    &m_Controller1, event.key.keysym.scancode, true);
                 if (keyHandled) {
                     break;
                 }
@@ -143,7 +146,8 @@ int FrontendSdl2::run()
                 break;
 
             case SDL_KEYUP:
-                keyHandled = handleContollerKey(&m_Controller1, event.key.keysym.scancode, false);
+                keyHandled = handleContollerKey(
+                    &m_Controller1, event.key.keysym.scancode, false);
                 if (keyHandled) {
                     break;
                 }
@@ -165,9 +169,7 @@ int FrontendSdl2::run()
 
             case SDL_JOYHATMOTION: {
                 handleHatMotion(
-                    &m_Controller1,
-                    event.jhat.hat,
-                    event.jhat.value);
+                    &m_Controller1, event.jhat.hat, event.jhat.value);
                 break;
             }
 
@@ -210,7 +212,6 @@ int FrontendSdl2::run()
         // Render screen
         m_GlRenderer->render();
 
-
         std::this_thread::sleep_until(presentTp);
         SDL_GL_SwapWindow(m_Window);
         presentTp += kRenderPeriod;
@@ -236,9 +237,7 @@ void FrontendSdl2::scanEnded()
 {
 }
 
-bool FrontendSdl2::handleShortcut(
-    SDL_Scancode scancode,
-    bool pressed)
+bool FrontendSdl2::handleShortcut(SDL_Scancode scancode, bool pressed)
 {
     switch (scancode) {
     case SDL_SCANCODE_O:
@@ -274,7 +273,8 @@ bool FrontendSdl2::handleShortcut(
             m_Fullscreen = !m_Fullscreen;
 
             if (m_Fullscreen) {
-                SDL_SetWindowFullscreen(m_Window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+                SDL_SetWindowFullscreen(
+                    m_Window, SDL_WINDOW_FULLSCREEN_DESKTOP);
                 SDL_ShowCursor(SDL_DISABLE);
             } else {
                 SDL_SetWindowFullscreen(m_Window, 0);
@@ -349,8 +349,7 @@ void FrontendSdl2::onJoystickRemoved(int index)
 void FrontendSdl2::initRecorder()
 {
     m_Recorder = std::make_shared<msfce::recorder::Recorder>(
-        m_SnesConfig,
-        m_Snes->getRomBasename());
+        m_SnesConfig, m_Snes->getRomBasename());
 
     m_Snes->addRenderer(m_Recorder);
 }
@@ -390,7 +389,7 @@ void FrontendSdl2::onSdlPlayCb(Uint8* stream, int len)
 {
     std::unique_lock<std::mutex> lock(m_AudioSamplesMutex);
 
-    if ((int) m_AudioSamplesUsed >= len) {
+    if ((int)m_AudioSamplesUsed >= len) {
         memcpy(stream, m_AudioSamples, len);
         memmove(m_AudioSamples, &m_AudioSamples[len], m_AudioSamplesUsed - len);
         m_AudioSamplesUsed -= len;
@@ -398,4 +397,3 @@ void FrontendSdl2::onSdlPlayCb(Uint8* stream, int len)
         memset(stream, 0, len);
     }
 }
-

@@ -15,9 +15,12 @@ struct SNES_SPC;
 
 namespace msfce::core {
 
-class Apu : public MemComponent, public SchedulerTask {
+class Apu
+    : public MemComponent
+    , public SchedulerTask {
 public:
-    using RenderSampleCb = std::function<void(const uint8_t* data, size_t sampleCount)>;
+    using RenderSampleCb =
+        std::function<void(const uint8_t* data, size_t sampleCount)>;
 
     static constexpr int kSampleSize = 4; // S16 stereo
     static constexpr int kSampleRate = 32000;

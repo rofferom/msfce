@@ -11,7 +11,9 @@ namespace msfce::recorder {
 
 class ImageRecorder : public FrameRecorderBackend {
 public:
-    ImageRecorder(const std::string& basename, const msfce::core::SnesConfig& snesConfig);
+    ImageRecorder(
+        const std::string& basename,
+        const msfce::core::SnesConfig& snesConfig);
 
     int start() final;
     int stop() final;

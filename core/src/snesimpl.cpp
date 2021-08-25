@@ -63,7 +63,7 @@ void SnesImpl::DurationTool::end()
     total_duration += end_tp - begin_tp;
 }
 
-template <typename Duration>
+template<typename Duration>
 int64_t SnesImpl::DurationTool::total()
 {
     if (!kLogTimings) {
@@ -78,9 +78,8 @@ std::shared_ptr<Snes> Snes::create()
     return std::make_shared<SnesImpl>();
 }
 
-SnesImpl::SnesImpl()
-    : MemComponent(MemComponentType::irq),
-      Scheduler(){
+SnesImpl::SnesImpl() : MemComponent(MemComponentType::irq), Scheduler()
+{
 }
 
 int SnesImpl::addRenderer(const std::shared_ptr<Renderer>& renderer)
@@ -158,9 +157,13 @@ int SnesImpl::plugCartidge(const char* path)
     }
 
     // Parse header
-    char title[kHeader_TitleSize+1];
+    char title[kHeader_TitleSize + 1];
     memset(title, 0, sizeof(title));
-    strncpy(title, reinterpret_cast<const char*>(&m_RomData[headerAddress + kHeaderOffset_Title]), kHeader_TitleSize);
+    strncpy(
+        title,
+        reinterpret_cast<const char*>(
+            &m_RomData[headerAddress + kHeaderOffset_Title]),
+        kHeader_TitleSize);
     LOGI(TAG, "ROM title: '%s'", title);
 
     // Get Rom speed
@@ -170,7 +173,8 @@ int SnesImpl::plugCartidge(const char* path)
     // Get Ram size
     romRamInfo = m_RomData[headerAddress + kHeaderOffset_RomRamInfo];
     if (romRamInfo != 0) {
-        m_SramSize = (1 << m_RomData[headerAddress + kHeaderOffset_SramSize]) * 1024;
+        m_SramSize =
+            (1 << m_RomData[headerAddress + kHeaderOffset_SramSize]) * 1024;
     }
 
     LOGI(TAG, "SRAM size: %d Bytes", m_SramSize);
@@ -191,62 +195,68 @@ int SnesImpl::scoreHeader(uint32_t address)
 {
     int score = 0;
 
-    if(m_RomData.size() < address + 0x50) {
+    if (m_RomData.size() < address + 0x50) {
         return score;
     }
 
-    uint8_t  mapMode     = m_RomData[address + 0x25] & ~0x10;  //ignore FastROM bit
-    uint16_t complement  = m_RomData[address + 0x2c] << 0 | m_RomData[address + 0x2d] << 8;
-    uint16_t checksum    = m_RomData[address + 0x2e] << 0 | m_RomData[address + 0x2f] << 8;
-    uint16_t resetVector = m_RomData[address + 0x4c] << 0 | m_RomData[address + 0x4d] << 8;
+    uint8_t mapMode = m_RomData[address + 0x25] & ~0x10; // ignore FastROM bit
+    uint16_t complement = m_RomData[address + 0x2c] << 0 |
+                          m_RomData[address + 0x2d] << 8;
+    uint16_t checksum = m_RomData[address + 0x2e] << 0 |
+                        m_RomData[address + 0x2f] << 8;
+    uint16_t resetVector = m_RomData[address + 0x4c] << 0 |
+                           m_RomData[address + 0x4d] << 8;
 
-    if(resetVector < 0x8000) {
-        return score;  //$00:0000-7fff is never ROM data
+    if (resetVector < 0x8000) {
+        return score; //$00:0000-7fff is never ROM data
     }
 
-    uint8_t opcode = m_RomData[(address & ~0x7fff) | (resetVector & 0x7fff)];  //first instruction executed
+    uint8_t opcode =
+        m_RomData[(address & ~0x7fff) | (resetVector & 0x7fff)]; // first
+                                                                 // instruction
+                                                                 // executed
 
     // most likely opcodes
-    if (opcode == 0x78      //sei
-      || opcode == 0x18     //clc (clc; xce)
-      || opcode == 0x38     //sec (sec; xce)
-      || opcode == 0x9c     //stz $nnnn (stz $4200)
-      || opcode == 0x4c     //jmp $nnnn
-      || opcode == 0x5c) {  //jml $nnnnnn
+    if (opcode == 0x78       // sei
+        || opcode == 0x18    // clc (clc; xce)
+        || opcode == 0x38    // sec (sec; xce)
+        || opcode == 0x9c    // stz $nnnn (stz $4200)
+        || opcode == 0x4c    // jmp $nnnn
+        || opcode == 0x5c) { // jml $nnnnnn
         score += 8;
     }
 
     // plausible opcodes
-    if (opcode == 0xc2    //rep #$nn
-     || opcode == 0xe2    //sep #$nn
-     || opcode == 0xad    //lda $nnnn
-     || opcode == 0xae    //ldx $nnnn
-     || opcode == 0xac    //ldy $nnnn
-     || opcode == 0xaf    //lda $nnnnnn
-     || opcode == 0xa9    //lda #$nn
-     || opcode == 0xa2    //ldx #$nn
-     || opcode == 0xa0    //ldy #$nn
-     || opcode == 0x20    //jsr $nnnn
-     || opcode == 0x22) { //jsl $nnnnnn
+    if (opcode == 0xc2       // rep #$nn
+        || opcode == 0xe2    // sep #$nn
+        || opcode == 0xad    // lda $nnnn
+        || opcode == 0xae    // ldx $nnnn
+        || opcode == 0xac    // ldy $nnnn
+        || opcode == 0xaf    // lda $nnnnnn
+        || opcode == 0xa9    // lda #$nn
+        || opcode == 0xa2    // ldx #$nn
+        || opcode == 0xa0    // ldy #$nn
+        || opcode == 0x20    // jsr $nnnn
+        || opcode == 0x22) { // jsl $nnnnnn
         score += 4;
     }
 
     // implausible opcodes
-    if (opcode == 0x40    //rti
-     || opcode == 0x60    //rts
-     || opcode == 0x6b    //rtl
-     || opcode == 0xcd    //cmp $nnnn
-     || opcode == 0xec    //cpx $nnnn
-     || opcode == 0xcc) { //cpy $nnnn
+    if (opcode == 0x40       // rti
+        || opcode == 0x60    // rts
+        || opcode == 0x6b    // rtl
+        || opcode == 0xcd    // cmp $nnnn
+        || opcode == 0xec    // cpx $nnnn
+        || opcode == 0xcc) { // cpy $nnnn
         score -= 4;
     }
 
     // least likely opcodes
-    if (opcode == 0x00    //brk #$nn
-     || opcode == 0x02    //cop #$nn
-     || opcode == 0xdb    //stp
-     || opcode == 0x42    //wdm
-     || opcode == 0xff) { //sbc $nnnnnn,x
+    if (opcode == 0x00       // brk #$nn
+        || opcode == 0x02    // cop #$nn
+        || opcode == 0xdb    // stp
+        || opcode == 0x42    // wdm
+        || opcode == 0xff) { // sbc $nnnnnn,x
         score -= 8;
     }
 
@@ -263,7 +273,6 @@ int SnesImpl::scoreHeader(uint32_t address)
     }
 
     return std::max(0, score);
-
 }
 
 std::string SnesImpl::getRomBasename() const
@@ -276,8 +285,7 @@ int SnesImpl::start()
     auto membus = std::make_shared<Membus>(m_AddressingType, m_FastRom);
 
     auto rom = std::make_shared<BufferMemComponent>(
-        MemComponentType::rom,
-        std::move(m_RomData));
+        MemComponentType::rom, std::move(m_RomData));
     membus->plugComponent(rom);
 
     m_Ram = std::make_shared<Wram>();
@@ -404,7 +412,8 @@ int SnesImpl::renderSingleFrame(bool renderPpu)
         }
 
         // Check if Joypad autoread is complete
-        if (m_JoypadAutoreadEndcycle && m_JoypadAutoreadEndcycle <= m_MasterClock) {
+        if (m_JoypadAutoreadEndcycle &&
+            m_JoypadAutoreadEndcycle <= m_MasterClock) {
             m_HVBJOY &= ~1; // Autoread
             m_JoypadAutoreadEndcycle = 0;
             m_ControllerPorts->readController();
@@ -460,9 +469,11 @@ int SnesImpl::renderSingleFrame(bool renderPpu)
                 m_HVBJOY &= ~(1 << 7);
 
                 if (kLogTimings) {
-                    LOGI(TAG, "CPU: %" PRId64 " ms - PPU: %" PRId64 " ms",
-                         m_CpuTime.total<std::chrono::milliseconds>(),
-                         m_PpuTime.total<std::chrono::milliseconds>());
+                    LOGI(
+                        TAG,
+                        "CPU: %" PRId64 " ms - PPU: %" PRId64 " ms",
+                        m_CpuTime.total<std::chrono::milliseconds>(),
+                        m_PpuTime.total<std::chrono::milliseconds>());
 
                     m_CpuTime.reset();
                     m_PpuTime.reset();
@@ -488,7 +499,6 @@ void SnesImpl::setHVIRQ_Flag(bool v)
     m_HVIRQ_Flag = v;
     m_Cpu->setIRQ(v);
 }
-
 
 void SnesImpl::setController1(const Controller& controller)
 {
@@ -586,7 +596,10 @@ void SnesImpl::writeU8(uint32_t addr, uint8_t value)
         // H/V IRQ
         uint8_t enableHVIRQ = (value >> 4) & 0b11;
         if (m_HVIRQ_Config != enableHVIRQ) {
-            LOGD(TAG, "H/V IRQ is now %s", m_HVIRQ_Config ? "enabled" : "disabled");
+            LOGD(
+                TAG,
+                "H/V IRQ is now %s",
+                m_HVIRQ_Config ? "enabled" : "disabled");
             m_HVIRQ_Config = enableHVIRQ;
 
             m_Ppu->setHVIRQConfig(
@@ -609,7 +622,10 @@ void SnesImpl::writeU8(uint32_t addr, uint8_t value)
         // Joypad
         bool joypadAutoread = value & 1;
         if (m_JoypadAutoread != joypadAutoread) {
-            LOGI(TAG, "Joypad autoread is now %s", joypadAutoread ? "enabled" : "disabled");
+            LOGI(
+                TAG,
+                "Joypad autoread is now %s",
+                joypadAutoread ? "enabled" : "disabled");
             m_JoypadAutoread = joypadAutoread;
         }
 

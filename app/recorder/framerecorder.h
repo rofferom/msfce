@@ -20,9 +20,7 @@ struct Frame {
     std::vector<uint8_t> payload;
     int sampleCount = 0;
 
-    Frame(FrameType type, size_t payloadSize)
-        : type(type),
-          payload(payloadSize)
+    Frame(FrameType type, size_t payloadSize) : type(type), payload(payloadSize)
     {
     }
 };

@@ -4,11 +4,15 @@
 
 static uint32_t s_LogLevel = LOG_INFO;
 
-static void logCbDefault(uint32_t prio, const char* tag, const char *fmt, va_list ap)
+static void logCbDefault(
+    uint32_t prio,
+    const char* tag,
+    const char* fmt,
+    va_list ap)
 {
     char buf[128];
     struct timespec ts;
-    FILE *stream;
+    FILE* stream;
     char strPrio;
 
     if (prio > s_LogLevel) {
@@ -55,12 +59,19 @@ static void logCbDefault(uint32_t prio, const char* tag, const char *fmt, va_lis
     }
 
     vsnprintf(buf, sizeof(buf), fmt, ap);
-    fprintf(stream, "[%" PRITime ":%03lu][%c][%-8s] %s\n", ts.tv_sec, ts.tv_nsec / 1000000, strPrio, tag, buf);
+    fprintf(
+        stream,
+        "[%" PRITime ":%03lu][%c][%-8s] %s\n",
+        ts.tv_sec,
+        ts.tv_nsec / 1000000,
+        strPrio,
+        tag,
+        buf);
 }
 
 static log_cb_t sCb = logCbDefault;
 
-void __log(uint32_t prio, const char* tag, const char *fmt, ...)
+void __log(uint32_t prio, const char* tag, const char* fmt, ...)
 {
     va_list ap;
 

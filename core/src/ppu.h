@@ -13,7 +13,9 @@
 
 namespace msfce::core {
 
-class Ppu : public MemComponent, public SchedulerTask {
+class Ppu
+    : public MemComponent
+    , public SchedulerTask {
 public:
     enum : uint32_t {
         Event_VBlankStart = (1 << 0),
@@ -41,7 +43,9 @@ public:
     using RenderCb = std::function<void(const Color& c)>;
 
 public:
-    Ppu(ScanStartedCb scanStartedCb, ScanEndedCb scanEndedCb, RenderCb renderCb);
+    Ppu(ScanStartedCb scanStartedCb,
+        ScanEndedCb scanEndedCb,
+        RenderCb renderCb);
     ~Ppu() = default;
 
     void dump() const;
@@ -112,7 +116,6 @@ private:
 
         bool m_OnScreen;
     };
-
 
     struct RendererBgInfo {
         int bgIdx;
@@ -210,7 +213,6 @@ private:
         Config m_MathConfig;
     };
 
-
     enum class WindowLogic : uint32_t {
         OR = 0,
         AND = 1,
@@ -283,7 +285,13 @@ private:
     uint32_t getObjColorFromCgram(int palette, int color);
     uint32_t getMainBackdropColor();
 
-    bool getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int screen_y, Color* c, int* priority);
+    bool getPixelFromBg(
+        int bgIdx,
+        const Background* bg,
+        int screen_x,
+        int screen_y,
+        Color* c,
+        int* priority);
     bool getPixelFromObj(int screen_x, int screen_y, Color* c, int* priority);
 
     void initScreenRender();
@@ -292,7 +300,11 @@ private:
     void renderStep();
 
     static WindowConfig::Config getWindowConfig(uint32_t value);
-    static bool isInsideWindow(int x, const WindowConfig& config, WindowConfig::Config layerConfig, bool* enabled);
+    static bool isInsideWindow(
+        int x,
+        const WindowConfig& config,
+        WindowConfig::Config layerConfig,
+        bool* enabled);
     bool applyWindowLogic(
         int x,
         WindowConfig::Config window1Config,
@@ -302,9 +314,18 @@ private:
     void initScreenRenderMode7();
     void initLineRenderMode7(int y);
 
-    bool renderDotMode7(int x, int y, const ScreenConfig& screenConfig, uint32_t* color, BgColorProp* colorProp);
+    bool renderDotMode7(
+        int x,
+        int y,
+        const ScreenConfig& screenConfig,
+        uint32_t* color,
+        BgColorProp* colorProp);
 
-    bool renderGetColorMode7(int x, int y, const ScreenConfig& screenConfig, uint32_t* color);
+    bool renderGetColorMode7(
+        int x,
+        int y,
+        const ScreenConfig& screenConfig,
+        uint32_t* color);
 
 private:
     ScanStartedCb m_ScanStartedCb;

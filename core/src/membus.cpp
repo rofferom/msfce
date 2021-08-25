@@ -17,8 +17,7 @@ constexpr uint32_t kComponentAccessRW = kComponentAccessR | kComponentAccessW;
 namespace msfce::core {
 
 Membus::Membus(AddressingType addrType, bool fastRom)
-    : m_AddrType(addrType),
-      m_FastRom(fastRom)
+    : m_AddrType(addrType), m_FastRom(fastRom)
 {
     if (addrType == AddressingType::lowrom) {
         initLowRom();
@@ -29,7 +28,8 @@ Membus::Membus(AddressingType addrType, bool fastRom)
     }
 
     // Fill generic mirroring info
-    m_Components[enumToInt(MemComponentType::ram)].addrConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
+    m_Components[enumToInt(MemComponentType::ram)].addrConverter =
+        [](uint8_t bank, uint16_t offset) -> uint32_t {
         if (kWramBankStart <= bank && bank <= kWramBankEnd) {
             // Direct access
             return (bank - kWramBankStart) * 0x10000 + offset;
@@ -45,18 +45,24 @@ Membus::Membus(AddressingType addrType, bool fastRom)
         return offset;
     };
 
-    m_Components[enumToInt(MemComponentType::ppu)].addrConverter = dropBankConverter;
-    m_Components[enumToInt(MemComponentType::dma)].addrConverter = dropBankConverter;
-    m_Components[enumToInt(MemComponentType::apu)].addrConverter = dropBankConverter;
-    m_Components[enumToInt(MemComponentType::irq)].addrConverter = dropBankConverter;
-    m_Components[enumToInt(MemComponentType::joypads)].addrConverter = dropBankConverter;
-    m_Components[enumToInt(MemComponentType::indirectRam)].addrConverter = dropBankConverter;
+    m_Components[enumToInt(MemComponentType::ppu)].addrConverter =
+        dropBankConverter;
+    m_Components[enumToInt(MemComponentType::dma)].addrConverter =
+        dropBankConverter;
+    m_Components[enumToInt(MemComponentType::apu)].addrConverter =
+        dropBankConverter;
+    m_Components[enumToInt(MemComponentType::irq)].addrConverter =
+        dropBankConverter;
+    m_Components[enumToInt(MemComponentType::joypads)].addrConverter =
+        dropBankConverter;
+    m_Components[enumToInt(MemComponentType::indirectRam)].addrConverter =
+        dropBankConverter;
 }
 
 void Membus::initLowRom()
 {
     // Fill "real" mapping
-    for (const auto& component: s_LowRomMap.components) {
+    for (const auto& component : s_LowRomMap.components) {
         for (int i = component.bankStart; i <= component.bankEnd; i++) {
             if (m_Banks[i].type == BankType::invalid) {
                 m_Banks[i].type = BankType::direct;
@@ -68,7 +74,9 @@ void Membus::initLowRom()
 
             // Fill SystemArea LUT
             if (i <= 0x3F && component.offsetEnd <= 0x7FFF) {
-                for (int offset = component.offsetStart; offset <= component.offsetEnd; offset++) {
+                for (int offset = component.offsetStart;
+                     offset <= component.offsetEnd;
+                     offset++) {
                     m_SystemArea[offset] = &component;
                 }
             }
@@ -76,17 +84,21 @@ void Membus::initLowRom()
     }
 
     // Fill mirroring info
-    for (const auto& mirror: s_LowRomMap.mirrors) {
-        assert(mirror.srcBankEnd - mirror.srcBankStart == mirror.targetBankEnd - mirror.targetBankStart);
+    for (const auto& mirror : s_LowRomMap.mirrors) {
+        assert(
+            mirror.srcBankEnd - mirror.srcBankStart ==
+            mirror.targetBankEnd - mirror.targetBankStart);
 
         for (int i = mirror.srcBankStart; i <= mirror.srcBankEnd; i++) {
             m_Banks[i].type = BankType::mirrored;
-            m_Banks[i].targetBank = mirror.targetBankStart + (i - mirror.srcBankStart);
+            m_Banks[i].targetBank =
+                mirror.targetBankStart + (i - mirror.srcBankStart);
         }
     }
 
     // Plug LowRom specific address converters
-    m_Components[enumToInt(MemComponentType::rom)].addrConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
+    m_Components[enumToInt(MemComponentType::rom)].addrConverter =
+        [](uint8_t bank, uint16_t offset) -> uint32_t {
         if (bank <= 0x7D && offset >= 0x8000) {
             return bank * 0x8000 + (offset - 0x8000);
         } else if (0x40 <= bank && bank <= 0x6F && offset < 0x8000) {
@@ -99,7 +111,8 @@ void Membus::initLowRom()
         }
     };
 
-    m_Components[enumToInt(MemComponentType::sram)].addrConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
+    m_Components[enumToInt(MemComponentType::sram)].addrConverter =
+        [](uint8_t bank, uint16_t offset) -> uint32_t {
         if (bank >= 0xFE) {
             return (bank - 0xFE + 0xE) * 0x8000 + offset;
         } else {
@@ -111,7 +124,7 @@ void Membus::initLowRom()
 void Membus::initHighRom()
 {
     // Fill "real" mapping
-    for (const auto& component: s_HighRomMap.components) {
+    for (const auto& component : s_HighRomMap.components) {
         for (int i = component.bankStart; i <= component.bankEnd; i++) {
             if (m_Banks[i].type == BankType::invalid) {
                 m_Banks[i].type = BankType::direct;
@@ -123,7 +136,9 @@ void Membus::initHighRom()
 
             // Fill SystemArea LUT
             if (i <= 0x3F && component.offsetEnd <= 0x7FFF) {
-                for (int offset = component.offsetStart; offset <= component.offsetEnd; offset++) {
+                for (int offset = component.offsetStart;
+                     offset <= component.offsetEnd;
+                     offset++) {
                     m_SystemArea[offset] = &component;
                 }
             }
@@ -131,17 +146,21 @@ void Membus::initHighRom()
     }
 
     // Fill mirroring info
-    for (const auto& mirror: s_HighRomMap.mirrors) {
-        assert(mirror.srcBankEnd - mirror.srcBankStart == mirror.targetBankEnd - mirror.targetBankStart);
+    for (const auto& mirror : s_HighRomMap.mirrors) {
+        assert(
+            mirror.srcBankEnd - mirror.srcBankStart ==
+            mirror.targetBankEnd - mirror.targetBankStart);
 
         for (int i = mirror.srcBankStart; i <= mirror.srcBankEnd; i++) {
             m_Banks[i].type = BankType::mirrored;
-            m_Banks[i].targetBank = mirror.targetBankStart + (i - mirror.srcBankStart);
+            m_Banks[i].targetBank =
+                mirror.targetBankStart + (i - mirror.srcBankStart);
         }
     }
 
     // Plug LowRom specific address converters
-    m_Components[enumToInt(MemComponentType::rom)].addrConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
+    m_Components[enumToInt(MemComponentType::rom)].addrConverter =
+        [](uint8_t bank, uint16_t offset) -> uint32_t {
         if (bank <= 0x3F) {
             return (bank << 16) + offset;
         } else if (0x80 <= bank && bank <= 0xBF) {
@@ -156,17 +175,18 @@ void Membus::initHighRom()
         }
     };
 
-    m_Components[enumToInt(MemComponentType::sram)].addrConverter = [](uint8_t bank, uint16_t offset) -> uint32_t {
+    m_Components[enumToInt(MemComponentType::sram)].addrConverter =
+        [](uint8_t bank, uint16_t offset) -> uint32_t {
         return (bank - 0x20) * 0x2000 + offset - 0x6000;
     };
 }
 
-Membus::ComponentHandler *Membus::getComponentFromAddr(
+Membus::ComponentHandler* Membus::getComponentFromAddr(
     uint32_t addr,
     MemComponentType* type,
-    uint8_t *outBankId,
-    uint16_t *outOffset,
-    int *cycles,
+    uint8_t* outBankId,
+    uint16_t* outOffset,
+    int* cycles,
     uint32_t access)
 {
     const MemoryRange* range = nullptr;
@@ -189,7 +209,7 @@ Membus::ComponentHandler *Membus::getComponentFromAddr(
         Bank* bank = &m_Banks[targetBank];
 
         // Find target component
-        for (auto& i: bank->ranges) {
+        for (auto& i : bank->ranges) {
             if (i->offsetStart <= offset && offset <= i->offsetEnd) {
                 range = i;
                 break;
@@ -231,15 +251,16 @@ int Membus::plugComponent(const std::shared_ptr<MemComponent>& component)
     return 0;
 }
 
-uint8_t Membus::readU8(uint32_t addr, int *cycles)
+uint8_t Membus::readU8(uint32_t addr, int* cycles)
 {
-    ComponentHandler *component;
+    ComponentHandler* component;
     MemComponentType type;
     uint8_t bank;
     uint16_t offset;
     uint32_t finalAddr;
 
-    component = getComponentFromAddr(addr, &type, &bank, &offset, cycles, kComponentAccessR);
+    component = getComponentFromAddr(
+        addr, &type, &bank, &offset, cycles, kComponentAccessR);
     if (!component) {
         assert(false);
         return 0;
@@ -260,28 +281,27 @@ uint8_t Membus::readU8(uint32_t addr, int *cycles)
     return component->ptr->readU8(finalAddr);
 }
 
-uint16_t Membus::readU16(uint32_t addr, int *cycles)
+uint16_t Membus::readU16(uint32_t addr, int* cycles)
 {
-    return readU8(addr, cycles)
-        | (readU8(addr + 1, cycles) << 8);
+    return readU8(addr, cycles) | (readU8(addr + 1, cycles) << 8);
 }
 
-uint32_t Membus::readU24(uint32_t addr, int *cycles)
+uint32_t Membus::readU24(uint32_t addr, int* cycles)
 {
-    return readU8(addr, cycles)
-        | (readU8(addr + 1, cycles) << 8)
-        | (readU8(addr + 2, cycles) << 16);
+    return readU8(addr, cycles) | (readU8(addr + 1, cycles) << 8) |
+           (readU8(addr + 2, cycles) << 16);
 }
 
-void Membus::writeU8(uint32_t addr, uint8_t value, int *cycles)
+void Membus::writeU8(uint32_t addr, uint8_t value, int* cycles)
 {
-    ComponentHandler *component;
+    ComponentHandler* component;
     MemComponentType type;
     uint8_t bank;
     uint16_t offset;
     uint32_t finalAddr;
 
-    component = getComponentFromAddr(addr, &type, &bank, &offset, cycles, kComponentAccessW);
+    component = getComponentFromAddr(
+        addr, &type, &bank, &offset, cycles, kComponentAccessW);
     if (!component) {
         assert(false);
         return;
@@ -303,7 +323,7 @@ void Membus::writeU8(uint32_t addr, uint8_t value, int *cycles)
     component->ptr->writeU8(finalAddr, value);
 }
 
-void Membus::writeU16(uint32_t addr, uint16_t value, int *cycles)
+void Membus::writeU16(uint32_t addr, uint16_t value, int* cycles)
 {
     writeU8(addr, value & 0xFF, cycles);
     writeU8(addr + 1, value >> 8, cycles);

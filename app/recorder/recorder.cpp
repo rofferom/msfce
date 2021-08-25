@@ -45,10 +45,14 @@ std::string getDate()
 
 namespace msfce::recorder {
 
-Recorder::Recorder(const msfce::core::SnesConfig& snesConfig, const std::string& basename)
-    : m_SnesConfig(snesConfig),
-      m_Basename(basename),
-      m_ImgSize(m_SnesConfig.displayWidth * m_SnesConfig.displayHeight * kRgbSampleSize)
+Recorder::Recorder(
+    const msfce::core::SnesConfig& snesConfig,
+    const std::string& basename)
+    : m_SnesConfig(snesConfig)
+    , m_Basename(basename)
+    , m_ImgSize(
+          m_SnesConfig.displayWidth * m_SnesConfig.displayHeight *
+          kRgbSampleSize)
 {
 }
 
@@ -74,7 +78,8 @@ void Recorder::scanStarted()
     m_BackBuffer = std::make_shared<Frame>(FrameType::video, m_ImgSize);
     m_BackBufferWritter = m_BackBuffer->payload.data();
 
-    m_AudioFrame = std::make_shared<Frame>(FrameType::audio, m_AudioFrameMaxSize);
+    m_AudioFrame =
+        std::make_shared<Frame>(FrameType::audio, m_AudioFrameMaxSize);
 }
 
 void Recorder::drawPixel(const msfce::core::Color& c)
@@ -103,14 +108,18 @@ void Recorder::scanEnded()
 
     // HACK: Resync audio (audio is currently produced at a slower way)
     // Avoid to get more than 20 ms of delay
-    const int64_t videoTsMs = m_VideoFrameReceived * 1000 / m_SnesConfig.displayRate;
-    const int64_t audioTsMs = m_AudioSampleReceived * 1000 / m_SnesConfig.audioSampleRate;
+    const int64_t videoTsMs =
+        m_VideoFrameReceived * 1000 / m_SnesConfig.displayRate;
+    const int64_t audioTsMs =
+        m_AudioSampleReceived * 1000 / m_SnesConfig.audioSampleRate;
     const int64_t audioDeltaMs = videoTsMs - audioTsMs;
     constexpr int64_t kAudioMaxDeltaMs = 20;
 
     if (audioDeltaMs >= kAudioMaxDeltaMs) {
-        const int silenceSampleCount = m_SnesConfig.audioSampleRate * kAudioMaxDeltaMs / 1000;
-        auto silence = std::vector<uint8_t>(silenceSampleCount * m_SnesConfig.audioSampleSize);
+        const int silenceSampleCount =
+            m_SnesConfig.audioSampleRate * kAudioMaxDeltaMs / 1000;
+        auto silence = std::vector<uint8_t>(
+            silenceSampleCount * m_SnesConfig.audioSampleSize);
         playAudioSamples(silence.data(), silenceSampleCount);
     }
 
@@ -136,12 +145,16 @@ void Recorder::playAudioSamples(const uint8_t* data, size_t sampleCount)
         return;
     }
 
-    const size_t payloadRequiredSize = (m_AudioFrame->sampleCount + sampleCount) * m_SnesConfig.audioSampleSize;
+    const size_t payloadRequiredSize =
+        (m_AudioFrame->sampleCount + sampleCount) *
+        m_SnesConfig.audioSampleSize;
     if (payloadRequiredSize > m_AudioFrame->payload.size()) {
         m_AudioFrame->payload.resize(payloadRequiredSize);
     }
 
-    uint8_t* payloadWrite = m_AudioFrame->payload.data() + m_AudioFrame->sampleCount * m_SnesConfig.audioSampleSize;
+    uint8_t* payloadWrite =
+        m_AudioFrame->payload.data() +
+        m_AudioFrame->sampleCount * m_SnesConfig.audioSampleSize;
     memcpy(payloadWrite, data, sampleCount * m_SnesConfig.audioSampleSize);
     m_AudioFrame->sampleCount += sampleCount;
 
