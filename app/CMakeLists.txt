@@ -19,6 +19,9 @@ add_executable(msfce
     frontend_sdl2.h
     frontend_sdl2.cpp
 
+    renderer_gl.h
+    renderer_gl.cpp
+
     recorder/framerecorder.h
     recorder/framerecorder.cpp
 

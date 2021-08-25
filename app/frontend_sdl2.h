@@ -6,6 +6,7 @@
 #include <epoxy/gl.h>
 #include <SDL.h>
 
+#include "renderer_gl.h"
 #include "frontend.h"
 
 namespace msfce::recorder {
@@ -37,9 +38,6 @@ private:
 
     std::string getSavestateName() const;
 
-    int glInitContext();
-    void glSetViewport();
-
     void onJoystickAdded(int index);
     void onJoystickRemoved(int index);
 
@@ -57,6 +55,8 @@ private:
     bool m_Fullscreen = false;
 
     SDL_GLContext m_GlContext = nullptr;
+    std::unique_ptr<RendererGl> m_GlRenderer;
+    GLubyte* m_TextureData = nullptr;
 
     SDL_Joystick* m_Joystick = nullptr;
 
@@ -67,17 +67,6 @@ private:
     // Scheduling
     bool m_Running = true;
     bool m_SpeedUp = false;
-
-    // OpenGL
-    bool m_FirstFrame = true;
-    GLuint m_Shader = 0;
-    GLint m_ScaleMatrixUniform = -1;
-    GLuint m_VAO = 0;
-    GLsizei m_VAO_ElemSize = 0;
-    GLuint m_PBO = 0;
-    int m_TextureSize = 0;
-    GLuint m_Texture = 0;
-    GLubyte* m_TextureData = nullptr;
 
     // Audio
     std::mutex m_AudioSamplesMutex;
