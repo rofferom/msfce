@@ -7,24 +7,21 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "apu.h"
-#include "controller.h"
-#include "log.h"
-#include "ppu.h"
+#include <msfce/core/snes.h>
+#include <msfce/core/log.h>
 #include "recorder.h"
-#include "snes.h"
 #include "frontend_sdl2.h"
 
 #define TAG "FrontendSdl2"
 
 namespace {
 
+#define SIZEOF_ARRAY(x)  (sizeof(x) / sizeof((x)[0]))
+
 constexpr int kWindowInitialScale = 2;
 
 constexpr auto kRenderPeriod = std::chrono::microseconds(16666);
 constexpr int kSpeedupFrameSkip = 3; // x4 (skip 3 frames)
-
-constexpr int kTextureSize = kPpuDisplayWidth * kPpuDisplayHeight * 3;
 
 const char *vertexShader =
     "#version 330 core\n"
@@ -60,50 +57,50 @@ struct SnesControllerMapping {
 };
 
 static const std::unordered_map<SDL_Scancode, SnesControllerMapping> s_ControllerMapping = {
-    { SDL_SCANCODE_UP,    { "Up",    offsetof(SnesController, up) } },
-    { SDL_SCANCODE_DOWN,  { "Down",  offsetof(SnesController, down) } },
-    { SDL_SCANCODE_LEFT,  { "Left",  offsetof(SnesController, left) } },
-    { SDL_SCANCODE_RIGHT, { "Right", offsetof(SnesController, right) } },
+    { SDL_SCANCODE_UP,    { "Up",    offsetof(msfce::core::Controller, up) } },
+    { SDL_SCANCODE_DOWN,  { "Down",  offsetof(msfce::core::Controller, down) } },
+    { SDL_SCANCODE_LEFT,  { "Left",  offsetof(msfce::core::Controller, left) } },
+    { SDL_SCANCODE_RIGHT, { "Right", offsetof(msfce::core::Controller, right) } },
 
-    { SDL_SCANCODE_RETURN, { "Start",  offsetof(SnesController, start) } },
-    { SDL_SCANCODE_RSHIFT, { "Select", offsetof(SnesController, select) } },
+    { SDL_SCANCODE_RETURN, { "Start",  offsetof(msfce::core::Controller, start) } },
+    { SDL_SCANCODE_RSHIFT, { "Select", offsetof(msfce::core::Controller, select) } },
 
-    { SDL_SCANCODE_Q, { "L", offsetof(SnesController, l) } },
-    { SDL_SCANCODE_W, { "R", offsetof(SnesController, r) } },
+    { SDL_SCANCODE_Q, { "L", offsetof(msfce::core::Controller, l) } },
+    { SDL_SCANCODE_W, { "R", offsetof(msfce::core::Controller, r) } },
 
-    { SDL_SCANCODE_A, { "Y", offsetof(SnesController, y) } },
-    { SDL_SCANCODE_S, { "X", offsetof(SnesController, x) } },
-    { SDL_SCANCODE_Z, { "B", offsetof(SnesController, b) } },
-    { SDL_SCANCODE_X, { "A", offsetof(SnesController, a) } },
+    { SDL_SCANCODE_A, { "Y", offsetof(msfce::core::Controller, y) } },
+    { SDL_SCANCODE_S, { "X", offsetof(msfce::core::Controller, x) } },
+    { SDL_SCANCODE_Z, { "B", offsetof(msfce::core::Controller, b) } },
+    { SDL_SCANCODE_X, { "A", offsetof(msfce::core::Controller, a) } },
 };
 
 static const std::unordered_map<SDL_GameControllerButton, SnesControllerMapping> s_JoystickMapping = {
-    { SDL_CONTROLLER_BUTTON_DPAD_UP,    { "Up",    offsetof(SnesController, up) } },
-    { SDL_CONTROLLER_BUTTON_DPAD_DOWN,  { "Down",  offsetof(SnesController, down) } },
-    { SDL_CONTROLLER_BUTTON_DPAD_LEFT,  { "Left",  offsetof(SnesController, left) } },
-    { SDL_CONTROLLER_BUTTON_DPAD_RIGHT, { "Right", offsetof(SnesController, right) } },
+    { SDL_CONTROLLER_BUTTON_DPAD_UP,    { "Up",    offsetof(msfce::core::Controller, up) } },
+    { SDL_CONTROLLER_BUTTON_DPAD_DOWN,  { "Down",  offsetof(msfce::core::Controller, down) } },
+    { SDL_CONTROLLER_BUTTON_DPAD_LEFT,  { "Left",  offsetof(msfce::core::Controller, left) } },
+    { SDL_CONTROLLER_BUTTON_DPAD_RIGHT, { "Right", offsetof(msfce::core::Controller, right) } },
 
-    { SDL_CONTROLLER_BUTTON_START, { "Start",  offsetof(SnesController, start) } },
-    { SDL_CONTROLLER_BUTTON_BACK, { "Select", offsetof(SnesController, select) } },
+    { SDL_CONTROLLER_BUTTON_START, { "Start",  offsetof(msfce::core::Controller, start) } },
+    { SDL_CONTROLLER_BUTTON_BACK, { "Select", offsetof(msfce::core::Controller, select) } },
 
-    { SDL_CONTROLLER_BUTTON_LEFTSHOULDER, { "L", offsetof(SnesController, l) } },
-    { SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, { "R", offsetof(SnesController, r) } },
+    { SDL_CONTROLLER_BUTTON_LEFTSHOULDER, { "L", offsetof(msfce::core::Controller, l) } },
+    { SDL_CONTROLLER_BUTTON_RIGHTSHOULDER, { "R", offsetof(msfce::core::Controller, r) } },
 
-    { SDL_CONTROLLER_BUTTON_Y, { "Y", offsetof(SnesController, y) } },
-    { SDL_CONTROLLER_BUTTON_X, { "X", offsetof(SnesController, x) } },
-    { SDL_CONTROLLER_BUTTON_B, { "B", offsetof(SnesController, b) } },
-    { SDL_CONTROLLER_BUTTON_A, { "A", offsetof(SnesController, a) } },
+    { SDL_CONTROLLER_BUTTON_Y, { "Y", offsetof(msfce::core::Controller, y) } },
+    { SDL_CONTROLLER_BUTTON_X, { "X", offsetof(msfce::core::Controller, x) } },
+    { SDL_CONTROLLER_BUTTON_B, { "B", offsetof(msfce::core::Controller, b) } },
+    { SDL_CONTROLLER_BUTTON_A, { "A", offsetof(msfce::core::Controller, a) } },
 };
 
 static const std::unordered_map<uint8_t, SnesControllerMapping> s_HatMapping = {
-    { SDL_HAT_UP,    { "Up",    offsetof(SnesController, up) } },
-    { SDL_HAT_DOWN,  { "Down",  offsetof(SnesController, down) } },
-    { SDL_HAT_LEFT,  { "Left",  offsetof(SnesController, left) } },
-    { SDL_HAT_RIGHT, { "Right", offsetof(SnesController, right) } },
+    { SDL_HAT_UP,    { "Up",    offsetof(msfce::core::Controller, up) } },
+    { SDL_HAT_DOWN,  { "Down",  offsetof(msfce::core::Controller, down) } },
+    { SDL_HAT_LEFT,  { "Left",  offsetof(msfce::core::Controller, left) } },
+    { SDL_HAT_RIGHT, { "Right", offsetof(msfce::core::Controller, right) } },
 };
 
 bool* controllerGetButton(
-    SnesController* controller,
+    msfce::core::Controller* controller,
     const SnesControllerMapping& mapping)
 {
     auto rawPtr = reinterpret_cast<uint8_t *>(controller) + mapping.offset;
@@ -111,7 +108,7 @@ bool* controllerGetButton(
 }
 
 bool handleContollerKey(
-    SnesController* controller,
+    msfce::core::Controller* controller,
     SDL_Scancode scancode,
     bool pressed)
 {
@@ -138,7 +135,7 @@ bool handleContollerKey(
 }
 
 bool handleJoystickKey(
-    SnesController* controller,
+    msfce::core::Controller* controller,
     SDL_GameControllerButton button,
     bool pressed)
 {
@@ -165,7 +162,7 @@ bool handleJoystickKey(
 }
 
 bool handleHatMotion(
-    SnesController* controller,
+    msfce::core::Controller* controller,
     uint8_t hat,
     uint8_t value)
 {
@@ -236,7 +233,7 @@ GLuint compileShader(const char* vShaderCode, const char* fShaderCode)
 
 FrontendSdl2::FrontendSdl2()
     : Frontend(),
-      SnesRenderer()
+      msfce::core::Renderer()
 {
 }
 
@@ -246,16 +243,20 @@ FrontendSdl2::~FrontendSdl2()
     SDL_Quit();
 }
 
-int FrontendSdl2::init()
+int FrontendSdl2::init(const std::shared_ptr<msfce::core::Snes>& snes)
 {
+    m_Snes = snes;
+    m_SnesConfig = m_Snes->getConfig();
+
+    // Init SDL
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK);
 
     // Init joystick
     SDL_JoystickEventState(SDL_ENABLE);
 
     // Init video
-    m_WindowWidth = kPpuDisplayWidth * kWindowInitialScale;
-    m_WindowHeight = kPpuDisplayHeight * kWindowInitialScale;
+    m_WindowWidth = m_SnesConfig.displayWidth * kWindowInitialScale;
+    m_WindowHeight = m_SnesConfig.displayHeight * kWindowInitialScale;
 
     m_Window = SDL_CreateWindow(
         "Monkey Super Famicom Emulator",
@@ -273,7 +274,7 @@ int FrontendSdl2::init()
     // Init audio
     SDL_AudioSpec spec;
     SDL_memset(&spec, 0, sizeof(spec));
-    spec.freq = Apu::kSampleRate;
+    spec.freq = m_SnesConfig.audioSampleRate;
     spec.format = AUDIO_S16;
     spec.channels = 2;
     spec.samples = 512; // 16 ms
@@ -412,7 +413,7 @@ int FrontendSdl2::run()
 
             glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 224, GL_RGB, GL_UNSIGNED_BYTE, 0);
 
-            glBufferData(GL_PIXEL_UNPACK_BUFFER, kTextureSize, 0, GL_STREAM_DRAW);
+            glBufferData(GL_PIXEL_UNPACK_BUFFER, m_TextureSize, 0, GL_STREAM_DRAW);
             m_TextureData = (GLubyte*)glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
 
             m_Snes->renderSingleFrame();
@@ -445,16 +446,11 @@ int FrontendSdl2::run()
     return true;
 }
 
-void FrontendSdl2::setSnes(const std::shared_ptr<Snes>& snes)
-{
-    m_Snes = snes;
-}
-
 void FrontendSdl2::scanStarted()
 {
 }
 
-void FrontendSdl2::drawPixel(const SnesColor& c)
+void FrontendSdl2::drawPixel(const msfce::core::Color& c)
 {
     m_TextureData[0] = c.r;
     m_TextureData[1] = c.g;
@@ -600,12 +596,14 @@ int FrontendSdl2::glInitContext()
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
+    m_TextureSize = m_SnesConfig.displayWidth * m_SnesConfig.displayHeight * 3;
+
     glTexImage2D(
         GL_TEXTURE_2D,
         0,
         GL_RGB,
-        kPpuDisplayWidth,
-        kPpuDisplayHeight,
+        m_SnesConfig.displayWidth,
+        m_SnesConfig.displayHeight,
         0,
         GL_RGB,
         GL_UNSIGNED_BYTE,
@@ -614,9 +612,10 @@ int FrontendSdl2::glInitContext()
     glBindTexture(GL_TEXTURE_2D, 0);
 
     // Create PBO
+
     glGenBuffers(1, &m_PBO);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_PBO);
-    glBufferData(GL_PIXEL_UNPACK_BUFFER, kTextureSize, 0, GL_STREAM_DRAW);
+    glBufferData(GL_PIXEL_UNPACK_BUFFER, m_TextureSize, 0, GL_STREAM_DRAW);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
 
     return 0;
@@ -627,16 +626,16 @@ void FrontendSdl2::glSetViewport()
     glm::mat4 m;
 
     const float windowRatio = (float) m_WindowWidth / (float) m_WindowHeight;
-    const float ppuRatio = (float) kPpuDisplayWidth / (float) kPpuDisplayHeight;
+    const float ppuRatio = (float) m_SnesConfig.displayWidth / (float) m_SnesConfig.displayHeight;
 
     if (windowRatio > ppuRatio) {
         // Window is wider than expected
-        const float displayedWidth = (float) kPpuDisplayWidth * ((float) m_WindowHeight / (float) kPpuDisplayHeight);
+        const float displayedWidth = (float) m_SnesConfig.displayWidth * ((float) m_WindowHeight / (float) m_SnesConfig.displayHeight);
         const float widthRatio = displayedWidth / (float) m_WindowWidth;
         m = glm::scale(glm::vec3(widthRatio, 1.0f, 1));
     } else {
         // Window is higher than expected
-        const float displayedHeight = (float) kPpuDisplayHeight * ((float) m_WindowWidth / (float) kPpuDisplayWidth);
+        const float displayedHeight = (float) m_SnesConfig.displayHeight * ((float) m_WindowWidth / (float) m_SnesConfig.displayWidth);
         const float heightRatio = (float) displayedHeight / (float) m_WindowHeight;
         m = glm::scale(glm::vec3(1.0f, heightRatio, 1));
     }
@@ -675,9 +674,8 @@ void FrontendSdl2::onJoystickRemoved(int index)
 
 void FrontendSdl2::initRecorder()
 {
-    // FIXME: Framerate must be updated for PAL games
     m_Recorder = std::make_shared<Recorder>(
-        kPpuDisplayWidth, kPpuDisplayHeight, 60,
+        m_SnesConfig,
         m_Snes->getRomBasename());
 
     m_Snes->addRenderer(m_Recorder);
@@ -706,7 +704,7 @@ void FrontendSdl2::playAudioSamples(const uint8_t* data, size_t sampleCount)
 {
     std::unique_lock<std::mutex> lock(m_AudioSamplesMutex);
 
-    const size_t sampleSize = sampleCount * Apu::kSampleSize;
+    const size_t sampleSize = sampleCount * m_SnesConfig.audioSampleSize;
 
     if (kAudioSamplesSize >= m_AudioSamplesUsed + sampleSize) {
         memcpy(m_AudioSamples + m_AudioSamplesUsed, data, sampleSize);

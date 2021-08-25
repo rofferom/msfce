@@ -3,14 +3,12 @@
 #include <stdint.h>
 #include <memory>
 
-struct Snes;
+#include <msfce/core/snes.h>
 
 class Frontend {
 public:
     virtual ~Frontend() = default;
 
-    virtual int init() = 0;
+    virtual int init(const std::shared_ptr<msfce::core::Snes>& snes) = 0;
     virtual int run() = 0;
-
-    virtual void setSnes(const std::shared_ptr<Snes>& snes) = 0;
 };

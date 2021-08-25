@@ -9,7 +9,8 @@
 #include <vector>
 #include <thread>
 
-#include "snes_renderer.h"
+#include <msfce/core/renderer.h>
+#include <msfce/core/snes.h>
 
 struct AVCodecContext;
 struct AVFormatContext;
@@ -19,14 +20,14 @@ struct AVStream;
 struct SwrContext;
 struct SwsContext;
 
-class Recorder : public SnesRenderer {
+class Recorder : public msfce::core::Renderer {
 public:
-    Recorder(int width, int height, int framerate, const std::string& basename);
+    Recorder(const msfce::core::SnesConfig& snesConfig, const std::string& basename);
     ~Recorder();
 
     // Draw API
     void scanStarted() final;
-    void drawPixel(const SnesColor& c) final;
+    void drawPixel(const msfce::core::Color& c) final;
     void scanEnded() final;
 
     void playAudioSamples(const uint8_t* data, size_t sampleCount);
@@ -103,7 +104,7 @@ private:
 
     class ImageRecorder : public FrameRecorderBackend {
     public:
-        ImageRecorder(const std::string& basename, int frameWidth, int frameHeight);
+        ImageRecorder(const std::string& basename, const msfce::core::SnesConfig& snesConfig);
 
         int start() final;
         int stop() final;
@@ -112,13 +113,12 @@ private:
 
     private:
         std::string m_Basename;
-        const int m_FrameWidth;
-        const int m_FrameHeight;
+        const msfce::core::SnesConfig m_SnesConfig;
     };
 
     class VideoRecorder : public FrameRecorderBackend {
     public:
-        VideoRecorder(const std::string& basename, int frameWidth, int frameHeight, int framerate);
+        VideoRecorder(const std::string& basename, const msfce::core::SnesConfig& snesConfig);
 
         int start() final;
         int stop() final;
@@ -139,15 +139,12 @@ private:
         int encodeAudioFrame(AVFrame* avFrameSnes);
 
     private:
+        const msfce::core::SnesConfig m_SnesConfig;
         std::string m_Basename;
 
         AVFormatContext* m_ContainerCtx = nullptr;
 
         // Video
-        const int m_FrameWidth;
-        const int m_FrameHeight;
-        const int m_Framerate;
-
         AVCodecContext* m_VideoCodecCtx = nullptr;
         AVStream* m_VideoStream = nullptr;
         SwsContext* m_VideoSwsCtx = nullptr;
@@ -168,9 +165,7 @@ private:
     std::string getTsBasename() const;
 
 private:
-    const int m_FrameWidth;
-    const int m_FrameHeight;
-    const int m_Framerate;
+    const msfce::core::SnesConfig m_SnesConfig;
     const std::string m_Basename;
 
     const int m_ImgSize;

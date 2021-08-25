@@ -13,9 +13,6 @@ pkg_check_modules(PKG_SWRESAMPLE REQUIRED libswresample)
 add_executable(msfce
     frontend.h
 
-    frontend_dummy.h
-    frontend_dummy.cpp
-
     frontend_sdl2.h
     frontend_sdl2.cpp
 

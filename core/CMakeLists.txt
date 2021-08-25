@@ -1,43 +1,47 @@
 add_library(msfce_core STATIC
-    65816.h
-    65816.cpp
+    include/msfce/core/controller.h
+    include/msfce/core/log.h
+    include/msfce/core/renderer.h
+    include/msfce/core/snes.h
 
-    apu.h
-    apu.cpp
+    src/65816.h
+    src/65816.cpp
 
-    controller.h
-    controller.cpp
+    src/apu.h
+    src/apu.cpp
 
-    dma.h
-    dma.cpp
+    src/controllerports.h
+    src/controllerports.cpp
 
-    log.h
-    log.cpp
+    src/dma.h
+    src/dma.cpp
 
-    maths.h
-    maths.cpp
+    src/log.cpp
 
-    membus.h
-    membus.cpp
+    src/maths.h
+    src/maths.cpp
 
-    memcomponent.h
-    memcomponent.cpp
+    src/membus.h
+    src/membus.cpp
 
-    ppu.h
-    ppu.cpp
+    src/memcomponent.h
+    src/memcomponent.cpp
 
-    scheduler.h
-    schedulertask.h
-    schedulertask.cpp
+    src/ppu.h
+    src/ppu.cpp
 
-    snes.h
-    snes.cpp
+    src/scheduler.h
+    src/schedulertask.h
+    src/schedulertask.cpp
 
-    sram.h
-    sram.cpp
+    src/snesimpl.h
+    src/snesimpl.cpp
 
-    wram.h
-    wram.cpp
+    src/sram.h
+    src/sram.cpp
+
+    src/wram.h
+    src/wram.cpp
 )
 
 set_target_properties(msfce_core
@@ -57,7 +61,9 @@ target_compile_options(msfce_core
 
 target_include_directories(msfce_core
     PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_link_libraries(msfce_core

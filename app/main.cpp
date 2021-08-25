@@ -1,6 +1,6 @@
+#include <msfce/core/log.h>
+#include <msfce/core/snes.h>
 #include "frontend_sdl2.h"
-#include "log.h"
-#include "snes.h"
 
 #define TAG "main"
 
@@ -19,18 +19,18 @@ int main(int argc, char* argv[])
 
     // Create frontend
     auto frontend = std::make_shared<FrontendSdl2>();
-    frontend->init();
 
     // Create and run SNES
     const char* romPath = argv[1];
 
-    auto snes = std::make_shared<Snes>();
+    auto snes = msfce::core::Snes::create();
     snes->addRenderer(frontend);
     snes->plugCartidge(romPath);
 
-    frontend->setSnes(snes);
     snes->start();
 
+    // Run frontend
+    frontend->init(snes);
     frontend->run();
 
     snes->stop();

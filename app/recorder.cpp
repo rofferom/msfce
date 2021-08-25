@@ -13,8 +13,7 @@ extern "C" {
     #include <libswscale/swscale.h>
 }
 
-#include "apu.h"
-#include "log.h"
+#include <msfce/core/log.h>
 #include "recorder.h"
 
 #define TAG "Recorder"
@@ -125,10 +124,9 @@ void Recorder::FrameRecorder::threadEntry()
 }
 
 
-Recorder::ImageRecorder::ImageRecorder(const std::string& basename, int frameWidth, int frameHeight)
+Recorder::ImageRecorder::ImageRecorder(const std::string& basename, const msfce::core::SnesConfig& snesConfig)
     : m_Basename(basename),
-      m_FrameWidth(frameWidth),
-      m_FrameHeight(frameHeight)
+      m_SnesConfig(snesConfig)
 {
 }
 
@@ -155,8 +153,8 @@ bool Recorder::ImageRecorder::onFrameReceived(const std::shared_ptr<Frame>& inpu
     AVCodecContext* codecCtx = avcodec_alloc_context3(codec);
     codecCtx->time_base.num = 1;
     codecCtx->time_base.den = 1;
-    codecCtx->width = m_FrameWidth;
-    codecCtx->height = m_FrameHeight;
+    codecCtx->width = m_SnesConfig.displayWidth;
+    codecCtx->height = m_SnesConfig.displayHeight;
     codecCtx->pix_fmt = AV_PIX_FMT_RGB24;
 
     ret = avcodec_open2(codecCtx, codec, nullptr);
@@ -171,8 +169,8 @@ bool Recorder::ImageRecorder::onFrameReceived(const std::shared_ptr<Frame>& inpu
         goto free_codecctx;
     }
 
-    avFrame->width = m_FrameWidth;
-    avFrame->height = m_FrameHeight;
+    avFrame->width = m_SnesConfig.displayWidth;
+    avFrame->height = m_SnesConfig.displayHeight;
     avFrame->format = AV_PIX_FMT_RGB24;
 
     ret = av_frame_get_buffer(avFrame, 0);
@@ -229,11 +227,9 @@ free_codecctx:
     return false;
 }
 
-Recorder::VideoRecorder::VideoRecorder(const std::string& basename, int frameWidth, int frameHeight, int framerate)
-    : m_Basename(basename),
-    m_FrameWidth(frameWidth),
-    m_FrameHeight(frameHeight),
-    m_Framerate(framerate)
+Recorder::VideoRecorder::VideoRecorder(const std::string& basename, const msfce::core::SnesConfig& snesConfig)
+    : m_SnesConfig(snesConfig),
+      m_Basename(basename)
 {
 }
 
@@ -259,9 +255,9 @@ int Recorder::VideoRecorder::initVideo()
     }
 
     m_VideoCodecCtx->time_base.num = 1;
-    m_VideoCodecCtx->time_base.den = m_Framerate;
-    m_VideoCodecCtx->width = m_FrameWidth;
-    m_VideoCodecCtx->height = m_FrameHeight;
+    m_VideoCodecCtx->time_base.den = m_SnesConfig.displayRate;
+    m_VideoCodecCtx->width = m_SnesConfig.displayWidth;
+    m_VideoCodecCtx->height = m_SnesConfig.displayHeight;
     m_VideoCodecCtx->pix_fmt = AV_PIX_FMT_YUV420P;
 
     // Add and setup video stream
@@ -289,8 +285,8 @@ int Recorder::VideoRecorder::initVideo()
 
     // Create RGB => YUV420 converter
     m_VideoSwsCtx = sws_getContext(
-        m_FrameWidth, m_FrameHeight, AV_PIX_FMT_RGB24,
-        m_FrameWidth, m_FrameHeight, AV_PIX_FMT_YUV420P,
+        m_SnesConfig.displayWidth, m_SnesConfig.displayHeight, AV_PIX_FMT_RGB24,
+        m_SnesConfig.displayWidth, m_SnesConfig.displayHeight, AV_PIX_FMT_YUV420P,
         0, nullptr, nullptr, nullptr);
     if (!m_VideoSwsCtx) {
         LOGW(TAG, "sws_getContext() failed");
@@ -341,7 +337,7 @@ int Recorder::VideoRecorder::initAudio()
 
     m_AudioCodecCtx->sample_fmt = codec->sample_fmts[0];
     m_AudioCodecCtx->sample_rate = kOutSampleRate;
-    m_AudioCodecCtx->channels = Apu::kChannels;
+    m_AudioCodecCtx->channels = m_SnesConfig.audioChannels;
     m_AudioCodecCtx->channel_layout = AV_CH_LAYOUT_STEREO;
     m_AudioCodecCtx->bit_rate = 128000;
 
@@ -372,7 +368,7 @@ int Recorder::VideoRecorder::initAudio()
 
     m_AudioSnesFrameSize = av_rescale_rnd(
         m_AudioCodecCtx->frame_size,
-        Apu::kSampleRate,
+        m_SnesConfig.audioSampleRate,
         m_AudioCodecCtx->sample_rate,
         AV_ROUND_UP);
 
@@ -383,12 +379,12 @@ int Recorder::VideoRecorder::initAudio()
         goto close_codec;
     }
 
-    av_opt_set_int(m_AudioSwrCtx, "in_channel_count",     Apu::kChannels, 0);
+    av_opt_set_int(m_AudioSwrCtx, "in_channel_count",     m_SnesConfig.audioChannels, 0);
     av_opt_set_int(m_AudioSwrCtx, "in_channel_layout",    AV_CH_LAYOUT_STEREO, 0);
-    av_opt_set_int(m_AudioSwrCtx, "in_sample_rate",       Apu::kSampleRate, 0);
+    av_opt_set_int(m_AudioSwrCtx, "in_sample_rate",       m_SnesConfig.audioSampleRate, 0);
     av_opt_set_sample_fmt(m_AudioSwrCtx, "in_sample_fmt", AV_SAMPLE_FMT_S16, 0);
 
-    av_opt_set_int(m_AudioSwrCtx, "out_channel_count",     Apu::kChannels, 0);
+    av_opt_set_int(m_AudioSwrCtx, "out_channel_count",     m_SnesConfig.audioChannels, 0);
     av_opt_set_int(m_AudioSwrCtx, "out_channel_layout",    AV_CH_LAYOUT_STEREO, 0);
     av_opt_set_int(m_AudioSwrCtx, "out_sample_rate",       kOutSampleRate, 0);
     av_opt_set_sample_fmt(m_AudioSwrCtx, "out_sample_fmt", m_AudioCodecCtx->sample_fmt, 0);
@@ -402,7 +398,7 @@ int Recorder::VideoRecorder::initAudio()
     // Init fifo
     m_AudioFifo = av_audio_fifo_alloc(
         AV_SAMPLE_FMT_S16,
-        Apu::kChannels,
+        m_SnesConfig.audioChannels,
         m_AudioCodecCtx->frame_size);
     if (!m_AudioFifo) {
         LOG_AVERROR("av_audio_fifo_alloc", ret);
@@ -533,7 +529,7 @@ bool Recorder::VideoRecorder::onFrameReceived(const std::shared_ptr<Frame>& inpu
 
 bool Recorder::VideoRecorder::onVideoFrameReceived(const std::shared_ptr<Frame>& inputFrame)
 {
-    const int rgbStride = m_FrameWidth * kRgbSampleSize;
+    const int rgbStride = m_SnesConfig.displayWidth * kRgbSampleSize;
     const uint8_t* data;
     int ret;
 
@@ -541,8 +537,8 @@ bool Recorder::VideoRecorder::onVideoFrameReceived(const std::shared_ptr<Frame>&
     AVFrame* avFrame;
     avFrame = av_frame_alloc();
 
-    avFrame->width = m_FrameWidth;
-    avFrame->height = m_FrameHeight;
+    avFrame->width = m_SnesConfig.displayWidth;
+    avFrame->height = m_SnesConfig.displayHeight;
     avFrame->format = AV_PIX_FMT_YUV420P;
     avFrame->pts = m_VideoFrameIdx++;
 
@@ -557,9 +553,9 @@ bool Recorder::VideoRecorder::onVideoFrameReceived(const std::shared_ptr<Frame>&
 
     ret = sws_scale(
         m_VideoSwsCtx,
-        &data, &rgbStride, 0, m_FrameHeight,
+        &data, &rgbStride, 0, m_SnesConfig.displayHeight,
         avFrame->data, avFrame->linesize);
-    if (ret != m_FrameHeight) {
+    if (ret != m_SnesConfig.displayHeight) {
         LOGW(TAG, "sws_scale() returned an unexpected value");
         goto free_frame;
     }
@@ -628,9 +624,9 @@ bool Recorder::VideoRecorder::onAudioFrameReceived(const std::shared_ptr<Frame>&
 
         // Prepare raw input sample
         avFrame->format = AV_SAMPLE_FMT_S16;
-        avFrame->channels = Apu::kChannels;
+        avFrame->channels = m_SnesConfig.audioChannels;
         avFrame->channel_layout = AV_CH_LAYOUT_STEREO;
-        avFrame->sample_rate = Apu::kSampleRate;
+        avFrame->sample_rate = m_SnesConfig.audioSampleRate;
         avFrame->nb_samples = m_AudioSnesFrameSize;
 
         ret = av_frame_get_buffer(avFrame, 0);
@@ -742,12 +738,10 @@ free_frame:
     return ret;
 }
 
-Recorder::Recorder(int width, int height, int framerate, const std::string& basename)
-    : m_FrameWidth(width),
-      m_FrameHeight(height),
-      m_Framerate(framerate),
+Recorder::Recorder(const msfce::core::SnesConfig& snesConfig, const std::string& basename)
+    : m_SnesConfig(snesConfig),
       m_Basename(basename),
-      m_ImgSize(width * height * kRgbSampleSize)
+      m_ImgSize(m_SnesConfig.displayWidth * m_SnesConfig.displayHeight * kRgbSampleSize)
 {
 }
 
@@ -776,7 +770,7 @@ void Recorder::scanStarted()
     m_AudioFrame = std::make_shared<Frame>(FrameType::audio, m_AudioFrameMaxSize);
 }
 
-void Recorder::drawPixel(const SnesColor& c)
+void Recorder::drawPixel(const msfce::core::Color& c)
 {
     if (!m_Started) {
         return;
@@ -802,14 +796,14 @@ void Recorder::scanEnded()
 
     // HACK: Resync audio (audio is currently produced at a slower way)
     // Avoid to get more than 20 ms of delay
-    const int64_t videoTsMs = m_VideoFrameReceived * 1000 / m_Framerate;
-    const int64_t audioTsMs = m_AudioSampleReceived * 1000 / Apu::kSampleRate;
+    const int64_t videoTsMs = m_VideoFrameReceived * 1000 / m_SnesConfig.displayRate;
+    const int64_t audioTsMs = m_AudioSampleReceived * 1000 / m_SnesConfig.audioSampleRate;
     const int64_t audioDeltaMs = videoTsMs - audioTsMs;
     constexpr int64_t kAudioMaxDeltaMs = 20;
 
     if (audioDeltaMs >= kAudioMaxDeltaMs) {
-        const int silenceSampleCount = Apu::kSampleRate * kAudioMaxDeltaMs / 1000;
-        auto silence = std::vector<uint8_t>(silenceSampleCount * Apu::kSampleSize);
+        const int silenceSampleCount = m_SnesConfig.audioSampleRate * kAudioMaxDeltaMs / 1000;
+        auto silence = std::vector<uint8_t>(silenceSampleCount * m_SnesConfig.audioSampleSize);
         playAudioSamples(silence.data(), silenceSampleCount);
     }
 
@@ -835,13 +829,13 @@ void Recorder::playAudioSamples(const uint8_t* data, size_t sampleCount)
         return;
     }
 
-    const size_t payloadRequiredSize = (m_AudioFrame->sampleCount + sampleCount) * Apu::kSampleSize;
+    const size_t payloadRequiredSize = (m_AudioFrame->sampleCount + sampleCount) * m_SnesConfig.audioSampleSize;
     if (payloadRequiredSize > m_AudioFrame->payload.size()) {
         m_AudioFrame->payload.resize(payloadRequiredSize);
     }
 
-    uint8_t* payloadWrite = m_AudioFrame->payload.data() + m_AudioFrame->sampleCount * Apu::kSampleSize;
-    memcpy(payloadWrite, data, sampleCount * Apu::kSampleSize);
+    uint8_t* payloadWrite = m_AudioFrame->payload.data() + m_AudioFrame->sampleCount * m_SnesConfig.audioSampleSize;
+    memcpy(payloadWrite, data, sampleCount * m_SnesConfig.audioSampleSize);
     m_AudioFrame->sampleCount += sampleCount;
 
     m_AudioSampleReceived += sampleCount;
@@ -881,7 +875,7 @@ void Recorder::toggleVideoRecord()
         m_VideoRecorder.reset();
     } else {
         m_VideoRecorder = std::make_unique<FrameRecorder>(
-            std::make_unique<VideoRecorder>(getTsBasename(), m_FrameWidth, m_FrameHeight, m_Framerate));
+            std::make_unique<VideoRecorder>(getTsBasename(), m_SnesConfig));
         m_VideoRecorder->start();
     }
 }
@@ -901,7 +895,7 @@ void Recorder::takeScreenshot()
     }
 
     m_ImageRecorder = std::make_unique<FrameRecorder>(
-        std::make_unique<ImageRecorder>(getTsBasename(), m_FrameWidth, m_FrameHeight));
+        std::make_unique<ImageRecorder>(getTsBasename(), m_SnesConfig));
     m_ImageRecorder->start();
 }
 

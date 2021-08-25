@@ -6,28 +6,22 @@
 #include <epoxy/gl.h>
 #include <SDL.h>
 
-#include "controller.h"
-#include "snes_renderer.h"
-
 #include "frontend.h"
 
 class Recorder;
-class SnesController;
 
-class FrontendSdl2 : public Frontend, public SnesRenderer {
+class FrontendSdl2 : public Frontend, public msfce::core::Renderer {
 public:
     FrontendSdl2();
     ~FrontendSdl2();
 
     /// Frontend methods
-    int init() final;
+    int init(const std::shared_ptr<msfce::core::Snes>& snes) final;
     int run() final;
 
-    void setSnes(const std::shared_ptr<Snes>& snes) final;
-
-    // SnesRenderer methods
+    // msfce::core::Renderer methods
     void scanStarted() final;
-    void drawPixel(const SnesColor& c) final;
+    void drawPixel(const msfce::core::Color& c) final;
     void scanEnded() final;
 
     void playAudioSamples(const uint8_t* data, size_t sampleCount) final;
@@ -62,8 +56,9 @@ private:
 
     SDL_Joystick* m_Joystick = nullptr;
 
-    std::shared_ptr<Snes> m_Snes;
-    SnesController m_Controller1;
+    std::shared_ptr<msfce::core::Snes> m_Snes;
+    msfce::core::SnesConfig m_SnesConfig;
+    msfce::core::Controller m_Controller1;
 
     // Scheduling
     bool m_Running = true;
@@ -76,6 +71,7 @@ private:
     GLuint m_VAO = 0;
     GLsizei m_VAO_ElemSize = 0;
     GLuint m_PBO = 0;
+    int m_TextureSize = 0;
     GLuint m_Texture = 0;
     GLubyte* m_TextureData = nullptr;
 
