@@ -21,12 +21,12 @@ public:
 
     int plugComponent(const std::shared_ptr<MemComponent>& component);
 
-    uint8_t readU8(uint32_t addr, int *cycles = nullptr);
-    uint16_t readU16(uint32_t addr, int *cycles = nullptr);
-    uint32_t readU24(uint32_t addr, int *cycles = nullptr);
+    uint8_t readU8(uint32_t addr, int* cycles = nullptr);
+    uint16_t readU16(uint32_t addr, int* cycles = nullptr);
+    uint32_t readU24(uint32_t addr, int* cycles = nullptr);
 
-    void writeU8(uint32_t addr, uint8_t value, int *cycles = nullptr);
-    void writeU16(uint32_t addr, uint16_t value, int *cycles = nullptr);
+    void writeU8(uint32_t addr, uint8_t value, int* cycles = nullptr);
+    void writeU16(uint32_t addr, uint16_t value, int* cycles = nullptr);
 
 private:
     enum class BankType {
@@ -65,7 +65,7 @@ private:
         BankType type = BankType::invalid;
 
         // type == direct
-        std::vector<const MemoryRange *> ranges;
+        std::vector<const MemoryRange*> ranges;
 
         // type == mirrored
         uint8_t targetBank;
@@ -80,19 +80,18 @@ private:
     void initLowRom();
     void initHighRom();
 
-    ComponentHandler *getComponentFromAddr(
+    ComponentHandler* getComponentFromAddr(
         uint32_t addr,
-        MemComponentType *type,
-        uint8_t *bankId,
-        uint16_t *offset,
-        int *cycles,
+        MemComponentType* type,
+        uint8_t* bankId,
+        uint16_t* offset,
+        int* cycles,
         uint32_t access);
 
     int getRomTiming(uint8_t bank);
 
     uint8_t internalReadU8(uint32_t addr);
     void internalWriteU8(uint32_t addr, uint8_t value);
-
 
 private:
     AddressingType m_AddrType;
@@ -102,7 +101,7 @@ private:
     ComponentHandler m_Components[kComponentTypeCount];
 
     // LUT for system area (often accessed)
-    const MemoryRange * m_SystemArea[0x8000];
+    const MemoryRange* m_SystemArea[0x8000];
 
     static const MemoryMap s_LowRomMap;
     static const MemoryMap s_HighRomMap;

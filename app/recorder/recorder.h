@@ -19,7 +19,9 @@ struct FrameRecorder;
 
 class Recorder : public msfce::core::Renderer {
 public:
-    Recorder(const msfce::core::SnesConfig& snesConfig, const std::string& basename);
+    Recorder(
+        const msfce::core::SnesConfig& snesConfig,
+        const std::string& basename);
     ~Recorder();
 
     // Draw API

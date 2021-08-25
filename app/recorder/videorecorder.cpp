@@ -1,10 +1,10 @@
 extern "C" {
-    #include <libavcodec/avcodec.h>
-    #include <libavformat/avformat.h>
-    #include <libavutil/audio_fifo.h>
-    #include <libavutil/opt.h>
-    #include <libswresample/swresample.h>
-    #include <libswscale/swscale.h>
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
+#include <libavutil/audio_fifo.h>
+#include <libavutil/opt.h>
+#include <libswresample/swresample.h>
+#include <libswscale/swscale.h>
 }
 
 #include "videorecorder.h"
@@ -16,9 +16,10 @@ namespace msfce::recorder {
 
 constexpr int kOutSampleRate = 48000;
 
-VideoRecorder::VideoRecorder(const std::string& basename, const msfce::core::SnesConfig& snesConfig)
-    : m_SnesConfig(snesConfig),
-      m_Basename(basename)
+VideoRecorder::VideoRecorder(
+    const std::string& basename,
+    const msfce::core::SnesConfig& snesConfig)
+    : m_SnesConfig(snesConfig), m_Basename(basename)
 {
 }
 
@@ -66,7 +67,8 @@ int VideoRecorder::initVideo()
         goto close_codec;
     }
 
-    ret = avcodec_parameters_from_context(m_VideoStream->codecpar, m_VideoCodecCtx);
+    ret = avcodec_parameters_from_context(
+        m_VideoStream->codecpar, m_VideoCodecCtx);
     if (ret < 0) {
         LOG_AVERROR("avcodec_parameters_from_context", ret);
         goto close_codec;
@@ -74,9 +76,16 @@ int VideoRecorder::initVideo()
 
     // Create RGB => YUV420 converter
     m_VideoSwsCtx = sws_getContext(
-        m_SnesConfig.displayWidth, m_SnesConfig.displayHeight, AV_PIX_FMT_RGB24,
-        m_SnesConfig.displayWidth, m_SnesConfig.displayHeight, AV_PIX_FMT_YUV420P,
-        0, nullptr, nullptr, nullptr);
+        m_SnesConfig.displayWidth,
+        m_SnesConfig.displayHeight,
+        AV_PIX_FMT_RGB24,
+        m_SnesConfig.displayWidth,
+        m_SnesConfig.displayHeight,
+        AV_PIX_FMT_YUV420P,
+        0,
+        nullptr,
+        nullptr,
+        nullptr);
     if (!m_VideoSwsCtx) {
         LOGW(TAG, "sws_getContext() failed");
         goto close_codec;
@@ -137,7 +146,7 @@ int VideoRecorder::initAudio()
         goto free_codecctx;
     }
 
-    m_AudioStream->time_base = (AVRational) { 1, m_AudioCodecCtx->sample_rate };
+    m_AudioStream->time_base = (AVRational) {1, m_AudioCodecCtx->sample_rate};
 
     if (m_ContainerCtx->oformat->flags & AVFMT_GLOBALHEADER) {
         m_AudioCodecCtx->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
@@ -149,7 +158,8 @@ int VideoRecorder::initAudio()
         goto close_codec;
     }
 
-    ret = avcodec_parameters_from_context(m_AudioStream->codecpar, m_AudioCodecCtx);
+    ret = avcodec_parameters_from_context(
+        m_AudioStream->codecpar, m_AudioCodecCtx);
     if (ret < 0) {
         LOG_AVERROR("avcodec_parameters_from_context", ret);
         goto close_codec;
@@ -168,15 +178,19 @@ int VideoRecorder::initAudio()
         goto close_codec;
     }
 
-    av_opt_set_int(m_AudioSwrCtx, "in_channel_count",     m_SnesConfig.audioChannels, 0);
-    av_opt_set_int(m_AudioSwrCtx, "in_channel_layout",    AV_CH_LAYOUT_STEREO, 0);
-    av_opt_set_int(m_AudioSwrCtx, "in_sample_rate",       m_SnesConfig.audioSampleRate, 0);
+    av_opt_set_int(
+        m_AudioSwrCtx, "in_channel_count", m_SnesConfig.audioChannels, 0);
+    av_opt_set_int(m_AudioSwrCtx, "in_channel_layout", AV_CH_LAYOUT_STEREO, 0);
+    av_opt_set_int(
+        m_AudioSwrCtx, "in_sample_rate", m_SnesConfig.audioSampleRate, 0);
     av_opt_set_sample_fmt(m_AudioSwrCtx, "in_sample_fmt", AV_SAMPLE_FMT_S16, 0);
 
-    av_opt_set_int(m_AudioSwrCtx, "out_channel_count",     m_SnesConfig.audioChannels, 0);
-    av_opt_set_int(m_AudioSwrCtx, "out_channel_layout",    AV_CH_LAYOUT_STEREO, 0);
-    av_opt_set_int(m_AudioSwrCtx, "out_sample_rate",       kOutSampleRate, 0);
-    av_opt_set_sample_fmt(m_AudioSwrCtx, "out_sample_fmt", m_AudioCodecCtx->sample_fmt, 0);
+    av_opt_set_int(
+        m_AudioSwrCtx, "out_channel_count", m_SnesConfig.audioChannels, 0);
+    av_opt_set_int(m_AudioSwrCtx, "out_channel_layout", AV_CH_LAYOUT_STEREO, 0);
+    av_opt_set_int(m_AudioSwrCtx, "out_sample_rate", kOutSampleRate, 0);
+    av_opt_set_sample_fmt(
+        m_AudioSwrCtx, "out_sample_fmt", m_AudioCodecCtx->sample_fmt, 0);
 
     ret = swr_init(m_AudioSwrCtx);
     if (ret < 0) {
@@ -220,7 +234,6 @@ int VideoRecorder::clearAudio()
 
     return 0;
 }
-
 
 int VideoRecorder::start()
 {
@@ -316,7 +329,8 @@ bool VideoRecorder::onFrameReceived(const std::shared_ptr<Frame>& inputFrame)
     }
 }
 
-bool VideoRecorder::onVideoFrameReceived(const std::shared_ptr<Frame>& inputFrame)
+bool VideoRecorder::onVideoFrameReceived(
+    const std::shared_ptr<Frame>& inputFrame)
 {
     const int rgbStride = m_SnesConfig.displayWidth * kRgbSampleSize;
     const uint8_t* data;
@@ -342,8 +356,12 @@ bool VideoRecorder::onVideoFrameReceived(const std::shared_ptr<Frame>& inputFram
 
     ret = sws_scale(
         m_VideoSwsCtx,
-        &data, &rgbStride, 0, m_SnesConfig.displayHeight,
-        avFrame->data, avFrame->linesize);
+        &data,
+        &rgbStride,
+        0,
+        m_SnesConfig.displayHeight,
+        avFrame->data,
+        avFrame->linesize);
     if (ret != m_SnesConfig.displayHeight) {
         LOGW(TAG, "sws_scale() returned an unexpected value");
         goto free_frame;
@@ -370,7 +388,8 @@ bool VideoRecorder::onVideoFrameReceived(const std::shared_ptr<Frame>& inputFram
         }
 
         pkt->stream_index = m_VideoStream->index;
-        av_packet_rescale_ts(pkt, m_VideoCodecCtx->time_base, m_VideoStream->time_base);
+        av_packet_rescale_ts(
+            pkt, m_VideoCodecCtx->time_base, m_VideoStream->time_base);
 
         ret = av_interleaved_write_frame(m_ContainerCtx, pkt);
         if (ret < 0) {
@@ -393,16 +412,14 @@ free_frame:
     return false;
 }
 
-bool VideoRecorder::onAudioFrameReceived(const std::shared_ptr<Frame>& inputFrame)
+bool VideoRecorder::onAudioFrameReceived(
+    const std::shared_ptr<Frame>& inputFrame)
 {
     int ret;
 
     void* payload = inputFrame->payload.data();
 
-    ret = av_audio_fifo_write(
-        m_AudioFifo,
-        &payload,
-        inputFrame->sampleCount);
+    ret = av_audio_fifo_write(m_AudioFifo, &payload, inputFrame->sampleCount);
     if (ret < 0) {
         LOG_AVERROR("av_audio_fifo_write", ret);
         return false;
@@ -473,9 +490,12 @@ int VideoRecorder::encodeAudioFrame(AVFrame* avFrameSnes)
 
     av_frame_make_writable(avFrameResampled);
 
-    ret = swr_convert(m_AudioSwrCtx,
-        avFrameResampled->data, avFrameResampled->nb_samples,
-        (const uint8_t **) avFrameSnes->data, avFrameSnes->nb_samples);
+    ret = swr_convert(
+        m_AudioSwrCtx,
+        avFrameResampled->data,
+        avFrameResampled->nb_samples,
+        (const uint8_t**)avFrameSnes->data,
+        avFrameSnes->nb_samples);
     if (ret < 0) {
         LOG_AVERROR("swr_convert", ret);
         goto free_frame;
@@ -504,7 +524,8 @@ int VideoRecorder::encodeAudioFrame(AVFrame* avFrameSnes)
             goto free_frame;
         }
 
-        av_packet_rescale_ts(pkt, m_AudioCodecCtx->time_base, m_AudioStream->time_base);
+        av_packet_rescale_ts(
+            pkt, m_AudioCodecCtx->time_base, m_AudioStream->time_base);
         pkt->stream_index = m_AudioStream->index;
 
         ret = av_interleaved_write_frame(m_ContainerCtx, pkt);

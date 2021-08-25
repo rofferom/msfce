@@ -10,7 +10,8 @@ using namespace msfce::core;
 
 class MockComponent : public msfce::core::MemComponent {
 public:
-    MockComponent(MemComponentType type) : MemComponent(type) {
+    MockComponent(MemComponentType type) : MemComponent(type)
+    {
     }
 
     MOCK_METHOD(uint8_t, readU8, (uint32_t address), (override));
@@ -19,16 +20,20 @@ public:
 
 class MembusTest : public testing::Test {
 public:
-    void SetUp() {
+    void SetUp()
+    {
         membus = std::make_unique<Membus>(AddressingType::lowrom, false);
 
-        ram = std::make_shared<BufferMemComponent>(MemComponentType::ram, 128 * 1024);
+        ram = std::make_shared<BufferMemComponent>(
+            MemComponentType::ram, 128 * 1024);
         membus->plugComponent(ram);
 
-        rom = std::make_shared<BufferMemComponent>(MemComponentType::rom, 4 * 1024 * 1024);
+        rom = std::make_shared<BufferMemComponent>(
+            MemComponentType::rom, 4 * 1024 * 1024);
         membus->plugComponent(rom);
 
-        sram = std::make_shared<BufferMemComponent>(MemComponentType::sram, 512 *  1024);
+        sram = std::make_shared<BufferMemComponent>(
+            MemComponentType::sram, 512 * 1024);
         membus->plugComponent(sram);
 
         apu = std::make_shared<MockComponent>(MemComponentType::apu);
@@ -108,13 +113,9 @@ TEST_F(MembusTest, LowRomSram)
 
 TEST_F(MembusTest, LowRomApuReadU8)
 {
-    EXPECT_CALL(*apu, readU8(0x2140))
-        .Times(1)
-        .WillOnce(Return(0x43));
+    EXPECT_CALL(*apu, readU8(0x2140)).Times(1).WillOnce(Return(0x43));
 
-    EXPECT_CALL(*apu, readU8(0x3F2140))
-        .Times(1)
-        .WillOnce(Return(0x44));
+    EXPECT_CALL(*apu, readU8(0x3F2140)).Times(1).WillOnce(Return(0x44));
 
     ASSERT_EQ(membus->readU8(0x2140), 0x43);
     ASSERT_EQ(membus->readU8(0x3F2140), 0x44);
@@ -122,13 +123,9 @@ TEST_F(MembusTest, LowRomApuReadU8)
 
 TEST_F(MembusTest, LowRomApuReadU16)
 {
-    EXPECT_CALL(*apu, readU8(0x2141))
-        .Times(1)
-        .WillOnce(Return(0x43));
+    EXPECT_CALL(*apu, readU8(0x2141)).Times(1).WillOnce(Return(0x43));
 
-    EXPECT_CALL(*apu, readU8(0x2140))
-        .Times(1)
-        .WillOnce(Return(0x44));
+    EXPECT_CALL(*apu, readU8(0x2140)).Times(1).WillOnce(Return(0x44));
 
     ASSERT_EQ(membus->readU16(0x2140), 0x4344);
 }

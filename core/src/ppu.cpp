@@ -16,7 +16,8 @@ constexpr int kPpuScanHeight = 262;
 constexpr int kPpuTileInfoSize = 2;
 constexpr int kPpuTilemapWidth = 32;
 constexpr int kPpuTilemapHeight = 32;
-constexpr int kPpuTilemapSize = kPpuTilemapWidth * kPpuTilemapHeight * kPpuTileInfoSize;
+constexpr int kPpuTilemapSize =
+    kPpuTilemapWidth * kPpuTilemapHeight * kPpuTileInfoSize;
 
 constexpr int kPpuBaseTileWidth = 8;
 constexpr int kPpuBaseTileHeight = 8;
@@ -26,15 +27,18 @@ constexpr int kPpuObjBpp = 4;
 constexpr int kPpuObjTileSize = 8 * kPpuObjBpp; // 8x8 4bpp
 constexpr int kPpuObjPaletteOffset = 128;
 
-constexpr uint16_t convert1kWorkStep(uint16_t v) {
+constexpr uint16_t convert1kWorkStep(uint16_t v)
+{
     return v << 11;
 }
 
-constexpr uint16_t convert4kWorkStep(uint16_t v) {
+constexpr uint16_t convert4kWorkStep(uint16_t v)
+{
     return v << 13;
 }
 
-constexpr uint16_t convert8kWorkStep(uint16_t v) {
+constexpr uint16_t convert8kWorkStep(uint16_t v)
+{
     return v << 14;
 }
 
@@ -76,7 +80,7 @@ void getTilemapDimension(uint16_t tilemapSize, int* width, int* height)
 /*
  * Unit of returned value is tile.
  * tile_size comes from BGMODE register.
-*/
+ */
 void getTileDimension(int tileSize, int* width, int* height)
 {
     switch (tileSize) {
@@ -119,7 +123,7 @@ size_t getBackgroundCountFromMode(int mode)
 
 /*
  * The bpp of a background depends on the current mode
-*/
+ */
 int getTileBppFromMode(int mode, size_t bgIdx)
 {
     if (mode == 0) {
@@ -145,13 +149,13 @@ int getTileBppFromMode(int mode, size_t bgIdx)
         return colorCount[bgIdx];
     } else if (mode == 3) {
         static const int colorCount[] = {
-              8,
-              4,
-          };
+            8,
+            4,
+        };
 
-          static_assert(SIZEOF_ARRAY(colorCount) == 2);
-          assert(bgIdx < SIZEOF_ARRAY(colorCount));
-          return colorCount[bgIdx];
+        static_assert(SIZEOF_ARRAY(colorCount) == 2);
+        assert(bgIdx < SIZEOF_ARRAY(colorCount));
+        return colorCount[bgIdx];
 
     } else {
         assert(false);
@@ -165,8 +169,8 @@ int getTileBppFromMode(int mode, size_t bgIdx)
  * tilemaps.
  *
  * Here are a set of mapping functions to get the tilemap to
-* use depending of the absolute tile coordinates.
-*/
+ * use depending of the absolute tile coordinates.
+ */
 
 uint32_t tilemapMapper32x32(uint16_t tilemapBase, int x, int y)
 {
@@ -220,7 +224,11 @@ uint32_t tilemapMapper64x64(uint16_t tilemapBase, int x, int y)
 }
 
 // Set of functions to read the color of a pixel within a tile
-uint32_t tileReadColor2bpp(const uint8_t* tileData, size_t tile_size, int row, int column)
+uint32_t tileReadColor2bpp(
+    const uint8_t* tileData,
+    size_t tile_size,
+    int row,
+    int column)
 {
     constexpr int kTileBpp = 2;
     uint32_t color;
@@ -235,7 +243,11 @@ uint32_t tileReadColor2bpp(const uint8_t* tileData, size_t tile_size, int row, i
     return color;
 }
 
-uint32_t tileReadColor4bpp(const uint8_t* tileData, size_t tileSize, int row, int column)
+uint32_t tileReadColor4bpp(
+    const uint8_t* tileData,
+    size_t tileSize,
+    int row,
+    int column)
 {
     uint32_t color;
 
@@ -252,7 +264,8 @@ uint32_t tileReadColor4bpp(const uint8_t* tileData, size_t tileSize, int row, in
     return color;
 }
 
-typedef uint32_t (*ColorReadCb)(const uint8_t* tileData, size_t tileSize, int row, int column);
+typedef uint32_t (
+    *ColorReadCb)(const uint8_t* tileData, size_t tileSize, int row, int column);
 
 ColorReadCb getColorReadCb(int tileBpp)
 {
@@ -396,16 +409,16 @@ namespace msfce::core {
 
 // Background priority charts
 const Ppu::LayerPriority Ppu::s_LayerPriorityMode0[] = {
-    {Layer::sprite,    -1, 3},
+    {Layer::sprite, -1, 3},
     {Layer::background, 0, 1},
     {Layer::background, 1, 1},
-    {Layer::sprite,    -1, 2},
+    {Layer::sprite, -1, 2},
     {Layer::background, 0, 0},
     {Layer::background, 1, 0},
-    {Layer::sprite,    -1, 1},
+    {Layer::sprite, -1, 1},
     {Layer::background, 2, 1},
     {Layer::background, 3, 1},
-    {Layer::sprite,    -1, 0},
+    {Layer::sprite, -1, 0},
     {Layer::background, 2, 1},
     {Layer::background, 3, 0},
 
@@ -413,61 +426,64 @@ const Ppu::LayerPriority Ppu::s_LayerPriorityMode0[] = {
 };
 
 const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_On[] = {
-    {Layer::background, 2,   1},
-    {Layer::sprite,    -1,   3},
-    {Layer::background, 0,   1},
-    {Layer::background, 1,   1},
-    {Layer::sprite,    -1,   2},
-    {Layer::background, 0,   0},
-    {Layer::background, 1,   0},
-    {Layer::sprite,    -1,   1},
-    {Layer::sprite,    -1,   0},
-    {Layer::background, 2,   0},
+    {Layer::background, 2, 1},
+    {Layer::sprite, -1, 3},
+    {Layer::background, 0, 1},
+    {Layer::background, 1, 1},
+    {Layer::sprite, -1, 2},
+    {Layer::background, 0, 0},
+    {Layer::background, 1, 0},
+    {Layer::sprite, -1, 1},
+    {Layer::sprite, -1, 0},
+    {Layer::background, 2, 0},
 
     {Layer::none, 0, 0},
 };
 
 const Ppu::LayerPriority Ppu::s_LayerPriorityMode1_BG3_Off[] = {
-    {Layer::sprite,    -1,   3},
-    {Layer::background, 0,   1},
-    {Layer::background, 1,   1},
-    {Layer::sprite,    -1,   2},
-    {Layer::background, 0,   0},
-    {Layer::background, 1,   0},
-    {Layer::sprite,    -1,   1},
-    {Layer::background, 2,   1},
-    {Layer::sprite,    -1,   0},
-    {Layer::background, 2,   0},
+    {Layer::sprite, -1, 3},
+    {Layer::background, 0, 1},
+    {Layer::background, 1, 1},
+    {Layer::sprite, -1, 2},
+    {Layer::background, 0, 0},
+    {Layer::background, 1, 0},
+    {Layer::sprite, -1, 1},
+    {Layer::background, 2, 1},
+    {Layer::sprite, -1, 0},
+    {Layer::background, 2, 0},
     {Layer::none, 0, 0},
 };
 
 const Ppu::LayerPriority Ppu::s_LayerPriorityMode3[] = {
-    {Layer::sprite,    -1,   3},
-    {Layer::background, 0,   1},
-    {Layer::sprite,    -1,   2},
-    {Layer::background, 1,   1},
-    {Layer::sprite,    -1,   1},
-    {Layer::background, 0,   0},
-    {Layer::sprite,    -1,   0},
-    {Layer::background, 1,   0},
+    {Layer::sprite, -1, 3},
+    {Layer::background, 0, 1},
+    {Layer::sprite, -1, 2},
+    {Layer::background, 1, 1},
+    {Layer::sprite, -1, 1},
+    {Layer::background, 0, 0},
+    {Layer::sprite, -1, 0},
+    {Layer::background, 1, 0},
     {Layer::none, 0, 0},
 };
 
 const Ppu::LayerPriority Ppu::s_LayerPriorityMode7[] = {
-    {Layer::sprite,    -1,   3},
-    {Layer::sprite,    -1,   2},
-    {Layer::sprite,    -1,   1},
-    {Layer::background, 0,   0},
-    {Layer::sprite,    -1,   0},
+    {Layer::sprite, -1, 3},
+    {Layer::sprite, -1, 2},
+    {Layer::sprite, -1, 1},
+    {Layer::background, 0, 0},
+    {Layer::sprite, -1, 0},
     {Layer::none, 0, 0},
 };
 
-Ppu::Ppu(ScanStartedCb scanStartedCb, ScanStartedCb scanEndedCb, RenderCb renderCb)
-    : MemComponent(MemComponentType::ppu),
-      SchedulerTask(),
-      m_ScanStartedCb(scanStartedCb),
-      m_ScanEndedCb(scanEndedCb),
-      m_RenderCb(renderCb)
+Ppu::Ppu(
+    ScanStartedCb scanStartedCb,
+    ScanStartedCb scanEndedCb,
+    RenderCb renderCb)
+    : MemComponent(MemComponentType::ppu)
+    , SchedulerTask()
+    , m_ScanStartedCb(scanStartedCb)
+    , m_ScanEndedCb(scanEndedCb)
+    , m_RenderCb(renderCb)
 {
 }
 
@@ -648,7 +664,10 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         bool forcedBlanking = value & (1 << 7);
         if (m_ForcedBlanking != forcedBlanking) {
             m_ForcedBlanking = forcedBlanking;
-            LOGD(TAG, "ForcedBlanking is now %s", m_ForcedBlanking ? "enabled" : "disabled");
+            LOGD(
+                TAG,
+                "ForcedBlanking is now %s",
+                m_ForcedBlanking ? "enabled" : "disabled");
         }
 
         uint8_t brightness = value & 0b1111;
@@ -670,7 +689,8 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegVMADDL: {
         m_VramAddress = (m_VramAddress & 0xFF00) | value;
 
-        uint16_t address = translateVramAddress(m_VramAddress, m_VramAddressTranslate);
+        uint16_t address =
+            translateVramAddress(m_VramAddress, m_VramAddressTranslate);
         m_VramPrefetch = (m_Vram[address + 1] << 8) | m_Vram[address];
         break;
     }
@@ -678,13 +698,15 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegVMADDH: {
         m_VramAddress = (m_VramAddress & 0xFF) | (value << 8);
 
-        uint16_t address = translateVramAddress(m_VramAddress, m_VramAddressTranslate);
+        uint16_t address =
+            translateVramAddress(m_VramAddress, m_VramAddressTranslate);
         m_VramPrefetch = (m_Vram[address + 1] << 8) | m_Vram[address];
         break;
     }
 
     case kRegVMDATAL: {
-        uint16_t address = translateVramAddress(m_VramAddress, m_VramAddressTranslate);
+        uint16_t address =
+            translateVramAddress(m_VramAddress, m_VramAddressTranslate);
         m_Vram[address] = value;
 
         if (!m_VramIncrementHigh) {
@@ -694,7 +716,8 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     }
 
     case kRegVMDATAH: {
-        uint16_t address = translateVramAddress(m_VramAddress, m_VramAddressTranslate);
+        uint16_t address =
+            translateVramAddress(m_VramAddress, m_VramAddressTranslate);
         m_Vram[address + 1] = value;
 
         if (m_VramIncrementHigh) {
@@ -815,7 +838,8 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     }
 
     case kRegBG1HOFS:
-        m_Backgrounds[0].m_HOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[0].m_HOffset >> 8) & 7);
+        m_Backgrounds[0].m_HOffset = (value << 8) | (m_OldBgByte & ~7) |
+                                     ((m_Backgrounds[0].m_HOffset >> 8) & 7);
         m_OldBgByte = value;
 
         m_M7HOFS = (value << 8) | m_M7Old;
@@ -831,7 +855,8 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         break;
 
     case kRegBG2HOFS:
-        m_Backgrounds[1].m_HOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[1].m_HOffset >> 8) & 7);
+        m_Backgrounds[1].m_HOffset = (value << 8) | (m_OldBgByte & ~7) |
+                                     ((m_Backgrounds[1].m_HOffset >> 8) & 7);
         m_OldBgByte = value;
         break;
 
@@ -841,7 +866,8 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         break;
 
     case kRegBG3HOFS:
-        m_Backgrounds[2].m_HOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[2].m_HOffset >> 8) & 7);
+        m_Backgrounds[2].m_HOffset = (value << 8) | (m_OldBgByte & ~7) |
+                                     ((m_Backgrounds[2].m_HOffset >> 8) & 7);
         m_OldBgByte = value;
         break;
 
@@ -851,7 +877,8 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         break;
 
     case kRegBG4HOFS:
-        m_Backgrounds[3].m_HOffset = (value << 8) | (m_OldBgByte & ~7) | ((m_Backgrounds[3].m_HOffset >> 8) & 7);
+        m_Backgrounds[3].m_HOffset = (value << 8) | (m_OldBgByte & ~7) |
+                                     ((m_Backgrounds[3].m_HOffset >> 8) & 7);
         m_OldBgByte = value;
         break;
 
@@ -895,22 +922,28 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
     case kRegW12SEL: {
         // BG1
         m_Window1Config.m_BackgroundConfig[0] = getWindowConfig(value & 0b11);
-        m_Window2Config.m_BackgroundConfig[0] = getWindowConfig((value >> 2) & 0b11);
+        m_Window2Config.m_BackgroundConfig[0] =
+            getWindowConfig((value >> 2) & 0b11);
 
         // BG2
-        m_Window1Config.m_BackgroundConfig[1] = getWindowConfig((value >> 4) & 0b11);
-        m_Window2Config.m_BackgroundConfig[1] = getWindowConfig((value >> 6) & 0b11);
+        m_Window1Config.m_BackgroundConfig[1] =
+            getWindowConfig((value >> 4) & 0b11);
+        m_Window2Config.m_BackgroundConfig[1] =
+            getWindowConfig((value >> 6) & 0b11);
         break;
     }
 
     case kRegW34SEL:
         // BG3
         m_Window1Config.m_BackgroundConfig[2] = getWindowConfig(value & 0b11);
-        m_Window2Config.m_BackgroundConfig[2] = getWindowConfig((value >> 2) & 0b11);
+        m_Window2Config.m_BackgroundConfig[2] =
+            getWindowConfig((value >> 2) & 0b11);
 
         // BG4
-        m_Window1Config.m_BackgroundConfig[3] = getWindowConfig((value >> 4) & 0b11);
-        m_Window2Config.m_BackgroundConfig[3] = getWindowConfig((value >> 6) & 0b11);
+        m_Window1Config.m_BackgroundConfig[3] =
+            getWindowConfig((value >> 4) & 0b11);
+        m_Window2Config.m_BackgroundConfig[3] =
+            getWindowConfig((value >> 6) & 0b11);
         break;
 
     case kRegWOBJSEL:
@@ -925,7 +958,8 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
 
     case kRegWBGLOG:
         for (int i = 0; i < kBackgroundCount; i++) {
-            m_WindowLogicBackground[i] = static_cast<WindowLogic>((value >> (2 * i)) & 0b11);
+            m_WindowLogicBackground[i] =
+                static_cast<WindowLogic>((value >> (2 * i)) & 0b11);
         }
 
         break;
@@ -952,7 +986,6 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
         m_SubScreenConfig.m_Window_ObjDisable = (value >> 4) & 1;
 
         break;
-
 
     case kRegCGWSEL: {
         switch (value >> 6) {
@@ -1013,7 +1046,6 @@ void Ppu::writeU8(uint32_t addr, uint8_t value)
             // Blue
             m_SubscreenBackdrop &= 0b1111111111;
             m_SubscreenBackdrop |= intensity << 10;
-
         }
 
         if (value & (1 << 6)) {
@@ -1160,12 +1192,15 @@ void Ppu::updateTileData(const Background* bg, RendererBgInfo* renderBg)
     // Get tileinfo from tilemap
     // First we need to make a projection inside the submap
     // (The working tilemap is always a 32x32 one)
-    uint32_t tilemapBase = renderBg->tilemapMapper(bg->m_TilemapBase, renderBg->tilemapX, renderBg->tilemapY);
+    uint32_t tilemapBase = renderBg->tilemapMapper(
+        bg->m_TilemapBase, renderBg->tilemapX, renderBg->tilemapY);
 
     int subtilemapX = renderBg->tilemapX % kPpuTilemapWidth;
     int subtilemapY = renderBg->tilemapY % kPpuTilemapHeight;
 
-    int tileinfoAddr = tilemapBase + (subtilemapY * kPpuTilemapWidth + subtilemapX) * kPpuTileInfoSize;
+    int tileinfoAddr =
+        tilemapBase +
+        (subtilemapY * kPpuTilemapWidth + subtilemapX) * kPpuTileInfoSize;
     uint16_t tileInfo = (m_Vram[tileinfoAddr + 1] << 8) | m_Vram[tileinfoAddr];
 
     // Parse tileinfo
@@ -1203,8 +1238,10 @@ void Ppu::updateTileData(const Background* bg, RendererBgInfo* renderBg)
 void Ppu::updateSubtileData(const Background* bg, RendererBgInfo* renderBg)
 {
     // The second row of tiles is located 0x10 tiles after
-    int tileBaseAddr = bg->m_TileBase + renderBg->tileSize * renderBg->tileIndex;
-    int tileAddr = tileBaseAddr + renderBg->subtileX * renderBg->tileSize + renderBg->subtileY * 0x10 * renderBg->tileSize;
+    int tileBaseAddr =
+        bg->m_TileBase + renderBg->tileSize * renderBg->tileIndex;
+    int tileAddr = tileBaseAddr + renderBg->subtileX * renderBg->tileSize +
+                   renderBg->subtileY * 0x10 * renderBg->tileSize;
     tileAddr &= 0xFFFF;
 
     // Point to the current tile lane
@@ -1218,7 +1255,8 @@ void Ppu::updateSubtileData(const Background* bg, RendererBgInfo* renderBg)
         // 0-1 bits are stored in a 8 words chunk, in the first plane
         renderBg->tileDataPlane0 = tileData + renderBg->subtilePixelY * 2;
         // 2-3 bits are stored in the second plane
-        renderBg->tileDataPlane1 = renderBg->tileDataPlane0 + renderBg->tileSize / 2;
+        renderBg->tileDataPlane1 =
+            renderBg->tileDataPlane0 + renderBg->tileSize / 2;
     } else if (renderBg->tileBpp == 8) {
         // 0-1 bits are stored in a 8 words chunk, in the first plane
         renderBg->tileDataPlane0 = tileData + renderBg->subtilePixelY * 2;
@@ -1241,12 +1279,15 @@ bool Ppu::getScreenCurrentPixel(
     uint32_t* color,
     BgColorProp* colorProp)
 {
-    for (size_t prioIdx = 0; m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
+    for (size_t prioIdx = 0;
+         m_RenderLayerPriority[prioIdx].m_Layer != Layer::none;
+         prioIdx++) {
         const auto& layer = m_RenderLayerPriority[prioIdx];
 
         if (layer.m_Layer == Layer::background) {
             RendererBgInfo* renderBg = &m_RenderBgInfo[layer.m_BgIdx];
-            bool colorValid = getBackgroundCurrentPixel(x, screenConfig, renderBg, layer.m_Priority, color);
+            bool colorValid = getBackgroundCurrentPixel(
+                x, screenConfig, renderBg, layer.m_Priority, color);
 
             if (colorValid) {
                 if (colorProp) {
@@ -1258,7 +1299,8 @@ bool Ppu::getScreenCurrentPixel(
             }
         } else if (layer.m_Layer == Layer::sprite) {
             int palette;
-            bool colorValid = getSpriteCurrentPixel(x, y, screenConfig, layer.m_Priority, color, &palette);
+            bool colorValid = getSpriteCurrentPixel(
+                x, y, screenConfig, layer.m_Priority, color, &palette);
 
             if (colorValid) {
                 if (colorProp) {
@@ -1322,8 +1364,10 @@ bool Ppu::getBackgroundCurrentPixel(
         }
 
         assert(renderBg->tileDataPlane1);
-        tilePixelColor |= ((renderBg->tileDataPlane1[0] >> realPixelX) & 1) << 2;
-        tilePixelColor |= ((renderBg->tileDataPlane1[1] >> realPixelX) & 1) << 3;
+        tilePixelColor |= ((renderBg->tileDataPlane1[0] >> realPixelX) & 1)
+                          << 2;
+        tilePixelColor |= ((renderBg->tileDataPlane1[1] >> realPixelX) & 1)
+                          << 3;
     } else if (renderBg->tileBpp == 8) {
         if (!renderBg->tileDataPlane1) {
             LOGW(TAG, "%s(): renderBg->tileDataPlane1 == nullptr", __func__);
@@ -1341,28 +1385,41 @@ bool Ppu::getBackgroundCurrentPixel(
         }
 
         assert(renderBg->tileDataPlane1);
-        tilePixelColor |= ((renderBg->tileDataPlane1[0] >> realPixelX) & 1) << 2;
-        tilePixelColor |= ((renderBg->tileDataPlane1[1] >> realPixelX) & 1) << 3;
+        tilePixelColor |= ((renderBg->tileDataPlane1[0] >> realPixelX) & 1)
+                          << 2;
+        tilePixelColor |= ((renderBg->tileDataPlane1[1] >> realPixelX) & 1)
+                          << 3;
 
         assert(renderBg->tileDataPlane2);
-        tilePixelColor |= ((renderBg->tileDataPlane2[0] >> realPixelX) & 1) << 4;
-        tilePixelColor |= ((renderBg->tileDataPlane2[1] >> realPixelX) & 1) << 5;
+        tilePixelColor |= ((renderBg->tileDataPlane2[0] >> realPixelX) & 1)
+                          << 4;
+        tilePixelColor |= ((renderBg->tileDataPlane2[1] >> realPixelX) & 1)
+                          << 5;
 
         assert(renderBg->tileDataPlane3);
-        tilePixelColor |= ((renderBg->tileDataPlane3[0] >> realPixelX) & 1) << 6;
-        tilePixelColor |= ((renderBg->tileDataPlane3[1] >> realPixelX) & 1) << 7;
+        tilePixelColor |= ((renderBg->tileDataPlane3[0] >> realPixelX) & 1)
+                          << 6;
+        tilePixelColor |= ((renderBg->tileDataPlane3[1] >> realPixelX) & 1)
+                          << 7;
     }
 
     if (tilePixelColor == 0) {
         return false;
     }
 
-    *color = getColorFromCgram(renderBg->bgIdx, renderBg->tileBpp, renderBg->palette, tilePixelColor);
+    *color = getColorFromCgram(
+        renderBg->bgIdx, renderBg->tileBpp, renderBg->palette, tilePixelColor);
 
     return true;
 }
 
-bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, int priority, uint32_t* c, int* palette)
+bool Ppu::getSpriteCurrentPixel(
+    int x,
+    int y,
+    const ScreenConfig& screenConfig,
+    int priority,
+    uint32_t* c,
+    int* palette)
 {
     if (!m_RenderObjInfo[y].m_ObjCount) {
         return false;
@@ -1406,7 +1463,8 @@ bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, 
         prop = searchProp;
 
         // Sprite found, lets read the requested pixel
-        // Define some callbacks to get some data depending of the current PPU configuration
+        // Define some callbacks to get some data depending of the current PPU
+        // configuration
         auto colorReadCb = getColorReadCb(kPpuObjBpp);
 
         // Extract the pixel coordinates in the tile
@@ -1444,7 +1502,8 @@ bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, 
             tileBaseAddr += m_ObjGapSize;
         }
 
-        int tileAddr = tileBaseAddr + subtileX * kPpuObjTileSize + subtileY * 0x10 * kPpuObjTileSize;
+        int tileAddr = tileBaseAddr + subtileX * kPpuObjTileSize +
+                       subtileY * 0x10 * kPpuObjTileSize;
         tileAddr &= 0xFFFF;
 
         const uint8_t* tileData = m_Vram + tileAddr;
@@ -1456,7 +1515,8 @@ bool Ppu::getSpriteCurrentPixel(int x, int y, const ScreenConfig& screenConfig, 
             tileY %= kPpuBaseTileHeight;
         }
 
-        // Pixel horizontal order is reversed in the tile. Bit 7 is the first pixel
+        // Pixel horizontal order is reversed in the tile. Bit 7 is the first
+        // pixel
         if (!prop->m_HorizontalFlip) {
             tileX = (kPpuBaseTileWidth - 1) - (tileX % kPpuBaseTileWidth);
         } else {
@@ -1487,7 +1547,8 @@ void Ppu::moveToNextPixel(RendererBgInfo* renderBg)
 
     // Go to the next pixel
     if (!renderBg->horizontalFlip) {
-        renderBg->tilePixelX = (renderBg->tilePixelX + 1) % renderBg->tileWidthPixel;
+        renderBg->tilePixelX =
+            (renderBg->tilePixelX + 1) % renderBg->tileWidthPixel;
         renderBg->subtilePixelX++;
 
         // There is only things to do when we've reached to end of the
@@ -1499,14 +1560,16 @@ void Ppu::moveToNextPixel(RendererBgInfo* renderBg)
             if (renderBg->subtileX < renderBg->tileWidth) {
                 updateSubtileData(bg, renderBg);
             } else {
-                renderBg->tilemapX = (renderBg->tilemapX + 1) % renderBg->tilemapWidth;
+                renderBg->tilemapX =
+                    (renderBg->tilemapX + 1) % renderBg->tilemapWidth;
 
                 updateTileData(bg, renderBg);
                 updateSubtileData(bg, renderBg);
             }
         }
     } else {
-        renderBg->tilePixelX = (renderBg->tilePixelX + 1) % renderBg->tileWidthPixel;
+        renderBg->tilePixelX =
+            (renderBg->tilePixelX + 1) % renderBg->tileWidthPixel;
         renderBg->subtilePixelX--;
 
         // There is only things to do when we've reached to end of the
@@ -1518,7 +1581,8 @@ void Ppu::moveToNextPixel(RendererBgInfo* renderBg)
             if (renderBg->subtileX >= 0) {
                 updateSubtileData(bg, renderBg);
             } else {
-                renderBg->tilemapX = (renderBg->tilemapX + 1) % renderBg->tilemapWidth;
+                renderBg->tilemapX =
+                    (renderBg->tilemapX + 1) % renderBg->tilemapWidth;
 
                 updateTileData(bg, renderBg);
                 updateSubtileData(bg, renderBg);
@@ -1678,7 +1742,8 @@ void Ppu::initLineRender(int y)
             renderBg->mosaic.startX = 1;
 
             // Redraw the same line N times (size block)
-            const int nextBlockY = renderBg->mosaic.startY + renderBg->mosaic.size;
+            const int nextBlockY =
+                renderBg->mosaic.startY + renderBg->mosaic.size;
             if (y == nextBlockY) {
                 renderBg->mosaic.startY = y;
             }
@@ -1689,13 +1754,19 @@ void Ppu::initLineRender(int y)
         }
 
         // Compute some dimensions that will be ready for future use
-        getTileDimension(bg->m_TileSize, &renderBg->tileWidth, &renderBg->tileHeight);
+        getTileDimension(
+            bg->m_TileSize, &renderBg->tileWidth, &renderBg->tileHeight);
         renderBg->tileWidthPixel = renderBg->tileWidth * kPpuBaseTileWidth;
         renderBg->tileHeightPixel = renderBg->tileHeight * kPpuBaseTileHeight;
 
-        getTilemapDimension(bg->m_TilemapSize, &renderBg->tilemapWidth, &renderBg->tilemapHeight);
-        renderBg->tilemapWidthPixel = renderBg->tilemapWidth * renderBg->tileWidthPixel;
-        renderBg->tilemapHeightPixel = renderBg->tilemapHeight * renderBg->tileHeightPixel;
+        getTilemapDimension(
+            bg->m_TilemapSize,
+            &renderBg->tilemapWidth,
+            &renderBg->tilemapHeight);
+        renderBg->tilemapWidthPixel =
+            renderBg->tilemapWidth * renderBg->tileWidthPixel;
+        renderBg->tilemapHeightPixel =
+            renderBg->tilemapHeight * renderBg->tileHeightPixel;
 
         renderBg->tileBpp = getTileBppFromMode(m_Bgmode, renderBg->bgIdx);
 
@@ -1714,7 +1785,8 @@ void Ppu::initLineRender(int y)
         renderBg->tilemapY = bgY / renderBg->tileHeightPixel;
 
         // Get the pixel coordinates inside the tile.
-        // Doesn't take account of horizontal/vertical flip (info unknown at this point)
+        // Doesn't take account of horizontal/vertical flip (info unknown at
+        // this point)
         renderBg->tilePixelX = bgX % renderBg->tileWidthPixel;
         renderBg->tilePixelY = bgY % renderBg->tileHeightPixel;
 
@@ -1726,7 +1798,8 @@ void Ppu::initLineRender(int y)
     if (m_Bgmode == 0) {
         m_RenderLayerPriority = s_LayerPriorityMode0;
     } else if (m_Bgmode == 1) {
-        m_RenderLayerPriority = m_Bg3Priority ? s_LayerPriorityMode1_BG3_On : s_LayerPriorityMode1_BG3_Off;
+        m_RenderLayerPriority = m_Bg3Priority ? s_LayerPriorityMode1_BG3_On
+                                              : s_LayerPriorityMode1_BG3_Off;
     } else if (m_Bgmode == 3) {
         m_RenderLayerPriority = s_LayerPriorityMode3;
     } else if (m_Bgmode == 7) {
@@ -1778,25 +1851,19 @@ void Ppu::renderDot(int x, int y)
     bool colorValid;
 
     if ((m_ForceMainScreenBlack == ColorMathConfig::Always) ||
-        (m_ForceMainScreenBlack == ColorMathConfig::MathWin && insideMathWindow) ||
-        (m_ForceMainScreenBlack == ColorMathConfig::NotMathWin && !insideMathWindow)) {
+        (m_ForceMainScreenBlack == ColorMathConfig::MathWin &&
+         insideMathWindow) ||
+        (m_ForceMainScreenBlack == ColorMathConfig::NotMathWin &&
+         !insideMathWindow)) {
         rawColor = 0;
         colorValid = true;
     } else {
         if (m_Bgmode == 7) {
-            colorValid = renderDotMode7(
-                x,
-                y,
-                m_MainScreenConfig,
-                &rawColor,
-                &colorProp);
+            colorValid =
+                renderDotMode7(x, y, m_MainScreenConfig, &rawColor, &colorProp);
         } else {
             colorValid = getScreenCurrentPixel(
-                x,
-                y,
-                m_MainScreenConfig,
-                &rawColor,
-                &colorProp);
+                x, y, m_MainScreenConfig, &rawColor, &colorProp);
         }
     }
 
@@ -1832,18 +1899,10 @@ void Ppu::renderDot(int x, int y)
 
             if (m_Bgmode == 7) {
                 subscreenColorValid = renderDotMode7(
-                    x,
-                    y,
-                    m_SubScreenConfig,
-                    &subscreenRawColor,
-                    nullptr);
+                    x, y, m_SubScreenConfig, &subscreenRawColor, nullptr);
             } else {
                 subscreenColorValid = getScreenCurrentPixel(
-                    x,
-                    y,
-                    m_SubScreenConfig,
-                    &subscreenRawColor,
-                    nullptr);
+                    x, y, m_SubScreenConfig, &subscreenRawColor, nullptr);
             }
 
             if (!subscreenColorValid) {
@@ -1858,7 +1917,8 @@ void Ppu::renderDot(int x, int y)
             uint32_t g;
             uint32_t b;
 
-            static SplittedRawColor fromU32(uint32_t c) {
+            static SplittedRawColor fromU32(uint32_t c)
+            {
                 return {
                     c & 0b11111,
                     (c >> 5) & 0b11111,
@@ -1866,7 +1926,8 @@ void Ppu::renderDot(int x, int y)
                 };
             }
 
-            uint32_t toU32() const {
+            uint32_t toU32() const
+            {
                 constexpr uint32_t kMaxFrag = 0b11111;
                 uint32_t c;
 
@@ -1878,8 +1939,10 @@ void Ppu::renderDot(int x, int y)
             }
         };
 
-        SplittedRawColor splittedMainColor = SplittedRawColor::fromU32(rawColor);
-        SplittedRawColor splittedSubColor = SplittedRawColor::fromU32(subscreenRawColor);
+        SplittedRawColor splittedMainColor =
+            SplittedRawColor::fromU32(rawColor);
+        SplittedRawColor splittedSubColor =
+            SplittedRawColor::fromU32(subscreenRawColor);
 
         // Add/Sub
         if (m_ColorMathOperation & (1 << 1)) {
@@ -1891,9 +1954,12 @@ void Ppu::renderDot(int x, int y)
                 }
             };
 
-            splittedMainColor.r = subCb(splittedMainColor.r, splittedSubColor.r);
-            splittedMainColor.g = subCb(splittedMainColor.g, splittedSubColor.g);
-            splittedMainColor.b = subCb(splittedMainColor.b, splittedSubColor.b);
+            splittedMainColor.r =
+                subCb(splittedMainColor.r, splittedSubColor.r);
+            splittedMainColor.g =
+                subCb(splittedMainColor.g, splittedSubColor.g);
+            splittedMainColor.b =
+                subCb(splittedMainColor.b, splittedSubColor.b);
         } else {
             splittedMainColor.r += splittedSubColor.r;
             splittedMainColor.g += splittedSubColor.g;
@@ -1927,7 +1993,8 @@ void Ppu::renderDot(int x, int y)
 
             // If mosaic is enabled, redraw the same line N times
             if (renderBg->mosaic.size > 1) {
-                const int nextBlockX = renderBg->mosaic.startX + renderBg->mosaic.size;
+                const int nextBlockX =
+                    renderBg->mosaic.startX + renderBg->mosaic.size;
                 if (x == nextBlockX) {
                     renderBg->mosaic.startX = x;
 
@@ -1995,7 +2062,9 @@ void Ppu::loadObjs()
             prop.m_OnScreen = false;
         } else if (prop.m_X > kPpuDisplayWidth) {
             prop.m_OnScreen = false;
-        } else if (prop.m_Y > kPpuDisplayHeight && prop.m_Y + prop.m_HeightPixel < 0x100) {
+        } else if (
+            prop.m_Y > kPpuDisplayHeight &&
+            prop.m_Y + prop.m_HeightPixel < 0x100) {
             prop.m_OnScreen = false;
         } else {
             prop.m_OnScreen = true;
@@ -2027,10 +2096,15 @@ void Ppu::printObjsCoordinates()
 
     for (int i = 0; i < kObjCount; i++) {
         getSpriteSize(m_ObjSize, m_Objs[i].m_Size, &spriteWidth, &spriteHeight);
-        LOGI(TAG, "%d - Pos: %dx%d Size: %dx%d Char: %d",
-             i, m_Objs[i].m_X, m_Objs[i].m_Y,
-             spriteWidth * kPpuBaseTileWidth, spriteHeight * kPpuBaseTileHeight,
-             m_Objs[i].m_TileIndex);
+        LOGI(
+            TAG,
+            "%d - Pos: %dx%d Size: %dx%d Char: %d",
+            i,
+            m_Objs[i].m_X,
+            m_Objs[i].m_Y,
+            spriteWidth * kPpuBaseTileWidth,
+            spriteHeight * kPpuBaseTileHeight,
+            m_Objs[i].m_TileIndex);
     }
 }
 
@@ -2068,7 +2142,13 @@ uint32_t Ppu::getMainBackdropColor()
     return m_Cgram[0];
 }
 
-bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int screen_y, Color* c, int* out_priority)
+bool Ppu::getPixelFromBg(
+    int bgIdx,
+    const Background* bg,
+    int screen_x,
+    int screen_y,
+    Color* c,
+    int* out_priority)
 {
     // Compute some dimensions that will be ready for future use
     int tilemapWidth;
@@ -2081,13 +2161,15 @@ bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int scre
     getTileDimension(bg->m_TileSize, &tileWidth, &tileHeight);
 
     int tileBpp = getTileBppFromMode(m_Bgmode, bgIdx);
-    LOGD(TAG, "Tiles are (%dx8)x(%dx8) (%dbpp)", tileWidth, tileHeight, tileBpp);
+    LOGD(
+        TAG, "Tiles are (%dx8)x(%dx8) (%dbpp)", tileWidth, tileHeight, tileBpp);
 
     // Compute the tile size in bytes. Tiles are always 8x8.
     // 16x16 tiles are just a composition of multiple 8x8 tiles.
     int tileSize = tileBpp * 8;
 
-    // Define some callbacks to get some data depending of the current PPU configuration
+    // Define some callbacks to get some data depending of the current PPU
+    // configuration
     auto tilemapMapper = getTilemapMapper(bg->m_TilemapSize);
     auto colorReadCb = getColorReadCb(tileBpp);
 
@@ -2112,7 +2194,8 @@ bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int scre
     int tilemapX = bgX % kPpuTilemapWidth;
     int tilemapY = bgY % kPpuTilemapHeight;
 
-    int tileinfoAddr = tilemapBase + (tilemapY * kPpuTilemapWidth + tilemapX) * kPpuTileInfoSize;
+    int tileinfoAddr = tilemapBase + (tilemapY * kPpuTilemapWidth + tilemapX) *
+                                         kPpuTileInfoSize;
     uint16_t tileInfo = m_Vram[tileinfoAddr] | (m_Vram[tileinfoAddr + 1] << 8);
 
     // Parse tileinfo
@@ -2146,7 +2229,8 @@ bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int scre
 
     // Compute the final tile location
     // The second row of tiles is located 0x10 tiles after
-    int tileAddr = tileBaseAddr + subtileX * tileSize + subtileY * 0x10 * tileSize;
+    int tileAddr =
+        tileBaseAddr + subtileX * tileSize + subtileY * 0x10 * tileSize;
     tileAddr &= 0xFFFF;
 
     const uint8_t* tileData = m_Vram + tileAddr;
@@ -2171,7 +2255,8 @@ bool Ppu::getPixelFromBg(int bgIdx, const Background* bg, int screen_x, int scre
         return false;
     }
 
-    uint32_t rawColor = getColorFromCgram(bgIdx, tileBpp, tilePropPalette, color);
+    uint32_t rawColor =
+        getColorFromCgram(bgIdx, tileBpp, tilePropPalette, color);
     *c = rawColorToRgb(rawColor);
     *out_priority = tilePropPriority;
 
@@ -2185,7 +2270,7 @@ bool Ppu::getPixelFromObj(int screenX, int screenY, Color* c, int* outPriority)
     int spriteHeight;
 
     // Find the sprite to display
-    for (int i = kObjCount - 1 ; i >= 0; i--) {
+    for (int i = kObjCount - 1; i >= 0; i--) {
         getSpriteSize(m_ObjSize, m_Objs[i].m_Size, &spriteWidth, &spriteHeight);
 
         // Test if the pixel is within the current sprite
@@ -2208,7 +2293,8 @@ bool Ppu::getPixelFromObj(int screenX, int screenY, Color* c, int* outPriority)
     }
 
     // Sprint found, lets read the requested pixel
-    // Define some callbacks to get some data depending of the current PPU configuration
+    // Define some callbacks to get some data depending of the current PPU
+    // configuration
     auto colorReadCb = getColorReadCb(kPpuObjBpp);
 
     // Extract the pixel coordinates in the tile
@@ -2245,7 +2331,8 @@ bool Ppu::getPixelFromObj(int screenX, int screenY, Color* c, int* outPriority)
         tileBaseAddr += m_ObjGapSize;
     }
 
-    int tileAddr = tileBaseAddr + subtileX * kPpuObjTileSize + subtileY * 0x10 * kPpuObjTileSize;
+    int tileAddr = tileBaseAddr + subtileX * kPpuObjTileSize +
+                   subtileY * 0x10 * kPpuObjTileSize;
     tileAddr &= 0xFFFF;
 
     const uint8_t* tileData = m_Vram + tileAddr;
@@ -2413,18 +2500,22 @@ void Ppu::loadFromFile(FILE* f)
     fread(&m_HVIRQ, sizeof(m_HVIRQ), 1, f);
 }
 
-Ppu::WindowConfig::Config Ppu::getWindowConfig(uint32_t value) {
-  if ((value & 0b10) == 0) {
-      return WindowConfig::Config::disabled;
-  } else if (value & 1) {
-      return WindowConfig::Config::inside;
-  } else {
-      return WindowConfig::Config::outside;
-  }
+Ppu::WindowConfig::Config Ppu::getWindowConfig(uint32_t value)
+{
+    if ((value & 0b10) == 0) {
+        return WindowConfig::Config::disabled;
+    } else if (value & 1) {
+        return WindowConfig::Config::inside;
+    } else {
+        return WindowConfig::Config::outside;
+    }
 };
 
-
-bool Ppu::isInsideWindow(int x, const WindowConfig& config, WindowConfig::Config layerConfig, bool* enabled)
+bool Ppu::isInsideWindow(
+    int x,
+    const WindowConfig& config,
+    WindowConfig::Config layerConfig,
+    bool* enabled)
 {
     bool insideWindow = config.m_Left <= x && x <= config.m_Right;
 
@@ -2450,18 +2541,12 @@ bool Ppu::applyWindowLogic(
     bool pixelInWindow;
 
     bool insideWindow1, window1Enabled;
-    insideWindow1 = isInsideWindow(
-        x,
-        m_Window1Config,
-        window1BgConfig,
-        &window1Enabled);
+    insideWindow1 =
+        isInsideWindow(x, m_Window1Config, window1BgConfig, &window1Enabled);
 
     bool insideWindow2, window2Enabled;
-    insideWindow2 = isInsideWindow(
-        x,
-        m_Window2Config,
-        window2BgConfig,
-        &window2Enabled);
+    insideWindow2 =
+        isInsideWindow(x, m_Window2Config, window2BgConfig, &window2Enabled);
 
     if (window1Enabled && window2Enabled) {
         switch (logic) {
@@ -2514,9 +2599,16 @@ void Ppu::initLineRenderMode7(int y)
 }
 
 // https://github.com/bsnes-emu/bsnes/blob/master/bsnes/sfc/ppu/mode7.cpp
-bool Ppu::renderDotMode7(int x, int y, const ScreenConfig& screenConfig, uint32_t* color, BgColorProp* colorProp)
+bool Ppu::renderDotMode7(
+    int x,
+    int y,
+    const ScreenConfig& screenConfig,
+    uint32_t* color,
+    BgColorProp* colorProp)
 {
-    for (size_t prioIdx = 0; m_RenderLayerPriority[prioIdx].m_Layer != Layer::none; prioIdx++) {
+    for (size_t prioIdx = 0;
+         m_RenderLayerPriority[prioIdx].m_Layer != Layer::none;
+         prioIdx++) {
         const auto& layer = m_RenderLayerPriority[prioIdx];
 
         if (layer.m_Layer == Layer::background) {
@@ -2533,7 +2625,8 @@ bool Ppu::renderDotMode7(int x, int y, const ScreenConfig& screenConfig, uint32_
             }
         } else if (layer.m_Layer == Layer::sprite) {
             int palette;
-            bool colorValid = getSpriteCurrentPixel(x, y, screenConfig, layer.m_Priority, color, &palette);
+            bool colorValid = getSpriteCurrentPixel(
+                x, y, screenConfig, layer.m_Priority, color, &palette);
 
             if (colorValid) {
                 if (colorProp) {
@@ -2549,7 +2642,11 @@ bool Ppu::renderDotMode7(int x, int y, const ScreenConfig& screenConfig, uint32_
     return false;
 }
 
-bool Ppu::renderGetColorMode7(int x, int y, const ScreenConfig& screenConfig, uint32_t* c)
+bool Ppu::renderGetColorMode7(
+    int x,
+    int y,
+    const ScreenConfig& screenConfig,
+    uint32_t* c)
 {
     if (!screenConfig.m_BgEnabled[0]) {
         return false;

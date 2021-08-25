@@ -5,7 +5,17 @@ on:
       - master
     pull_request:
 jobs:
+  clang-format:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v1
+      - uses: n1hility/cancel-previous-runs@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run clang-format
+        run: ./scripts/clang_format.sh check
   build-linux:
+    needs: clang-format
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1
@@ -34,6 +44,7 @@ jobs:
         name: msfce-linux-x64
         path: build/msfce
   build-mingw64:
+    needs: clang-format
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v1

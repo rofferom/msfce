@@ -15,7 +15,9 @@ class Recorder;
 
 } // namespace msfce::recorder
 
-class FrontendSdl2 : public Frontend, public msfce::core::Renderer {
+class FrontendSdl2
+    : public Frontend
+    , public msfce::core::Renderer {
 public:
     FrontendSdl2();
     ~FrontendSdl2();
@@ -32,9 +34,7 @@ public:
     void playAudioSamples(const uint8_t* data, size_t sampleCount) final;
 
 private:
-    bool handleShortcut(
-        SDL_Scancode scancode,
-        bool pressed);
+    bool handleShortcut(SDL_Scancode scancode, bool pressed);
 
     std::string getSavestateName() const;
 

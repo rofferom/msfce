@@ -2,8 +2,7 @@
 
 namespace msfce::core {
 
-MemComponent::MemComponent(MemComponentType type)
-    : m_Type(type)
+MemComponent::MemComponent(MemComponentType type) : m_Type(type)
 {
 }
 
@@ -13,16 +12,15 @@ MemComponentType MemComponent::getType() const
 }
 
 BufferMemComponent::BufferMemComponent(MemComponentType type, size_t size)
-    : MemComponent(type),
-      m_Size(size)
+    : MemComponent(type), m_Size(size)
 {
     m_Data.resize(size);
 }
 
-BufferMemComponent::BufferMemComponent(MemComponentType type, std::vector<uint8_t>&& data)
-    : MemComponent(type),
-      m_Data(data),
-      m_Size(m_Data.size())
+BufferMemComponent::BufferMemComponent(
+    MemComponentType type,
+    std::vector<uint8_t>&& data)
+    : MemComponent(type), m_Data(data), m_Size(m_Data.size())
 {
 }
 

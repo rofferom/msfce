@@ -6,8 +6,7 @@
 namespace msfce::core {
 
 Sram::Sram(size_t size)
-    : BufferMemComponent(MemComponentType::sram, size),
-      m_AddressMask(size - 1)
+    : BufferMemComponent(MemComponentType::sram, size), m_AddressMask(size - 1)
 {
 }
 

@@ -11,8 +11,9 @@
 
 namespace {
 
-#define SIZEOF_ARRAY(x)  (sizeof(x) / sizeof((x)[0]))
+#define SIZEOF_ARRAY(x) (sizeof(x) / sizeof((x)[0]))
 
+// clang-format off
 const char *vertexShader =
     "#version 330 core\n"
     "layout (location = 0) in vec3 aPos;"
@@ -41,25 +42,26 @@ const char *fragmentShader =
     "    FragColor = texture(texture1, TexCoord);"
     "}";
 
+// clang-format on
+
 void checkCompileErrors(GLuint shader, const std::string& type)
 {
     int success;
     char infoLog[1024];
 
-    if (type != "PROGRAM")
-    {
+    if (type != "PROGRAM") {
         glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-        if (!success)
-        {
+        if (!success) {
             glGetShaderInfoLog(shader, sizeof(infoLog), nullptr, infoLog);
-            LOGE(TAG, "Shader compilation error of type: '%s': '%s'", type.c_str(), infoLog);
+            LOGE(
+                TAG,
+                "Shader compilation error of type: '%s': '%s'",
+                type.c_str(),
+                infoLog);
         }
-    }
-    else
-    {
+    } else {
         glGetProgramiv(shader, GL_LINK_STATUS, &success);
-        if (!success)
-        {
+        if (!success) {
             glGetProgramInfoLog(shader, sizeof(infoLog), nullptr, infoLog);
             LOGE(TAG, "Shader link error of type: '%s'", infoLog);
         }
@@ -89,7 +91,8 @@ GLuint compileShader(const char* vShaderCode, const char* fShaderCode)
     glLinkProgram(ID);
     checkCompileErrors(ID, "PROGRAM");
 
-    // delete the shaders as they're linked into our program now and no longer necessary
+    // delete the shaders as they're linked into our program now and no longer
+    // necessary
     glDeleteShader(vertex);
     glDeleteShader(fragment);
 
@@ -101,7 +104,6 @@ GLuint compileShader(const char* vShaderCode, const char* fShaderCode)
 RendererGl::RendererGl(const msfce::core::SnesConfig& snesConfig)
     : m_SnesConfig(snesConfig)
 {
-
 }
 
 int RendererGl::initContext()
@@ -110,6 +112,7 @@ int RendererGl::initContext()
     m_ScaleMatrixUniform = glGetUniformLocation(m_Shader, "scaleMatrix");
 
     // Create VAO
+    // clang-format off
     static const float vertices[] = {
          // Coords            // Texture
          1.0f,  1.0f, 0.0f,   1.0f, 0.0f,
@@ -122,6 +125,7 @@ int RendererGl::initContext()
         0, 1, 3,
         1, 2, 3
     };
+    // clang-format on
 
     GLuint VBO, EBO;
     glGenVertexArrays(1, &m_VAO);
@@ -134,13 +138,16 @@ int RendererGl::initContext()
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    glBufferData(
+        GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
     m_VAO_ElemSize = SIZEOF_ARRAY(indices);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glVertexAttribPointer(
+        0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(
+        1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
     // Create texture
@@ -187,18 +194,28 @@ void RendererGl::setViewport()
 {
     glm::mat4 m;
 
-    const float windowRatio = (float) m_WindowWidth / (float) m_WindowHeight;
-    const float ppuRatio = (float) m_SnesConfig.displayWidth / (float) m_SnesConfig.displayHeight;
+    const float windowRatio = (float)m_WindowWidth / (float)m_WindowHeight;
+    const float ppuRatio =
+        (float)m_SnesConfig.displayWidth / (float)m_SnesConfig.displayHeight;
 
     if (windowRatio > ppuRatio) {
         // Window is wider than expected
-        const float displayedWidth = (float) m_SnesConfig.displayWidth * ((float) m_WindowHeight / (float) m_SnesConfig.displayHeight);
-        const float widthRatio = displayedWidth / (float) m_WindowWidth;
+        const float displayedWidth =
+            (float)m_SnesConfig.displayWidth *
+            ((float)m_WindowHeight / (float)m_SnesConfig.displayHeight);
+
+        const float widthRatio = displayedWidth / (float)m_WindowWidth;
+
         m = glm::scale(glm::vec3(widthRatio, 1.0f, 1));
     } else {
         // Window is higher than expected
-        const float displayedHeight = (float) m_SnesConfig.displayHeight * ((float) m_WindowWidth / (float) m_SnesConfig.displayWidth);
-        const float heightRatio = (float) displayedHeight / (float) m_WindowHeight;
+        const float displayedHeight =
+            (float)m_SnesConfig.displayHeight *
+            ((float)m_WindowWidth / (float)m_SnesConfig.displayWidth);
+
+        const float heightRatio =
+            (float)displayedHeight / (float)m_WindowHeight;
+
         m = glm::scale(glm::vec3(1.0f, heightRatio, 1));
     }
 
@@ -214,11 +231,13 @@ uint8_t* RendererGl::bindBackbuffer()
     glBindTexture(GL_TEXTURE_2D, m_Texture);
     glBindBuffer(GL_PIXEL_UNPACK_BUFFER, m_PBO);
 
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 256, 224, GL_RGB, GL_UNSIGNED_BYTE, 0);
+    glTexSubImage2D(
+        GL_TEXTURE_2D, 0, 0, 0, 256, 224, GL_RGB, GL_UNSIGNED_BYTE, 0);
 
     glBufferData(GL_PIXEL_UNPACK_BUFFER, m_TextureSize, 0, GL_STREAM_DRAW);
 
-    return static_cast<uint8_t*>(glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY));
+    return static_cast<uint8_t*>(
+        glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY));
 }
 
 int RendererGl::unbindBackbuffer()

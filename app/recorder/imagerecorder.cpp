@@ -1,6 +1,6 @@
 extern "C" {
-    #include <libavcodec/avcodec.h>
-    #include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
 }
 
 #include "imagerecorder.h"
@@ -10,9 +10,10 @@ extern "C" {
 
 namespace msfce::recorder {
 
-ImageRecorder::ImageRecorder(const std::string& basename, const msfce::core::SnesConfig& snesConfig)
-    : m_Basename(basename),
-      m_SnesConfig(snesConfig)
+ImageRecorder::ImageRecorder(
+    const std::string& basename,
+    const msfce::core::SnesConfig& snesConfig)
+    : m_Basename(basename), m_SnesConfig(snesConfig)
 {
 }
 
@@ -65,7 +66,10 @@ bool ImageRecorder::onFrameReceived(const std::shared_ptr<Frame>& inputFrame)
         goto free_avframe;
     }
 
-    memcpy(avFrame->data[0], inputFrame->payload.data(), avFrame->width * avFrame->height * kRgbSampleSize);
+    memcpy(
+        avFrame->data[0],
+        inputFrame->payload.data(),
+        avFrame->width * avFrame->height * kRgbSampleSize);
 
     // Output data
     pkt = av_packet_alloc();

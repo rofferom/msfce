@@ -13,6 +13,7 @@ struct SnesControllerMapping {
     off64_t offset;
 };
 
+// clang-format off
 static const std::unordered_map<SDL_Scancode, SnesControllerMapping> s_ControllerMapping = {
     { SDL_SCANCODE_UP,    { "Up",    offsetof(msfce::core::Controller, up) } },
     { SDL_SCANCODE_DOWN,  { "Down",  offsetof(msfce::core::Controller, down) } },
@@ -56,12 +57,14 @@ static const std::unordered_map<uint8_t, SnesControllerMapping> s_HatMapping = {
     { SDL_HAT_RIGHT, { "Right", offsetof(msfce::core::Controller, right) } },
 };
 
+// clang-format on
+
 bool* controllerGetButton(
     msfce::core::Controller* controller,
     const SnesControllerMapping& mapping)
 {
-    auto rawPtr = reinterpret_cast<uint8_t *>(controller) + mapping.offset;
-    return reinterpret_cast<bool *>(rawPtr);
+    auto rawPtr = reinterpret_cast<uint8_t*>(controller) + mapping.offset;
+    return reinterpret_cast<bool*>(rawPtr);
 }
 
 } // anonymous namespace
@@ -71,9 +74,7 @@ bool handleContollerKey(
     SDL_Scancode scancode,
     bool pressed)
 {
-    LOGD(TAG, "Scancode %d %s",
-        scancode,
-        pressed ? "pressed" : "released");
+    LOGD(TAG, "Scancode %d %s", scancode, pressed ? "pressed" : "released");
 
     auto it = s_ControllerMapping.find(scancode);
     if (it == s_ControllerMapping.end()) {
@@ -82,7 +83,9 @@ bool handleContollerKey(
 
     const auto& mapping = it->second;
 
-    LOGD(TAG, "Button %s (scancode %d) %s",
+    LOGD(
+        TAG,
+        "Button %s (scancode %d) %s",
         mapping.name,
         scancode,
         pressed ? "pressed" : "released");
@@ -98,9 +101,8 @@ bool handleJoystickKey(
     SDL_GameControllerButton button,
     bool pressed)
 {
-    LOGD(TAG, "Joystick button %d %s",
-        button,
-        pressed ? "pressed" : "released");
+    LOGD(
+        TAG, "Joystick button %d %s", button, pressed ? "pressed" : "released");
 
     auto it = s_JoystickMapping.find(button);
     if (it == s_JoystickMapping.end()) {
@@ -109,7 +111,9 @@ bool handleJoystickKey(
 
     const auto& mapping = it->second;
 
-    LOGD(TAG, "Joystick button %s (button %d) %s",
+    LOGD(
+        TAG,
+        "Joystick button %s (button %d) %s",
         mapping.name,
         button,
         pressed ? "pressed" : "released");
@@ -125,7 +129,7 @@ bool handleHatMotion(
     uint8_t hat,
     uint8_t value)
 {
-    for (auto& it: s_HatMapping) {
+    for (auto& it : s_HatMapping) {
         auto buttonValue = controllerGetButton(controller, it.second);
         *buttonValue = value & it.first;
     }

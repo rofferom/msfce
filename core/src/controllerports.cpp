@@ -18,30 +18,29 @@ struct RegisterMapping {
 namespace msfce::core {
 
 static const RegisterMapping s_ControllerRegisterMap[] = {
-    { offsetof(Controller, r),      4 },
-    { offsetof(Controller, l),      5 },
-    { offsetof(Controller, x),      6 },
-    { offsetof(Controller, a),      7 },
-    { offsetof(Controller, right),  8 },
-    { offsetof(Controller, left),   9 },
-    { offsetof(Controller, down),   10 },
-    { offsetof(Controller, up),     11 },
-    { offsetof(Controller, start),  12 },
-    { offsetof(Controller, select), 13 },
-    { offsetof(Controller, y),      14 },
-    { offsetof(Controller, b),      15 },
+    {offsetof(Controller, r), 4},
+    {offsetof(Controller, l), 5},
+    {offsetof(Controller, x), 6},
+    {offsetof(Controller, a), 7},
+    {offsetof(Controller, right), 8},
+    {offsetof(Controller, left), 9},
+    {offsetof(Controller, down), 10},
+    {offsetof(Controller, up), 11},
+    {offsetof(Controller, start), 12},
+    {offsetof(Controller, select), 13},
+    {offsetof(Controller, y), 14},
+    {offsetof(Controller, b), 15},
 };
 
 static bool controllerGetButton(
     const Controller* controller,
     const RegisterMapping& mapping)
 {
-    auto rawPtr = reinterpret_cast<const uint8_t *>(controller) + mapping.offset;
-    return *(reinterpret_cast<const bool *>(rawPtr));
+    auto rawPtr = reinterpret_cast<const uint8_t*>(controller) + mapping.offset;
+    return *(reinterpret_cast<const bool*>(rawPtr));
 }
 
-ControllerPorts::ControllerPorts()
-    : MemComponent(MemComponentType::joypads)
+ControllerPorts::ControllerPorts() : MemComponent(MemComponentType::joypads)
 {
 }
 
@@ -102,7 +101,6 @@ void ControllerPorts::writeU8(uint32_t addr, uint8_t value)
         assert(false);
         break;
     }
-
 }
 
 void ControllerPorts::setController1(const Controller& controller)

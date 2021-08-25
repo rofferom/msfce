@@ -7,15 +7,12 @@
 
 namespace msfce::core {
 
-Wram::Wram() : BufferMemComponent(
-    MemComponentType::ram,
-    kWramSize)
+Wram::Wram() : BufferMemComponent(MemComponentType::ram, kWramSize)
 {
 }
 
 IndirectWram::IndirectWram(const std::shared_ptr<Wram>& wram)
-    : MemComponent(MemComponentType::indirectRam),
-      m_Wram(wram)
+    : MemComponent(MemComponentType::indirectRam), m_Wram(wram)
 {
 }
 
@@ -56,7 +53,7 @@ void IndirectWram::writeU8(uint32_t addr, uint8_t value)
         m_Address &= 0x1FFF00;
         m_Address |= value;
         break;
- 
+
     case kRegisterWMADDM:
         m_Address &= 0x1F00FF;
         m_Address |= value << 8;

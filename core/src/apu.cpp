@@ -8,14 +8,14 @@
 
 namespace {
 
-const uint8_t kIplRom[64] = {
-    0xcd, 0xef, 0xbd, 0xe8, 0x00, 0xc6, 0x1d, 0xd0, 0xfc, 0x8f, 0xaa,
-    0xf4, 0x8f, 0xbb, 0xf5, 0x78, 0xcc, 0xf4, 0xd0, 0xfb, 0x2f, 0x19,
-    0xeb, 0xf4, 0xd0, 0xfc, 0x7e, 0xf4, 0xd0, 0x0b, 0xe4, 0xf5, 0xcb,
-    0xf4, 0xd7, 0x00, 0xfc, 0xd0, 0xf3, 0xab, 0x01, 0x10, 0xef, 0x7e,
-    0xf4, 0x10, 0xeb, 0xba, 0xf6, 0xda, 0x00, 0xba, 0xf4, 0xc4, 0xf4,
-    0xdd, 0x5d, 0xd0, 0xdb, 0x1f, 0x00, 0x00, 0xc0, 0xff
-};
+const uint8_t kIplRom[64] = {0xcd, 0xef, 0xbd, 0xe8, 0x00, 0xc6, 0x1d, 0xd0,
+                             0xfc, 0x8f, 0xaa, 0xf4, 0x8f, 0xbb, 0xf5, 0x78,
+                             0xcc, 0xf4, 0xd0, 0xfb, 0x2f, 0x19, 0xeb, 0xf4,
+                             0xd0, 0xfc, 0x7e, 0xf4, 0xd0, 0x0b, 0xe4, 0xf5,
+                             0xcb, 0xf4, 0xd7, 0x00, 0xfc, 0xd0, 0xf3, 0xab,
+                             0x01, 0x10, 0xef, 0x7e, 0xf4, 0x10, 0xeb, 0xba,
+                             0xf6, 0xda, 0x00, 0xba, 0xf4, 0xc4, 0xf4, 0xdd,
+                             0x5d, 0xd0, 0xdb, 0x1f, 0x00, 0x00, 0xc0, 0xff};
 
 const int kIplRomSize = SIZEOF_ARRAY(kIplRom);
 
@@ -27,10 +27,10 @@ constexpr float kClockRatio = 1024000.0f / 21477000.0f;
 namespace msfce::core {
 
 Apu::Apu(const uint64_t& masterClock, RenderSampleCb renderSampleCb)
-    : MemComponent(MemComponentType::apu),
-      SchedulerTask(),
-      m_RenderSampleCb(renderSampleCb),
-      m_MasterClock(masterClock)
+    : MemComponent(MemComponentType::apu)
+    , SchedulerTask()
+    , m_RenderSampleCb(renderSampleCb)
+    , m_MasterClock(masterClock)
 {
     // Init SPC
     m_SPC.init();
@@ -41,7 +41,7 @@ Apu::Apu(const uint64_t& masterClock, RenderSampleCb renderSampleCb)
     m_SamplesSize = kSampleSize * kSampleRate / 30; // 30 ms
     m_Samples = new uint8_t[m_SamplesSize];
 
-    m_SPC.set_output(reinterpret_cast<short *>(m_Samples), m_SamplesSize);
+    m_SPC.set_output(reinterpret_cast<short*>(m_Samples), m_SamplesSize);
 }
 
 Apu::~Apu()
@@ -90,7 +90,7 @@ void Apu::loadFromFile(FILE* f)
     uint8_t* spcState = new uint8_t[SNES_SPC::state_size];
 
     memset(m_Samples, 0, m_SamplesSize);
-    m_SPC.set_output(reinterpret_cast<short *>(m_Samples), m_SamplesSize);
+    m_SPC.set_output(reinterpret_cast<short*>(m_Samples), m_SamplesSize);
 
     // Load states
     fread(&m_Clock, sizeof(m_Clock), 1, f);
@@ -120,7 +120,7 @@ int Apu::run()
     if (sampleCount > 0) {
         // SNES_SPC seems to give a invalid sample count
         m_RenderSampleCb(m_Samples, sampleCount / 2);
-        m_SPC.set_output(reinterpret_cast<short *>(m_Samples), m_SamplesSize);
+        m_SPC.set_output(reinterpret_cast<short*>(m_Samples), m_SamplesSize);
     }
 
     return 0;

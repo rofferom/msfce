@@ -23,7 +23,11 @@ class Wram;
 
 enum class AddressingType;
 
-class SnesImpl : public Snes, public MemComponent, public Scheduler, public std::enable_shared_from_this<SnesImpl> {
+class SnesImpl
+    : public Snes
+    , public MemComponent
+    , public Scheduler
+    , public std::enable_shared_from_this<SnesImpl> {
 public:
     SnesImpl();
 
@@ -41,10 +45,13 @@ public:
 
     int renderSingleFrame(bool renderPpu = true) final;
 
-    void setController1(const Controller& controller) final;;
+    void setController1(const Controller& controller) final;
+    ;
 
-    void saveState(const std::string& path) final;;
-    void loadState(const std::string& path) final;;
+    void saveState(const std::string& path) final;
+    ;
+    void loadState(const std::string& path) final;
+    ;
 
     // Scheduler methods
     void resumeTask(SchedulerTask* task, int cycles);
@@ -75,7 +82,7 @@ private:
 
         void end();
 
-        template <typename Duration>
+        template<typename Duration>
         int64_t total();
     };
 

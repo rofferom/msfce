@@ -19,7 +19,7 @@ std::shared_ptr<Frame> FrameRecorder::popFrame()
 {
     std::unique_lock<std::mutex> lock(m_Mtx);
 
-    m_Cv.wait(lock, [this](){ return !m_Queue.empty(); });
+    m_Cv.wait(lock, [this]() { return !m_Queue.empty(); });
 
     auto frame = m_Queue.front();
     m_Queue.pop();

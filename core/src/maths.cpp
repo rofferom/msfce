@@ -7,8 +7,7 @@
 
 namespace msfce::core {
 
-Maths::Maths()
-    : MemComponent(MemComponentType::maths)
+Maths::Maths() : MemComponent(MemComponentType::maths)
 {
 }
 
@@ -49,8 +48,12 @@ void Maths::writeU8(uint32_t addr, uint8_t value)
         m_RemainderProduct = m_Multiplicand * m_Multiplier;
         m_Quotient = m_Multiplier;
 
-        LOGD(TAG, "Multiply: 0x%04X * 0x%02X => 0x%04X",
-             m_Multiplicand, m_Multiplier, m_RemainderProduct);
+        LOGD(
+            TAG,
+            "Multiply: 0x%04X * 0x%02X => 0x%04X",
+            m_Multiplicand,
+            m_Multiplier,
+            m_RemainderProduct);
         break;
 
     case kRegisterWRDIVL:
@@ -74,8 +77,13 @@ void Maths::writeU8(uint32_t addr, uint8_t value)
             m_RemainderProduct = m_Dividend;
         }
 
-        LOGD(TAG, "Divide: 0x%04X/0x%02X => Q:0x%04X, R:0x%04X",
-             m_Dividend, m_Divisor, m_Quotient, m_RemainderProduct);
+        LOGD(
+            TAG,
+            "Divide: 0x%04X/0x%02X => Q:0x%04X, R:0x%04X",
+            m_Dividend,
+            m_Divisor,
+            m_Quotient,
+            m_RemainderProduct);
         break;
 
     default:

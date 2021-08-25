@@ -12,7 +12,9 @@ namespace msfce::core {
 class Membus;
 class Scheduler;
 
-class Dma : public MemComponent, public SchedulerTask {
+class Dma
+    : public MemComponent
+    , public SchedulerTask {
 public:
     Dma(const std::shared_ptr<Membus>& membus);
     ~Dma() = default;
@@ -96,10 +98,13 @@ private:
     };
 
 private:
-    void dmaChannelStart(int id, DmaChannel* channel, int *cycles);
-    void dmaChannelContinue(int *cycles);
+    void dmaChannelStart(int id, DmaChannel* channel, int* cycles);
+    void dmaChannelContinue(int* cycles);
 
-    void incrementABusAddress(int id, DmaChannel* channel, uint32_t* aBusAddress);
+    void incrementABusAddress(
+        int id,
+        DmaChannel* channel,
+        uint32_t* aBusAddress);
 
 private:
     std::shared_ptr<Scheduler> m_Scheduler;
