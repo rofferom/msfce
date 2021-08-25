@@ -1,239 +1,28 @@
-#include <assert.h>
-#include <errno.h>
-#include <time.h>
-
 extern "C" {
     #include <libavcodec/avcodec.h>
     #include <libavformat/avformat.h>
     #include <libavutil/audio_fifo.h>
-    #include <libavutil/pixdesc.h>
     #include <libavutil/opt.h>
-    #include <libavutil/timestamp.h>
     #include <libswresample/swresample.h>
     #include <libswscale/swscale.h>
 }
 
-#include <msfce/core/log.h>
-#include "recorder.h"
+#include "videorecorder.h"
 
-#define TAG "Recorder"
+#define TAG "VideoRecorder"
+#include "recorder_utils.h"
 
-#define LOG_AVERROR(func, ret) \
-    do { \
-        char err[128]; \
-        av_strerror(ret, err, sizeof(err)); \
-        LOGW(TAG, "%s() failed: %s", func, err); \
-    } while(0);
-
-constexpr int kRgbSampleSize = 3;
-
-namespace {
+namespace msfce::recorder {
 
 constexpr int kOutSampleRate = 48000;
 
-std::string getDate()
-{
-#ifdef __MINGW32__
-    time_t t;
-    struct tm* localTm;
-
-    time(&t);
-    localTm = localtime(&t);
-
-    char s[128];
-    strftime(s, sizeof(s), "%Y-%m-%d %H-%M-%S", localTm);
-
-    return s;
-#else
-    time_t t;
-    struct tm localTm;
-
-    time(&t);
-
-    localtime_r(&t, &localTm);
-
-    char s[128];
-    strftime(s, sizeof(s), "%F %T", &localTm);
-
-    return s;
-#endif
-}
-
-} // anonymous namespace
-
-
-Recorder::FrameRecorder::FrameRecorder(std::unique_ptr<FrameRecorderBackend> backend)
-    : m_Backend(std::move(backend))
-{
-}
-
-void Recorder::FrameRecorder::pushFrame(const std::shared_ptr<Frame>& frame)
-{
-    std::unique_lock<std::mutex> lock(m_Mtx);
-
-    m_Queue.push(frame);
-    m_Cv.notify_one();
-}
-
-std::shared_ptr<Recorder::Frame> Recorder::FrameRecorder::popFrame()
-{
-    std::unique_lock<std::mutex> lock(m_Mtx);
-
-    m_Cv.wait(lock, [this](){ return !m_Queue.empty(); });
-
-    auto frame = m_Queue.front();
-    m_Queue.pop();
-
-    return frame;
-}
-
-void Recorder::FrameRecorder::start()
-{
-    m_State = State::started;
-    m_Thread = std::thread(&FrameRecorder::threadEntry, this);
-}
-
-void Recorder::FrameRecorder::stop()
-{
-    if (m_Thread.joinable()) {
-        pushFrame(nullptr);
-        m_Thread.join();
-    }
-
-    m_State = State::stopped;
-}
-
-bool Recorder::FrameRecorder::waitForStop() const
-{
-    return m_State == State::stopPending;
-}
-
-void Recorder::FrameRecorder::threadEntry()
-{
-    m_Backend->start();
-
-    while (auto frame = popFrame()) {
-        bool ret = m_Backend->onFrameReceived(frame);
-        if (!ret) {
-            break;
-        }
-    }
-
-    m_Backend->stop();
-    m_State = State::stopPending;
-}
-
-
-Recorder::ImageRecorder::ImageRecorder(const std::string& basename, const msfce::core::SnesConfig& snesConfig)
-    : m_Basename(basename),
-      m_SnesConfig(snesConfig)
-{
-}
-
-int Recorder::ImageRecorder::start()
-{
-    return 0;
-}
-
-int Recorder::ImageRecorder::stop()
-{
-    return 0;
-}
-
-bool Recorder::ImageRecorder::onFrameReceived(const std::shared_ptr<Frame>& inputFrame)
-{
-    AVFrame* avFrame;
-    AVPacket* pkt = nullptr;
-    std::string outname;
-    FILE* f;
-    int ret;
-
-    AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_PNG);
-
-    AVCodecContext* codecCtx = avcodec_alloc_context3(codec);
-    codecCtx->time_base.num = 1;
-    codecCtx->time_base.den = 1;
-    codecCtx->width = m_SnesConfig.displayWidth;
-    codecCtx->height = m_SnesConfig.displayHeight;
-    codecCtx->pix_fmt = AV_PIX_FMT_RGB24;
-
-    ret = avcodec_open2(codecCtx, codec, nullptr);
-    if (ret < 0) {
-        LOG_AVERROR("avcodec_open2", ret);
-        return false;
-    }
-
-    // Input data
-    avFrame = av_frame_alloc();
-    if (!avFrame) {
-        goto free_codecctx;
-    }
-
-    avFrame->width = m_SnesConfig.displayWidth;
-    avFrame->height = m_SnesConfig.displayHeight;
-    avFrame->format = AV_PIX_FMT_RGB24;
-
-    ret = av_frame_get_buffer(avFrame, 0);
-    if (ret < 0) {
-        LOG_AVERROR("av_frame_get_buffer", ret);
-        goto free_avframe;
-    }
-
-    memcpy(avFrame->data[0], inputFrame->payload.data(), avFrame->width * avFrame->height * kRgbSampleSize);
-
-    // Output data
-    pkt = av_packet_alloc();
-    if (!pkt) {
-        goto free_avframe;
-    }
-
-    ret = avcodec_send_frame(codecCtx, avFrame);
-    if (ret < 0) {
-        LOG_AVERROR("avcodec_send_frame", ret);
-        goto free_packet;
-    }
-
-    outname = m_Basename + ".png";
-    LOGI(TAG, "Saving screenshot in '%s'", outname.c_str());
-
-    f = fopen(outname.c_str(), "wb");
-    if (!f) {
-        LOGW(TAG, "Fail to open '%s': %s", outname.c_str(), strerror(errno));
-        goto free_packet;
-    }
-
-    while (ret >= 0) {
-        ret = avcodec_receive_packet(codecCtx, pkt);
-        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
-            break;
-        } else if (ret < 0) {
-            LOG_AVERROR("avcodec_receive_packet", ret);
-            break;
-        }
-
-        fwrite(pkt->data, pkt->size, 1, f);
-        av_packet_unref(pkt);
-    }
-
-    fclose(f);
-
-free_packet:
-    av_packet_free(&pkt);
-free_avframe:
-    av_frame_free(&avFrame);
-free_codecctx:
-    avcodec_free_context(&codecCtx);
-
-    return false;
-}
-
-Recorder::VideoRecorder::VideoRecorder(const std::string& basename, const msfce::core::SnesConfig& snesConfig)
+VideoRecorder::VideoRecorder(const std::string& basename, const msfce::core::SnesConfig& snesConfig)
     : m_SnesConfig(snesConfig),
       m_Basename(basename)
 {
 }
 
-int Recorder::VideoRecorder::initVideo()
+int VideoRecorder::initVideo()
 {
     AVCodec* codec = nullptr;
     int ret;
@@ -304,7 +93,7 @@ free_codecctx:
     return -ECANCELED;
 }
 
-int Recorder::VideoRecorder::clearVideo()
+int VideoRecorder::clearVideo()
 {
     sws_freeContext(m_VideoSwsCtx);
 
@@ -314,7 +103,7 @@ int Recorder::VideoRecorder::clearVideo()
     return 0;
 }
 
-int Recorder::VideoRecorder::initAudio()
+int VideoRecorder::initAudio()
 {
     AVCodec* codec = nullptr;
     int ret;
@@ -418,7 +207,7 @@ free_codecctx:
     return -ECANCELED;
 }
 
-int Recorder::VideoRecorder::clearAudio()
+int VideoRecorder::clearAudio()
 {
     av_audio_fifo_free(m_AudioFifo);
     m_AudioFifo = nullptr;
@@ -433,7 +222,7 @@ int Recorder::VideoRecorder::clearAudio()
 }
 
 
-int Recorder::VideoRecorder::start()
+int VideoRecorder::start()
 {
     AVCodec* codec = nullptr;
     int ret;
@@ -490,7 +279,7 @@ free_format:
     return -ECANCELED;
 }
 
-int Recorder::VideoRecorder::stop()
+int VideoRecorder::stop()
 {
     int ret;
 
@@ -508,12 +297,12 @@ int Recorder::VideoRecorder::stop()
     return 0;
 }
 
-int Recorder::VideoRecorder::getAudioFrameSize() const
+int VideoRecorder::getAudioFrameSize() const
 {
     return m_AudioCodecCtx->frame_size;
 }
 
-bool Recorder::VideoRecorder::onFrameReceived(const std::shared_ptr<Frame>& inputFrame)
+bool VideoRecorder::onFrameReceived(const std::shared_ptr<Frame>& inputFrame)
 {
     switch (inputFrame->type) {
     case FrameType::video:
@@ -527,7 +316,7 @@ bool Recorder::VideoRecorder::onFrameReceived(const std::shared_ptr<Frame>& inpu
     }
 }
 
-bool Recorder::VideoRecorder::onVideoFrameReceived(const std::shared_ptr<Frame>& inputFrame)
+bool VideoRecorder::onVideoFrameReceived(const std::shared_ptr<Frame>& inputFrame)
 {
     const int rgbStride = m_SnesConfig.displayWidth * kRgbSampleSize;
     const uint8_t* data;
@@ -604,7 +393,7 @@ free_frame:
     return false;
 }
 
-bool Recorder::VideoRecorder::onAudioFrameReceived(const std::shared_ptr<Frame>& inputFrame)
+bool VideoRecorder::onAudioFrameReceived(const std::shared_ptr<Frame>& inputFrame)
 {
     int ret;
 
@@ -660,7 +449,7 @@ bool Recorder::VideoRecorder::onAudioFrameReceived(const std::shared_ptr<Frame>&
     return true;
 }
 
-int Recorder::VideoRecorder::encodeAudioFrame(AVFrame* avFrameSnes)
+int VideoRecorder::encodeAudioFrame(AVFrame* avFrameSnes)
 {
     AVFrame* avFrameResampled;
     uint8_t** dstData = nullptr;
@@ -738,168 +527,4 @@ free_frame:
     return ret;
 }
 
-Recorder::Recorder(const msfce::core::SnesConfig& snesConfig, const std::string& basename)
-    : m_SnesConfig(snesConfig),
-      m_Basename(basename),
-      m_ImgSize(m_SnesConfig.displayWidth * m_SnesConfig.displayHeight * kRgbSampleSize)
-{
-}
-
-Recorder::~Recorder()
-{
-    if (m_ImageRecorder) {
-        m_ImageRecorder->stop();
-        m_ImageRecorder.reset();
-    }
-
-    if (m_VideoRecorder) {
-        m_VideoRecorder->stop();
-        m_VideoRecorder.reset();
-    }
-
-    LOGD(TAG, "Destroyed");
-}
-
-void Recorder::scanStarted()
-{
-    m_Started = true;
-
-    m_BackBuffer = std::make_shared<Frame>(FrameType::video, m_ImgSize);
-    m_BackBufferWritter = m_BackBuffer->payload.data();
-
-    m_AudioFrame = std::make_shared<Frame>(FrameType::audio, m_AudioFrameMaxSize);
-}
-
-void Recorder::drawPixel(const msfce::core::Color& c)
-{
-    if (!m_Started) {
-        return;
-    }
-
-    assert(m_BackBuffer);
-    assert(m_BackBufferWritter);
-
-    m_BackBufferWritter[0] = c.r;
-    m_BackBufferWritter[1] = c.g;
-    m_BackBufferWritter[2] = c.b;
-
-    m_BackBufferWritter += 3;
-}
-
-void Recorder::scanEnded()
-{
-    if (!m_Started) {
-        return;
-    }
-
-    m_VideoFrameReceived++;
-
-    // HACK: Resync audio (audio is currently produced at a slower way)
-    // Avoid to get more than 20 ms of delay
-    const int64_t videoTsMs = m_VideoFrameReceived * 1000 / m_SnesConfig.displayRate;
-    const int64_t audioTsMs = m_AudioSampleReceived * 1000 / m_SnesConfig.audioSampleRate;
-    const int64_t audioDeltaMs = videoTsMs - audioTsMs;
-    constexpr int64_t kAudioMaxDeltaMs = 20;
-
-    if (audioDeltaMs >= kAudioMaxDeltaMs) {
-        const int silenceSampleCount = m_SnesConfig.audioSampleRate * kAudioMaxDeltaMs / 1000;
-        auto silence = std::vector<uint8_t>(silenceSampleCount * m_SnesConfig.audioSampleSize);
-        playAudioSamples(silence.data(), silenceSampleCount);
-    }
-
-    // Push video frames
-    if (m_VideoRecorder) {
-        m_VideoRecorder->pushFrame(m_BackBuffer);
-        m_VideoRecorder->pushFrame(m_AudioFrame);
-    }
-
-    if (m_ImageRecorder) {
-        m_ImageRecorder->pushFrame(m_BackBuffer);
-    }
-
-    m_BackBuffer = nullptr;
-    m_BackBufferWritter = nullptr;
-
-    m_AudioFrame = nullptr;
-}
-
-void Recorder::playAudioSamples(const uint8_t* data, size_t sampleCount)
-{
-    if (!m_Started) {
-        return;
-    }
-
-    const size_t payloadRequiredSize = (m_AudioFrame->sampleCount + sampleCount) * m_SnesConfig.audioSampleSize;
-    if (payloadRequiredSize > m_AudioFrame->payload.size()) {
-        m_AudioFrame->payload.resize(payloadRequiredSize);
-    }
-
-    uint8_t* payloadWrite = m_AudioFrame->payload.data() + m_AudioFrame->sampleCount * m_SnesConfig.audioSampleSize;
-    memcpy(payloadWrite, data, sampleCount * m_SnesConfig.audioSampleSize);
-    m_AudioFrame->sampleCount += sampleCount;
-
-    m_AudioSampleReceived += sampleCount;
-}
-
-bool Recorder::active()
-{
-    bool ret = false;
-
-    if (m_ImageRecorder) {
-        if (m_ImageRecorder->waitForStop()) {
-            m_ImageRecorder->stop();
-            m_ImageRecorder.reset();
-        } else {
-            ret = true;
-        }
-    }
-
-    if (m_VideoRecorder) {
-        if (m_VideoRecorder->waitForStop()) {
-            m_VideoRecorder->stop();
-            m_VideoRecorder.reset();
-        } else {
-            ret = true;
-        }
-    }
-
-    return ret;
-}
-
-void Recorder::toggleVideoRecord()
-{
-    LOGI(TAG, "Toggle video record");
-
-    if (m_VideoRecorder) {
-        m_VideoRecorder->stop();
-        m_VideoRecorder.reset();
-    } else {
-        m_VideoRecorder = std::make_unique<FrameRecorder>(
-            std::make_unique<VideoRecorder>(getTsBasename(), m_SnesConfig));
-        m_VideoRecorder->start();
-    }
-}
-
-void Recorder::takeScreenshot()
-{
-    LOGI(TAG, "Take screenshot");
-
-    if (m_ImageRecorder) {
-        if (!m_ImageRecorder->waitForStop()) {
-            LOGW(TAG, "ImageRecorder busy");
-            return;
-        }
-
-        m_ImageRecorder->stop();
-        m_ImageRecorder.reset();
-    }
-
-    m_ImageRecorder = std::make_unique<FrameRecorder>(
-        std::make_unique<ImageRecorder>(getTsBasename(), m_SnesConfig));
-    m_ImageRecorder->start();
-}
-
-std::string Recorder::getTsBasename() const
-{
-    return m_Basename + " - " + getDate();
-}
+} // namespace msfce::recorder

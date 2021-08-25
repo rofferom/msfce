@@ -16,8 +16,18 @@ add_executable(msfce
     frontend_sdl2.h
     frontend_sdl2.cpp
 
-    recorder.h
-    recorder.cpp
+    recorder/framerecorder.h
+    recorder/framerecorder.cpp
+
+    recorder/imagerecorder.h
+    recorder/imagerecorder.cpp
+
+    recorder/recorder.h
+    recorder/recorder_utils.h
+    recorder/recorder.cpp
+
+    recorder/videorecorder.h
+    recorder/videorecorder.cpp
 
     main.cpp
 )

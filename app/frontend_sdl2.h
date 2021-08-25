@@ -8,7 +8,11 @@
 
 #include "frontend.h"
 
+namespace msfce::recorder {
+
 class Recorder;
+
+} // namespace msfce::recorder
 
 class FrontendSdl2 : public Frontend, public msfce::core::Renderer {
 public:
@@ -82,5 +86,5 @@ private:
     size_t m_AudioSamplesUsed = 0;
 
     // Recorder
-    std::shared_ptr<Recorder> m_Recorder;
+    std::shared_ptr<msfce::recorder::Recorder> m_Recorder;
 };

@@ -9,7 +9,7 @@
 
 #include <msfce/core/snes.h>
 #include <msfce/core/log.h>
-#include "recorder.h"
+#include "recorder/recorder.h"
 #include "frontend_sdl2.h"
 
 #define TAG "FrontendSdl2"
@@ -674,7 +674,7 @@ void FrontendSdl2::onJoystickRemoved(int index)
 
 void FrontendSdl2::initRecorder()
 {
-    m_Recorder = std::make_shared<Recorder>(
+    m_Recorder = std::make_shared<msfce::recorder::Recorder>(
         m_SnesConfig,
         m_Snes->getRomBasename());
 
