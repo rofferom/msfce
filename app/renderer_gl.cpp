@@ -13,6 +13,7 @@ namespace {
 
 #define SIZEOF_ARRAY(x)  (sizeof(x) / sizeof((x)[0]))
 
+// clang-format off
 const char *vertexShader =
     "#version 330 core\n"
     "layout (location = 0) in vec3 aPos;"
@@ -40,6 +41,8 @@ const char *fragmentShader =
     "{"
     "    FragColor = texture(texture1, TexCoord);"
     "}";
+
+// clang-format on
 
 void checkCompileErrors(GLuint shader, const std::string& type)
 {
@@ -110,6 +113,7 @@ int RendererGl::initContext()
     m_ScaleMatrixUniform = glGetUniformLocation(m_Shader, "scaleMatrix");
 
     // Create VAO
+    // clang-format off
     static const float vertices[] = {
          // Coords            // Texture
          1.0f,  1.0f, 0.0f,   1.0f, 0.0f,
@@ -122,6 +126,7 @@ int RendererGl::initContext()
         0, 1, 3,
         1, 2, 3
     };
+    // clang-format on
 
     GLuint VBO, EBO;
     glGenVertexArrays(1, &m_VAO);
@@ -193,12 +198,16 @@ void RendererGl::setViewport()
     if (windowRatio > ppuRatio) {
         // Window is wider than expected
         const float displayedWidth = (float) m_SnesConfig.displayWidth * ((float) m_WindowHeight / (float) m_SnesConfig.displayHeight);
+
         const float widthRatio = displayedWidth / (float) m_WindowWidth;
+
         m = glm::scale(glm::vec3(widthRatio, 1.0f, 1));
     } else {
         // Window is higher than expected
         const float displayedHeight = (float) m_SnesConfig.displayHeight * ((float) m_WindowWidth / (float) m_SnesConfig.displayWidth);
+
         const float heightRatio = (float) displayedHeight / (float) m_WindowHeight;
+
         m = glm::scale(glm::vec3(1.0f, heightRatio, 1));
     }
 

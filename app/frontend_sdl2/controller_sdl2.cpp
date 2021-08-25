@@ -13,6 +13,7 @@ struct SnesControllerMapping {
     off64_t offset;
 };
 
+// clang-format off
 static const std::unordered_map<SDL_Scancode, SnesControllerMapping> s_ControllerMapping = {
     { SDL_SCANCODE_UP,    { "Up",    offsetof(msfce::core::Controller, up) } },
     { SDL_SCANCODE_DOWN,  { "Down",  offsetof(msfce::core::Controller, down) } },
@@ -55,6 +56,8 @@ static const std::unordered_map<uint8_t, SnesControllerMapping> s_HatMapping = {
     { SDL_HAT_LEFT,  { "Left",  offsetof(msfce::core::Controller, left) } },
     { SDL_HAT_RIGHT, { "Right", offsetof(msfce::core::Controller, right) } },
 };
+
+// clang-format on
 
 bool* controllerGetButton(
     msfce::core::Controller* controller,

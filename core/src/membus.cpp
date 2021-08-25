@@ -326,6 +326,7 @@ void Membus::internalWriteU8(uint32_t addr, uint8_t value)
 {
 }
 
+// clang-format off
 const Membus::MemoryMap Membus::s_LowRomMap = {
     // Components
     {
@@ -436,5 +437,7 @@ const Membus::MemoryMap Membus::s_HighRomMap = {
         { 0xC0, 0xFD, 0x40, 0x7D },
     },
 };
+
+// clang-format on
 
 } // namespace msfce::core
