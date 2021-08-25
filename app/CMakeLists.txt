@@ -13,14 +13,14 @@ pkg_check_modules(PKG_SWRESAMPLE REQUIRED libswresample)
 add_executable(msfce
     frontend.h
 
-    controller_sdl2.h
-    controller_sdl2.cpp
-
-    frontend_sdl2.h
-    frontend_sdl2.cpp
-
     renderer_gl.h
     renderer_gl.cpp
+
+    frontend_sdl2/controller_sdl2.h
+    frontend_sdl2/controller_sdl2.cpp
+
+    frontend_sdl2/frontend_sdl2.h
+    frontend_sdl2/frontend_sdl2.cpp
 
     recorder/framerecorder.h
     recorder/framerecorder.cpp
@@ -55,6 +55,8 @@ target_compile_options(msfce
 
 target_include_directories(msfce
     PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+
         ${PKG_SDL2_INCLUDE_DIRS}
         ${PKG_EPOXY_INCLUDE_DIRS}
         ${PKG_GLM_INCLUDE_DIRS}

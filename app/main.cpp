@@ -1,6 +1,6 @@
 #include <msfce/core/log.h>
 #include <msfce/core/snes.h>
-#include "frontend_sdl2.h"
+#include "frontend_sdl2/frontend_sdl2.h"
 
 #define TAG "main"
 
