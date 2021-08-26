@@ -117,7 +117,7 @@ Tested on Debian 11 and Ubuntu 20.20.
 
 Install required packages
 ```
-apt install build-essential cmake pkg-config \
+sudo apt install build-essential cmake pkg-config \
   libsdl2-dev libepoxy-dev libglm-dev \
   libavcodec-dev libavutil-dev libavformat-dev libswscale-dev
 ```
@@ -136,7 +136,7 @@ Only cross compilation from Linux is supported. Tested on Debian 11 and Ubuntu 2
 
 Install required packages
 ```
-apt install mingw-w64 cmake pkg-config wget unzip \
+sudo apt install mingw-w64 cmake pkg-config wget unzip \
   meson ninja-build nasm
 ```
 
