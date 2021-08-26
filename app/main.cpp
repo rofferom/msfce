@@ -25,7 +25,12 @@ int main(int argc, char* argv[])
 
     auto snes = msfce::core::Snes::create();
     snes->addRenderer(frontend);
-    snes->plugCartidge(romPath);
+
+    ret = snes->plugCartidge(romPath);
+    if (ret < 0) {
+        snes->removeRenderer(frontend);
+        return 1;
+    }
 
     snes->start();
 
