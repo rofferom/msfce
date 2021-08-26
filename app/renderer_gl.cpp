@@ -15,9 +15,9 @@ namespace {
 
 // clang-format off
 const char *vertexShader =
-    "#version 330 core\n"
-    "layout (location = 0) in vec3 aPos;"
-    "layout (location = 1) in vec2 aTexCoord;"
+    "#version 130\n"
+    "in vec3 aPos;"
+    "in vec2 aTexCoord;"
 
     "uniform mat4 scaleMatrix;"
     "out vec2 TexCoord;"
@@ -29,7 +29,7 @@ const char *vertexShader =
     "}";
 
 const char *fragmentShader =
-    "#version 330 core\n"
+    "#version 130\n"
     "out vec4 FragColor;"
 
     "in vec3 ourColor;"
