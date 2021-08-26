@@ -8,6 +8,18 @@ The implementation is not complete, there are glitches/crashes in games, but the
 
 It runs on Linux and Windows.
 
+## Usage
+
+The emulator currently doesn't provide a GUI. It must be runned in CLI:
+```
+./msfce <rom>
+```
+
+More details available about usage:
+```
+./msfce --help
+```
+
 ## Project state
 
 ### SNES feature implementation status
