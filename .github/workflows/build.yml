@@ -3,7 +3,7 @@ on:
   push:
     branches:
       - master
-    pull_request:
+  pull_request:
 jobs:
   clang-format:
     runs-on: ubuntu-20.04
