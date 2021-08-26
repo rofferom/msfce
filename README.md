@@ -105,6 +105,12 @@ Gamepad are supported. Tested with an Xbox 360 USB controller, and a Switch Pro 
 
 ## Compile
 
+### Get submodules (all platforms)
+
+```
+git submodule update --init
+```
+
 ### Linux
 
 Tested on Debian 11 and Ubuntu 20.20.
