@@ -8,8 +8,8 @@
 #define TAG "main"
 
 struct Params {
-    bool help;
-    bool verbose;
+    bool help = false;
+    bool verbose = false;
 };
 
 int parseArgs(int argc, char* argv[], Params* params)
