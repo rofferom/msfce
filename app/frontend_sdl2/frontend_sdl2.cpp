@@ -356,7 +356,10 @@ void FrontendSdl2::initRecorder()
 
 void FrontendSdl2::clearRecorder()
 {
-    m_Snes->removeRenderer(m_Recorder);
+    if (m_Snes) {
+        m_Snes->removeRenderer(m_Recorder);
+    }
+
     m_Recorder.reset();
 }
 
