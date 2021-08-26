@@ -8,6 +8,18 @@ The implementation is not complete, there are glitches/crashes in games, but the
 
 It runs on Linux and Windows.
 
+## Usage
+
+The emulator currently doesn't provide a GUI. It must be runned in CLI:
+```
+./msfce <rom>
+```
+
+More details available about usage:
+```
+./msfce --help
+```
+
 ## Project state
 
 ### SNES feature implementation status
@@ -105,13 +117,19 @@ Gamepad are supported. Tested with an Xbox 360 USB controller, and a Switch Pro 
 
 ## Compile
 
+### Get submodules (all platforms)
+
+```
+git submodule update --init
+```
+
 ### Linux
 
 Tested on Debian 11 and Ubuntu 20.20.
 
 Install required packages
 ```
-apt install build-essential cmake pkg-config \
+sudo apt install build-essential cmake pkg-config \
   libsdl2-dev libepoxy-dev libglm-dev \
   libavcodec-dev libavutil-dev libavformat-dev libswscale-dev
 ```
@@ -130,7 +148,7 @@ Only cross compilation from Linux is supported. Tested on Debian 11 and Ubuntu 2
 
 Install required packages
 ```
-apt install mingw-w64 cmake pkg-config wget unzip \
+sudo apt install mingw-w64 cmake pkg-config wget unzip \
   meson ninja-build nasm
 ```
 
