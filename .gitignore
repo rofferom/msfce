@@ -1,2 +1,4 @@
 build*
+extras/apple-darwin-arm64
+extras/apple-darwin-x86_64
 extras/x86_64-w64-mingw32

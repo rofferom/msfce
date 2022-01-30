@@ -162,6 +162,37 @@ cmake -DCMAKE_TOOLCHAIN_FILE=../extras/mingw64-toolchain.cmake -DCMAKE_BUILD_TYP
 make
 ```
 
+### macOS
+
+Both Mac Intel and Mac M1 targets are supported, but build has only been tested on Mac Intel.
+
+Install required packages
+```
+brew install coreutils wget cmake pkg-config nasm meson ninja
+```
+
+#### Build for Mac Intel
+
+Build for Intel
+```
+./extras/build-macos.sh
+export PKG_CONFIG_LIBDIR=$(pwd)/extras/apple-darwin-x86_64/lib/pkgconfig
+mkdir build-x86_64
+cd build-x86_64
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make
+```
+
+#### Build for M1
+```
+./extras/build-macos.sh -a arm64
+export PKG_CONFIG_LIBDIR=$(pwd)/extras/apple-darwin-arm64/lib/pkgconfig
+mkdir build-arm64
+cd build-arm64
+cmake -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_BUILD_TYPE=Release ..
+make
+```
+
 ## Ressources
 
 * [65C816 Opcodes by Bruce Clark](http://6502.org/tutorials/65c816opcodes.html)

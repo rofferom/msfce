@@ -57,6 +57,11 @@ int FrontendSdl2::init(const std::shared_ptr<msfce::core::Snes>& snes)
     assert(m_Window);
 
     // Init OpenGl context
+    SDL_GL_SetAttribute(
+        SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+
     m_GlContext = SDL_GL_CreateContext(m_Window);
     assert(m_GlContext);
 
