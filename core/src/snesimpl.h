@@ -46,12 +46,9 @@ public:
     int renderSingleFrame(bool renderPpu = true) final;
 
     void setController1(const Controller& controller) final;
-    ;
 
     void saveState(const std::string& path) final;
-    ;
     void loadState(const std::string& path) final;
-    ;
 
     // Scheduler methods
     void resumeTask(SchedulerTask* task, int cycles);
