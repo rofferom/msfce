@@ -94,7 +94,6 @@ private:
     void internalWriteU8(uint32_t addr, uint8_t value);
 
 private:
-    AddressingType m_AddrType;
     bool m_FastRom = false;
 
     Bank m_Banks[0x100];

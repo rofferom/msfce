@@ -10,7 +10,7 @@ NJOBS=$(grep -c ^processor /proc/cpuinfo)
 
 # Intermediate directories
 SRC_DIR="$BASE_DIR/src"
-WORK_DIR="$BASE_DIR/work"
+WORK_DIR="$BASE_DIR/work/$CROSS_PREFIX"
 
 # Install folder + pkg-config configuration
 ROOTFS_DIR="$BASE_DIR/$CROSS_PREFIX"
@@ -26,7 +26,7 @@ test_sha256() {
     local expected_hash=$2
 
     local real_hash=$(sha256sum $local_path | awk '{print $1}')
-    
+
     if [[ $real_hash == $expected_hash ]]; then
         return 0
     else
@@ -56,7 +56,7 @@ download_tarball() {
         rm $local_path
     fi
 
-    # Get and check file integrity    
+    # Get and check file integrity
     wget $uri -O $local_path
     test_sha256 $local_path $tarball_hash
     if [[ $? -eq 0 ]]; then
@@ -238,7 +238,7 @@ build_epoxy() {
     cd "$work_dir/$archive_root"
     mkdir build
     cd build
-    meson .. --cross-file $BASE_DIR/meson-toolchain.ini --default-library=static --buildtype=release --prefix=$ROOTFS_DIR
+    meson .. --cross-file $BASE_DIR/mingw64-meson-toolchain.ini --default-library=static --buildtype=release --prefix=$ROOTFS_DIR
 
     ninja
     ninja install

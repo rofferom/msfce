@@ -63,16 +63,16 @@ jobs:
       env:
         cache-name: cache-build-dependencies
       with:
-        path: mingw64/x86_64-w64-mingw32
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('mingw64/build_deps.sh') }}
+        path: extras/x86_64-w64-mingw32
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('extras/build-mingw64.sh') }}
     - name: Build dependencies
-      run: (test -d mingw64/x86_64-w64-mingw32 && echo Build dependencies found, skip rebuild) || ./mingw64/build_deps.sh
+      run: (test -d extras/x86_64-w64-mingw32 && echo Build dependencies found, skip rebuild) || ./extras/build-mingw64.sh
     - name: Run cmake
       run: |
-        export PKG_CONFIG_LIBDIR=$(pwd)/mingw64/x86_64-w64-mingw32/lib/pkgconfig
+        export PKG_CONFIG_LIBDIR=$(pwd)/extras/x86_64-w64-mingw32/lib/pkgconfig
         mkdir build
         cd build
-        cmake -DCMAKE_TOOLCHAIN_FILE=../mingw64/toolchain.cmake -DCMAKE_BUILD_TYPE=Release ..
+        cmake -DCMAKE_TOOLCHAIN_FILE=../extras/mingw64-toolchain.cmake -DCMAKE_BUILD_TYPE=Release ..
     - name: Build
       run: |
         cd build
@@ -84,3 +84,67 @@ jobs:
         path: |
           build/msfce.exe
           build/*.dll
+  build-macos-x86-64:
+    needs: clang-format
+    runs-on: macos-11
+    steps:
+    - uses: actions/checkout@v1
+    - uses: n1hility/cancel-previous-runs@v2
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Fetch submodules
+      run: git submodule update --init --recursive
+    - name: Install required system packages
+      run: |
+        brew install coreutils wget cmake pkg-config nasm meson ninja
+    - name: Cache build dependencies
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-build-dependencies
+      with:
+        path: extras/apple-darwin-x86_64
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('extras/build-macos.sh') }}
+    - name: Build dependencies
+      run: (test -d extras/apple-darwin-x86_64 && echo Build dependencies found, skip rebuild) || ./extras/build-macos.sh
+    - name: Run cmake
+      run: |
+        export PKG_CONFIG_LIBDIR=$(pwd)/extras/apple-darwin-x86_64/lib/pkgconfig
+        mkdir build
+        cd build
+        cmake -DCMAKE_BUILD_TYPE=Release ..
+    - name: Build
+      run: |
+        cd build
+        make -j2
+  build-macos-arm64:
+    needs: clang-format
+    runs-on: macos-11
+    steps:
+    - uses: actions/checkout@v1
+    - uses: n1hility/cancel-previous-runs@v2
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Fetch submodules
+      run: git submodule update --init --recursive
+    - name: Install required system packages
+      run: |
+        brew install coreutils wget cmake pkg-config nasm meson ninja
+    - name: Cache build dependencies
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-build-dependencies
+      with:
+        path: extras/apple-darwin-arm64
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('extras/build-macos.sh') }}
+    - name: Build dependencies
+      run: (test -d extras/apple-darwin-arm64 && echo Build dependencies found, skip rebuild) || ./extras/build-macos.sh -a arm64
+    - name: Run cmake
+      run: |
+        export PKG_CONFIG_LIBDIR=$(pwd)/extras/apple-darwin-arm64/lib/pkgconfig
+        mkdir build
+        cd build
+        cmake -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_BUILD_TYPE=Release ..
+    - name: Build
+      run: |
+        cd build
+        make -j2

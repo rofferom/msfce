@@ -152,18 +152,44 @@ sudo apt install mingw-w64 cmake pkg-config wget unzip \
   meson ninja-build nasm
 ```
 
-Build dependencies
-```
-export PKG_CONFIG_LIBDIR=$(pwd)/mingw64/x86_64-w64-mingw32/lib/pkgconfig
-./mingw64/build_deps.sh
-```
-
 Build
 ```
-export PKG_CONFIG_LIBDIR=$(pwd)/mingw64/x86_64-w64-mingw32/lib/pkgconfig
+./extras/build-mingw64.sh
+export PKG_CONFIG_LIBDIR=$(pwd)/extras/x86_64-w64-mingw32/lib/pkgconfig
 mkdir build
 cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=../mingw64/toolchain.cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake -DCMAKE_TOOLCHAIN_FILE=../extras/mingw64-toolchain.cmake -DCMAKE_BUILD_TYPE=Release ..
+make
+```
+
+### macOS
+
+Both Mac Intel and Mac M1 targets are supported, but build has only been tested on Mac Intel.
+
+Install required packages
+```
+brew install coreutils wget cmake pkg-config nasm meson ninja
+```
+
+#### Build for Mac Intel
+
+Build for Intel
+```
+./extras/build-macos.sh
+export PKG_CONFIG_LIBDIR=$(pwd)/extras/apple-darwin-x86_64/lib/pkgconfig
+mkdir build-x86_64
+cd build-x86_64
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make
+```
+
+#### Build for M1
+```
+./extras/build-macos.sh -a arm64
+export PKG_CONFIG_LIBDIR=$(pwd)/extras/apple-darwin-arm64/lib/pkgconfig
+mkdir build-arm64
+cd build-arm64
+cmake -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
 
