@@ -152,18 +152,13 @@ sudo apt install mingw-w64 cmake pkg-config wget unzip \
   meson ninja-build nasm
 ```
 
-Build dependencies
-```
-export PKG_CONFIG_LIBDIR=$(pwd)/mingw64/x86_64-w64-mingw32/lib/pkgconfig
-./mingw64/build_deps.sh
-```
-
 Build
 ```
-export PKG_CONFIG_LIBDIR=$(pwd)/mingw64/x86_64-w64-mingw32/lib/pkgconfig
+./extras/build-mingw64.sh
+export PKG_CONFIG_LIBDIR=$(pwd)/extras/x86_64-w64-mingw32/lib/pkgconfig
 mkdir build
 cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=../mingw64/toolchain.cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake -DCMAKE_TOOLCHAIN_FILE=../extras/mingw64-toolchain.cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
 

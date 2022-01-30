@@ -63,16 +63,16 @@ jobs:
       env:
         cache-name: cache-build-dependencies
       with:
-        path: mingw64/x86_64-w64-mingw32
-        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('mingw64/build_deps.sh') }}
+        path: extras/x86_64-w64-mingw32
+        key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('extras/build-mingw64.sh') }}
     - name: Build dependencies
-      run: (test -d mingw64/x86_64-w64-mingw32 && echo Build dependencies found, skip rebuild) || ./mingw64/build_deps.sh
+      run: (test -d extras/x86_64-w64-mingw32 && echo Build dependencies found, skip rebuild) || ./extras/build-mingw64.sh
     - name: Run cmake
       run: |
-        export PKG_CONFIG_LIBDIR=$(pwd)/mingw64/x86_64-w64-mingw32/lib/pkgconfig
+        export PKG_CONFIG_LIBDIR=$(pwd)/extras/x86_64-w64-mingw32/lib/pkgconfig
         mkdir build
         cd build
-        cmake -DCMAKE_TOOLCHAIN_FILE=../mingw64/toolchain.cmake -DCMAKE_BUILD_TYPE=Release ..
+        cmake -DCMAKE_TOOLCHAIN_FILE=../extras/mingw64-toolchain.cmake -DCMAKE_BUILD_TYPE=Release ..
     - name: Build
       run: |
         cd build
