@@ -35,7 +35,7 @@ bool ImageRecorder::onFrameReceived(const std::shared_ptr<Frame>& inputFrame)
     FILE* f;
     int ret;
 
-    AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_PNG);
+    const AVCodec* codec = avcodec_find_encoder(AV_CODEC_ID_PNG);
 
     AVCodecContext* codecCtx = avcodec_alloc_context3(codec);
     codecCtx->time_base.num = 1;

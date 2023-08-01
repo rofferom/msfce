@@ -25,7 +25,7 @@ VideoRecorder::VideoRecorder(
 
 int VideoRecorder::initVideo()
 {
-    AVCodec* codec = nullptr;
+    const AVCodec* codec = nullptr;
     int ret;
 
     codec = avcodec_find_encoder_by_name("libx264");
@@ -114,7 +114,7 @@ int VideoRecorder::clearVideo()
 
 int VideoRecorder::initAudio()
 {
-    AVCodec* codec = nullptr;
+    const AVCodec* codec = nullptr;
     int ret;
 
     codec = avcodec_find_encoder_by_name("libopus");
@@ -135,8 +135,7 @@ int VideoRecorder::initAudio()
 
     m_AudioCodecCtx->sample_fmt = codec->sample_fmts[0];
     m_AudioCodecCtx->sample_rate = kOutSampleRate;
-    m_AudioCodecCtx->channels = m_SnesConfig.audioChannels;
-    m_AudioCodecCtx->channel_layout = AV_CH_LAYOUT_STEREO;
+    m_AudioCodecCtx->ch_layout = AV_CHANNEL_LAYOUT_STEREO;
     m_AudioCodecCtx->bit_rate = 128000;
 
     // Add and setup audio stream
@@ -430,8 +429,7 @@ bool VideoRecorder::onAudioFrameReceived(
 
         // Prepare raw input sample
         avFrame->format = AV_SAMPLE_FMT_S16;
-        avFrame->channels = m_SnesConfig.audioChannels;
-        avFrame->channel_layout = AV_CH_LAYOUT_STEREO;
+        avFrame->ch_layout = AV_CHANNEL_LAYOUT_STEREO;
         avFrame->sample_rate = m_SnesConfig.audioSampleRate;
         avFrame->nb_samples = m_AudioSnesFrameSize;
 
@@ -478,7 +476,7 @@ int VideoRecorder::encodeAudioFrame(AVFrame* avFrameSnes)
     avFrameResampled = av_frame_alloc();
 
     avFrameResampled->format = m_AudioCodecCtx->sample_fmt;
-    avFrameResampled->channel_layout = m_AudioCodecCtx->channel_layout;
+    avFrameResampled->ch_layout = m_AudioCodecCtx->ch_layout;
     avFrameResampled->sample_rate = m_AudioCodecCtx->sample_rate;
     avFrameResampled->nb_samples = m_AudioCodecCtx->frame_size;
 
