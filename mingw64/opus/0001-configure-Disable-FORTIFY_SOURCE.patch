@@ -1,24 +1,25 @@
-From 84ce42e280b42e470f0ed021398b43620b92ea3a Mon Sep 17 00:00:00 2001
+From 55862e3026b519ec7cd094785c4706443d0a8395 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Romain=20Roff=C3=A9?= <rofferom@gmail.com>
-Date: Sun, 1 Aug 2021 18:27:52 +0200
+Date: Fri, 18 Oct 2024 20:03:17 +0200
 Subject: [PATCH] configure: Disable FORTIFY_SOURCE
 
 ---
- configure | 36 ------------------------------------
- 1 file changed, 36 deletions(-)
+ configure | 40 ----------------------------------------
+ 1 file changed, 40 deletions(-)
 
 diff --git a/configure b/configure
-index 6623770..9b7f867 100755
+index 4ca76b5..366c8cf 100755
 --- a/configure
 +++ b/configure
-@@ -14722,42 +14722,6 @@ rm -f core conftest.err conftest.$ac_objext \
+@@ -15757,44 +15757,6 @@ rm -f core conftest.err conftest.$ac_objext conftest.beam \
  
  fi
  
--if test x$ac_cv_c_compiler_gnu = xyes; then :
+-if test x$ac_cv_c_compiler_gnu = xyes
+-then :
 -
--    { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to add -D_FORTIFY_SOURCE=2 to CFLAGS" >&5
--$as_echo_n "checking whether to add -D_FORTIFY_SOURCE=2 to CFLAGS... " >&6; }
+-    { printf "%s\n" "$as_me:${as_lineno-$LINENO}: checking whether to add -D_FORTIFY_SOURCE=2 to CFLAGS" >&5
+-printf %s "checking whether to add -D_FORTIFY_SOURCE=2 to CFLAGS... " >&6; }
 -    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 -/* end confdefs.h.  */
 -
@@ -33,19 +34,20 @@ index 6623770..9b7f867 100755
 -
 -
 -_ACEOF
--if ac_fn_c_try_link "$LINENO"; then :
+-if ac_fn_c_try_link "$LINENO"
+-then :
 -
--            { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
--$as_echo "yes" >&6; }
+-            { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+-printf "%s\n" "yes" >&6; }
 -            CFLAGS="$CFLAGS -D_FORTIFY_SOURCE=2"
 -
--else
+-else $as_nop
 -
--            { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
--$as_echo "no" >&6; }
+-            { printf "%s\n" "$as_me:${as_lineno-$LINENO}: result: no" >&5
+-printf "%s\n" "no" >&6; }
 -
 -fi
--rm -f core conftest.err conftest.$ac_objext \
+-rm -f core conftest.err conftest.$ac_objext conftest.beam \
 -    conftest$ac_exeext conftest.$ac_ext
 -
 -
@@ -54,6 +56,12 @@ index 6623770..9b7f867 100755
  CFLAGS="$CFLAGS -W"
  
  warn_CFLAGS="-Wall -Wextra -Wcast-align -Wnested-externs -Wshadow -Wstrict-prototypes"
+@@ -18316,5 +18278,3 @@ printf "%s\n" "$as_me:
+  Type \"make; make install\" to compile and install
+  Type \"make check\" to run the test suite
+ " >&6;}
+-
+-
 -- 
-2.30.2
+2.39.5
 

@@ -69,9 +69,9 @@ download_tarball() {
 build_zlib() {
     local init_cwd=$(pwd)
 
-    local uri="https://zlib.net/zlib-1.2.11.tar.gz"
-    local archive_root='zlib-1.2.11'
-    local sha256="c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1"
+    local uri="https://zlib.net/zlib-1.3.1.tar.xz"
+    local archive_root='zlib-1.3.1'
+    local sha256="38ef96b8dfe510d42707d9c781877914792541133e1870841463bfa73f883e32"
     local work_dir="$WORK_DIR/zlib"
 
     # Get sources
@@ -96,9 +96,9 @@ build_zlib() {
 build_x264() {
     local init_cwd=$(pwd)
 
-    local uri="https://code.videolan.org/videolan/x264/-/archive/5db6aa6cab1b146e07b60cc1736a01f21da01154/x264-5db6aa6cab1b146e07b60cc1736a01f21da01154.zip"
-    local archive_root='x264-5db6aa6cab1b146e07b60cc1736a01f21da01154'
-    local sha256="6896825756ebe2c2657580d7636ed5fd6a41fea8e7722ba866fac7be6780d02f"
+    local uri="https://code.videolan.org/videolan/x264/-/archive/1243d9ffb04dac7005ee9ecc79459034429dd5aa/x264-1243d9ffb04dac7005ee9ecc79459034429dd5aa.zip"
+    local archive_root='x264-1243d9ffb04dac7005ee9ecc79459034429dd5aa'
+    local sha256="cd4f325f6c761bf16fe771cbc79dff74c16879a0020eec337d78704f9e6cae18"
     local work_dir="$WORK_DIR/x264"
 
     # Get sources
@@ -117,9 +117,9 @@ build_x264() {
 build_opus() {
     local init_cwd=$(pwd)
 
-    local uri="https://archive.mozilla.org/pub/opus/opus-1.3.1.tar.gz"
-    local archive_root='opus-1.3.1'
-    local sha256="65b58e1e25b2a114157014736a3d9dfeaad8d41be1c8179866f144a2fb44ff9d"
+    local uri="https://downloads.xiph.org/releases/opus/opus-1.5.2.tar.gz"
+    local archive_root='opus-1.5.2'
+    local sha256="65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1"
     local work_dir="$WORK_DIR/opus"
 
     # Get sources
@@ -144,9 +144,9 @@ build_opus() {
 build_ffmpeg() {
     local init_cwd=$(pwd)
 
-    local uri="http://ffmpeg.org/releases/ffmpeg-4.4.tar.xz"
-    local archive_root='ffmpeg-4.4'
-    local sha256="06b10a183ce5371f915c6bb15b7b1fffbe046e8275099c96affc29e17645d909"
+    local uri="https://ffmpeg.org/releases/ffmpeg-5.1.6.tar.xz"
+    local archive_root='ffmpeg-5.1.6'
+    local sha256="f4fa066278f7a47feab316fef905f4db0d5e9b589451949740f83972b30901bd"
     local work_dir="$WORK_DIR/ffmpeg"
 
     # Get sources
@@ -176,9 +176,9 @@ build_ffmpeg() {
 build_sdl2() {
     local init_cwd=$(pwd)
 
-    local uri="https://www.libsdl.org/release/SDL2-2.0.14.tar.gz"
-    local archive_root='SDL2-2.0.14'
-    local sha256="d8215b571a581be1332d2106f8036fcb03d12a70bae01e20f424976d275432bc"
+    local uri="https://github.com/libsdl-org/SDL/archive/refs/tags/release-2.30.8.tar.gz"
+    local archive_root='SDL-release-2.30.8'
+    local sha256="ea638d142ee2bf71e2896fbc87e2eaa5956d2c91322aa55cf41049382a6e7730"
     local work_dir="$WORK_DIR/sdl2"
 
     # Get sources
@@ -199,9 +199,9 @@ build_sdl2() {
 build_glm() {
     local init_cwd=$(pwd)
 
-    local uri="https://github.com/g-truc/glm/releases/download/0.9.9.8/glm-0.9.9.8.zip"
+    local uri="https://github.com/g-truc/glm/releases/download/1.0.1/glm-1.0.1-light.zip"
     local archive_root='glm'
-    local sha256="37e2a3d62ea3322e43593c34bae29f57e3e251ea89f4067506c94043769ade4c"
+    local sha256="9a995de4da09723bd33ef194e6b79818950e5a8f2e154792f02e4615277cfb8d"
     local work_dir="$WORK_DIR/glm"
 
     # Get sources
@@ -210,9 +210,9 @@ build_glm() {
     unzip "$SRC_DIR/$(basename $uri)" -d $work_dir
 
     # Install headers
-    cd "$work_dir/$archive_root"
+    cd "$work_dir"
     mkdir -p $ROOTFS_DIR/include $ROOTFS_DIR/lib/pkgconfig
-    cp -a glm "$ROOTFS_DIR/include"
+    cp -a "$archive_root" "$ROOTFS_DIR/include"
     cp "$BASE_DIR/glm/glm.pc.in" "$ROOTFS_DIR/lib/pkgconfig/glm.pc"
 
     # Patch .pc file
@@ -224,9 +224,9 @@ build_glm() {
 build_epoxy() {
     local init_cwd=$(pwd)
 
-    local uri="https://github.com/anholt/libepoxy/releases/download/1.5.5/libepoxy-1.5.5.tar.xz"
-    local archive_root='libepoxy-1.5.5'
-    local sha256="261663db21bcc1cc232b07ea683252ee6992982276536924271535875f5b0556"
+    local uri="https://github.com/anholt/libepoxy/archive/refs/tags/1.5.10.tar.gz"
+    local archive_root='libepoxy-1.5.10'
+    local sha256="a7ced37f4102b745ac86d6a70a9da399cc139ff168ba6b8002b4d8d43c900c15"
     local work_dir="$WORK_DIR/epoxy"
 
     # Get sources

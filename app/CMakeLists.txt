@@ -51,6 +51,7 @@ target_compile_options(msfce
         -Wno-unused-parameter
         -Wno-unused-variable
         -Wno-unused-result
+        -Wno-missing-field-initializers
 )
 
 target_include_directories(msfce
@@ -127,11 +128,11 @@ if (WIN32)
     set(DEPS_BINARY_DIR ${PKG_SDL2_LIBDIR}/../bin)
 
     set(DLL_LIST
-        avcodec-58.dll
-        avformat-58.dll
-        avutil-56.dll
-        swresample-3.dll
-        swscale-5.dll
+        avcodec-59.dll
+        avformat-59.dll
+        avutil-57.dll
+        swresample-4.dll
+        swscale-6.dll
 
         SDL2.dll
     )
