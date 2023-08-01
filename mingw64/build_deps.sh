@@ -69,9 +69,9 @@ download_tarball() {
 build_zlib() {
     local init_cwd=$(pwd)
 
-    local uri="https://zlib.net/zlib-1.2.11.tar.gz"
-    local archive_root='zlib-1.2.11'
-    local sha256="c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1"
+    local uri="https://zlib.net/zlib-1.2.13.tar.xz"
+    local archive_root='zlib-1.2.13'
+    local sha256="d14c38e313afc35a9a8760dadf26042f51ea0f5d154b0630a31da0540107fb98"
     local work_dir="$WORK_DIR/zlib"
 
     # Get sources
@@ -96,9 +96,9 @@ build_zlib() {
 build_x264() {
     local init_cwd=$(pwd)
 
-    local uri="https://code.videolan.org/videolan/x264/-/archive/5db6aa6cab1b146e07b60cc1736a01f21da01154/x264-5db6aa6cab1b146e07b60cc1736a01f21da01154.zip"
-    local archive_root='x264-5db6aa6cab1b146e07b60cc1736a01f21da01154'
-    local sha256="6896825756ebe2c2657580d7636ed5fd6a41fea8e7722ba866fac7be6780d02f"
+    local uri="https://code.videolan.org/videolan/x264/-/archive/baee400fa9ced6f5481a728138fed6e867b0ff7f/x264-baee400fa9ced6f5481a728138fed6e867b0ff7f.zip"
+    local archive_root='x264-baee400fa9ced6f5481a728138fed6e867b0ff7f'
+    local sha256="8e89a2074a0ba89267f7b4858714bdfe61cd1fea726a589788fc1d83d21579aa"
     local work_dir="$WORK_DIR/x264"
 
     # Get sources
@@ -117,9 +117,9 @@ build_x264() {
 build_opus() {
     local init_cwd=$(pwd)
 
-    local uri="https://archive.mozilla.org/pub/opus/opus-1.3.1.tar.gz"
-    local archive_root='opus-1.3.1'
-    local sha256="65b58e1e25b2a114157014736a3d9dfeaad8d41be1c8179866f144a2fb44ff9d"
+    local uri="https://downloads.xiph.org/releases/opus/opus-1.4.tar.gz"
+    local archive_root='opus-1.4'
+    local sha256="c9b32b4253be5ae63d1ff16eea06b94b5f0f2951b7a02aceef58e3a3ce49c51f"
     local work_dir="$WORK_DIR/opus"
 
     # Get sources
@@ -144,9 +144,9 @@ build_opus() {
 build_ffmpeg() {
     local init_cwd=$(pwd)
 
-    local uri="http://ffmpeg.org/releases/ffmpeg-4.4.tar.xz"
-    local archive_root='ffmpeg-4.4'
-    local sha256="06b10a183ce5371f915c6bb15b7b1fffbe046e8275099c96affc29e17645d909"
+    local uri="https://ffmpeg.org/releases/ffmpeg-5.1.3.tar.xz"
+    local archive_root='ffmpeg-5.1.3'
+    local sha256="1b113593ff907293be7aed95acdda5e785dd73616d7d4ec90a0f6adbc5a0312e"
     local work_dir="$WORK_DIR/ffmpeg"
 
     # Get sources
@@ -176,9 +176,9 @@ build_ffmpeg() {
 build_sdl2() {
     local init_cwd=$(pwd)
 
-    local uri="https://www.libsdl.org/release/SDL2-2.0.14.tar.gz"
-    local archive_root='SDL2-2.0.14'
-    local sha256="d8215b571a581be1332d2106f8036fcb03d12a70bae01e20f424976d275432bc"
+    local uri="https://github.com/libsdl-org/SDL/archive/refs/tags/release-2.28.1.tar.gz"
+    local archive_root='SDL-release-2.28.1'
+    local sha256="99149dfaa45972fc29b1184517003dfb25ff44c9137b2b83d62eeae4cdc32a35"
     local work_dir="$WORK_DIR/sdl2"
 
     # Get sources
@@ -224,9 +224,9 @@ build_glm() {
 build_epoxy() {
     local init_cwd=$(pwd)
 
-    local uri="https://github.com/anholt/libepoxy/releases/download/1.5.5/libepoxy-1.5.5.tar.xz"
-    local archive_root='libepoxy-1.5.5'
-    local sha256="261663db21bcc1cc232b07ea683252ee6992982276536924271535875f5b0556"
+    local uri="https://github.com/anholt/libepoxy/archive/refs/tags/1.5.10.tar.gz"
+    local archive_root='libepoxy-1.5.10'
+    local sha256="a7ced37f4102b745ac86d6a70a9da399cc139ff168ba6b8002b4d8d43c900c15"
     local work_dir="$WORK_DIR/epoxy"
 
     # Get sources
