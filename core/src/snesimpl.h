@@ -46,15 +46,12 @@ public:
     int renderSingleFrame(bool renderPpu = true) final;
 
     void setController1(const Controller& controller) final;
-    ;
 
     void saveState(const std::string& path) final;
-    ;
     void loadState(const std::string& path) final;
-    ;
 
     // Scheduler methods
-    void resumeTask(SchedulerTask* task, int cycles);
+    void resumeTask(SchedulerTask* task, int cycles) final;
 
     // MemComponent methods
     uint8_t readU8(uint32_t addr) override;

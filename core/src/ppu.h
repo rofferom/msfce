@@ -143,7 +143,7 @@ private:
         int tileHeightPixel;
 
         int tileBpp;
-        int tileSize = tileBpp * 8;
+        int tileSize;
 
         TilemapMapper tilemapMapper;
 

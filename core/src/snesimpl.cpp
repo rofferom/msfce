@@ -126,7 +126,7 @@ int SnesImpl::plugCartidge(const char* path)
         return ret;
     }
 
-    LOGI(TAG, "Rom size: %lu bytes", fStat.st_size);
+    LOGI(TAG, "Rom size: %jd bytes", static_cast<intmax_t>(fStat.st_size));
 
     // Read file content
     std::vector<uint8_t> rom(fStat.st_size);

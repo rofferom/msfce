@@ -10,7 +10,7 @@ namespace {
 
 struct SnesControllerMapping {
     const char* name;
-    off64_t offset;
+    off_t offset;
 };
 
 // clang-format off

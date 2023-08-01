@@ -51,6 +51,7 @@ target_compile_options(msfce
         -Wno-unused-parameter
         -Wno-unused-variable
         -Wno-unused-result
+        -Wno-missing-field-initializers
 )
 
 target_include_directories(msfce
@@ -92,9 +93,6 @@ target_link_libraries(msfce
         ${PKG_AVUTIL_LIBRARIES}
         ${PKG_SWSCALE_LIBRARIES}
         ${PKG_SWRESAMPLE_LIBRARIES}
-
-        -lstdc++fs
-        -lpthread
 )
 
 if (WIN32)
@@ -107,32 +105,18 @@ if (WIN32)
         PRIVATE
             -static-libgcc
             -static-libstdc++
+            -Wl,-Bstatic -lpthread  -Wl,-Bdynamic
     )
-
-    # Install mingw64 DLLs
-    set(MINGW_DLL_LIST
-        libwinpthread-1.dll
-    )
-
-    foreach(DLL_NAME ${MINGW_DLL_LIST})
-        add_custom_command(
-            TARGET msfce POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                /usr/${TOOLCHAIN_PREFIX}/lib/${DLL_NAME}
-                ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${DLL_NAME}
-            COMMENT "Copying ${DLL_NAME}"
-        )
-    endforeach()
 
     # Install deps
     set(DEPS_BINARY_DIR ${PKG_SDL2_LIBDIR}/../bin)
 
     set(DLL_LIST
-        avcodec-58.dll
-        avformat-58.dll
-        avutil-56.dll
-        swresample-3.dll
-        swscale-5.dll
+        avcodec-59.dll
+        avformat-59.dll
+        avutil-57.dll
+        swresample-4.dll
+        swscale-6.dll
 
         SDL2.dll
     )
@@ -146,4 +130,10 @@ if (WIN32)
             COMMENT "Copying ${DLL_NAME}"
         )
     endforeach()
+else()
+    target_link_libraries(msfce
+        PRIVATE
+            -lpthread
+    )
+
 endif()

@@ -16,8 +16,7 @@ constexpr uint32_t kComponentAccessRW = kComponentAccessR | kComponentAccessW;
 
 namespace msfce::core {
 
-Membus::Membus(AddressingType addrType, bool fastRom)
-    : m_AddrType(addrType), m_FastRom(fastRom)
+Membus::Membus(AddressingType addrType, bool fastRom) : m_FastRom(fastRom)
 {
     if (addrType == AddressingType::lowrom) {
         initLowRom();
