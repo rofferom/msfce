@@ -30,6 +30,11 @@ public:
     bool onFrameReceived(const std::shared_ptr<Frame>& inputFrame) final;
 
 private:
+    int processPendingFrames(
+        AVCodecContext* ctx,
+        const AVStream* stream,
+        AVFormatContext* container);
+
     int initVideo();
     int clearVideo();
 

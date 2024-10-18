@@ -314,6 +314,24 @@ int VideoRecorder::stop()
 {
     int ret;
 
+    // Fush video
+    ret = avcodec_send_frame(m_VideoCodecCtx, nullptr);
+    if (ret < 0)
+        LOGW(TAG, "Failed to flush video codec: %d", ret);
+
+    ret = processPendingFrames(m_VideoCodecCtx, m_VideoStream, m_ContainerCtx);
+    if (ret < 0)
+        LOGW(TAG, "Failed to get remaining video frames: %d", ret);
+
+    // Flush audio
+    ret = avcodec_send_frame(m_AudioCodecCtx, nullptr);
+    if (ret < 0)
+        LOGW(TAG, "Failed to flush audio codec: %d", ret);
+
+    ret = processPendingFrames(m_AudioCodecCtx, m_AudioStream, m_ContainerCtx);
+    if (ret < 0)
+        LOGW(TAG, "Failed to get remaining audio frames: %d", ret);
+
     ret = av_write_trailer(m_ContainerCtx);
     if (ret < 0) {
         LOG_AVERROR("av_write_trailer", ret);
@@ -345,6 +363,42 @@ bool VideoRecorder::onFrameReceived(const std::shared_ptr<Frame>& inputFrame)
     default:
         return true;
     }
+}
+
+int VideoRecorder::processPendingFrames(
+    AVCodecContext* ctx,
+    const AVStream* stream,
+    AVFormatContext* container)
+{
+    int ret;
+
+    do {
+        AVPacket* pkt = av_packet_alloc();
+
+        ret = avcodec_receive_packet(ctx, pkt);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+            av_packet_free(&pkt);
+            break;
+        } else if (ret < 0) {
+            LOG_AVERROR("avcodec_receive_packet", ret);
+            av_packet_free(&pkt);
+            return ret;
+        }
+
+        av_packet_rescale_ts(pkt, ctx->time_base, stream->time_base);
+        pkt->stream_index = stream->index;
+
+        ret = av_interleaved_write_frame(container, pkt);
+        if (ret < 0) {
+            LOG_AVERROR("av_interleaved_write_frame", ret);
+            av_packet_free(&pkt);
+            return ret;
+        }
+
+        av_packet_free(&pkt);
+    } while (ret >= 0);
+
+    return 0;
 }
 
 bool VideoRecorder::onVideoFrameReceived(
@@ -392,32 +446,9 @@ bool VideoRecorder::onVideoFrameReceived(
         goto free_frame;
     }
 
-    while (ret >= 0) {
-        AVPacket* pkt = av_packet_alloc();
-
-        ret = avcodec_receive_packet(m_VideoCodecCtx, pkt);
-        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
-            av_packet_free(&pkt);
-            break;
-        } else if (ret < 0) {
-            LOG_AVERROR("avcodec_receive_packet", ret);
-            av_packet_free(&pkt);
-            goto free_frame;
-        }
-
-        pkt->stream_index = m_VideoStream->index;
-        av_packet_rescale_ts(
-            pkt, m_VideoCodecCtx->time_base, m_VideoStream->time_base);
-
-        ret = av_interleaved_write_frame(m_ContainerCtx, pkt);
-        if (ret < 0) {
-            LOG_AVERROR("av_interleaved_write_frame", ret);
-            av_packet_free(&pkt);
-            goto free_frame;
-        }
-
-        av_packet_free(&pkt);
-    }
+    ret = processPendingFrames(m_VideoCodecCtx, m_VideoStream, m_ContainerCtx);
+    if (ret < 0)
+        goto free_frame;
 
     // Clean AVFrame
     av_frame_free(&avFrame);
@@ -528,32 +559,9 @@ int VideoRecorder::encodeAudioFrame(AVFrame* avFrameSnes)
         goto free_frame;
     }
 
-    while (ret >= 0) {
-        AVPacket* pkt = av_packet_alloc();
-
-        ret = avcodec_receive_packet(m_AudioCodecCtx, pkt);
-        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
-            av_packet_free(&pkt);
-            break;
-        } else if (ret < 0) {
-            LOG_AVERROR("avcodec_receive_packet", ret);
-            av_packet_free(&pkt);
-            goto free_frame;
-        }
-
-        av_packet_rescale_ts(
-            pkt, m_AudioCodecCtx->time_base, m_AudioStream->time_base);
-        pkt->stream_index = m_AudioStream->index;
-
-        ret = av_interleaved_write_frame(m_ContainerCtx, pkt);
-        if (ret < 0) {
-            LOG_AVERROR("av_interleaved_write_frame", ret);
-            av_packet_free(&pkt);
-            goto free_frame;
-        }
-
-        av_packet_free(&pkt);
-    }
+    ret = processPendingFrames(m_AudioCodecCtx, m_AudioStream, m_ContainerCtx);
+    if (ret < 0)
+        goto free_frame;
 
     av_frame_free(&avFrameResampled);
 
