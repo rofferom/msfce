@@ -26,7 +26,7 @@ test_sha256() {
     local expected_hash=$2
 
     local real_hash=$(sha256sum $local_path | awk '{print $1}')
-    
+
     if [[ $real_hash == $expected_hash ]]; then
         return 0
     else
@@ -56,7 +56,7 @@ download_tarball() {
         rm $local_path
     fi
 
-    # Get and check file integrity    
+    # Get and check file integrity
     wget $uri -O $local_path
     test_sha256 $local_path $tarball_hash
     if [[ $? -eq 0 ]]; then

@@ -31,10 +31,10 @@ More details available about usage:
     * Mode 0
     * Mode 1
     * Mode 3
-    * Mode 7 
+    * Mode 7
     * MainScreen/SubScreen, Window, Color math
     * Mosaic
-    * Controller (Only player 1). Both automatic and manual read 
+    * Controller (Only player 1). Both automatic and manual read
   * Not implemented
     * Mode 2
     * Mode 5
