@@ -292,6 +292,7 @@ bool FrontendSdl2::handleShortcut(SDL_Scancode scancode, bool pressed)
 
     case SDL_SCANCODE_F4: {
         if (pressed) {
+            m_AudioSamplesUsed = 0;
             m_Snes->loadState(getSavestateName());
         }
         break;
