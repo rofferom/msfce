@@ -64,14 +64,14 @@ int VideoRecorder::initVideo()
     ret = avcodec_open2(m_VideoCodecCtx, codec, nullptr);
     if (ret < 0) {
         LOG_AVERROR("avcodec_open2", ret);
-        goto close_codec;
+        goto free_codecctx;
     }
 
     ret = avcodec_parameters_from_context(
         m_VideoStream->codecpar, m_VideoCodecCtx);
     if (ret < 0) {
         LOG_AVERROR("avcodec_parameters_from_context", ret);
-        goto close_codec;
+        goto free_codecctx;
     }
 
     // Create RGB => YUV420 converter
@@ -88,13 +88,11 @@ int VideoRecorder::initVideo()
         nullptr);
     if (!m_VideoSwsCtx) {
         LOGW(TAG, "sws_getContext() failed");
-        goto close_codec;
+        goto free_codecctx;
     }
 
     return 0;
 
-close_codec:
-    avcodec_close(m_VideoCodecCtx);
 free_codecctx:
     avcodec_free_context(&m_VideoCodecCtx);
     m_VideoCodecCtx = nullptr;
@@ -106,7 +104,6 @@ int VideoRecorder::clearVideo()
 {
     sws_freeContext(m_VideoSwsCtx);
 
-    avcodec_close(m_VideoCodecCtx);
     avcodec_free_context(&m_VideoCodecCtx);
 
     return 0;
@@ -114,7 +111,9 @@ int VideoRecorder::clearVideo()
 
 int VideoRecorder::initAudio()
 {
+    const char* codecName = "libopus";
     const AVCodec* codec = nullptr;
+    AVChannelLayout layout = AV_CHANNEL_LAYOUT_STEREO;
     int ret;
 
     codec = avcodec_find_encoder_by_name("libopus");
@@ -133,9 +132,29 @@ int VideoRecorder::initAudio()
         return -ECANCELED;
     }
 
+#if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(61, 19, 100)
+    const enum AVSampleFormat* sampleFmts = nullptr;
+
+    ret = avcodec_get_supported_config(
+        m_AudioCodecCtx,
+        nullptr,
+        AV_CODEC_CONFIG_SAMPLE_FORMAT,
+        0,
+        reinterpret_cast<const void**>(&sampleFmts),
+        nullptr);
+    if (ret < 0) {
+        LOGW(TAG, "Found no sample format for codec '%s'", codecName);
+        goto free_codecctx;
+    }
+
+    m_AudioCodecCtx->sample_fmt = sampleFmts[0];
+
+#else
     m_AudioCodecCtx->sample_fmt = codec->sample_fmts[0];
+#endif
+
     m_AudioCodecCtx->sample_rate = kOutSampleRate;
-    m_AudioCodecCtx->ch_layout = AV_CHANNEL_LAYOUT_STEREO;
+    m_AudioCodecCtx->ch_layout = layout;
     m_AudioCodecCtx->bit_rate = 128000;
 
     // Add and setup audio stream
@@ -154,14 +173,14 @@ int VideoRecorder::initAudio()
     ret = avcodec_open2(m_AudioCodecCtx, codec, nullptr);
     if (ret < 0) {
         LOG_AVERROR("avcodec_open2", ret);
-        goto close_codec;
+        goto free_codecctx;
     }
 
     ret = avcodec_parameters_from_context(
         m_AudioStream->codecpar, m_AudioCodecCtx);
     if (ret < 0) {
         LOG_AVERROR("avcodec_parameters_from_context", ret);
-        goto close_codec;
+        goto free_codecctx;
     }
 
     m_AudioSnesFrameSize = av_rescale_rnd(
@@ -174,22 +193,25 @@ int VideoRecorder::initAudio()
     m_AudioSwrCtx = swr_alloc();
     if (!m_AudioSwrCtx) {
         LOGW(TAG, "swr_alloc() failed");
-        goto close_codec;
+        goto free_codecctx;
     }
 
-    av_opt_set_int(
-        m_AudioSwrCtx, "in_channel_count", m_SnesConfig.audioChannels, 0);
-    av_opt_set_int(m_AudioSwrCtx, "in_channel_layout", AV_CH_LAYOUT_STEREO, 0);
-    av_opt_set_int(
-        m_AudioSwrCtx, "in_sample_rate", m_SnesConfig.audioSampleRate, 0);
-    av_opt_set_sample_fmt(m_AudioSwrCtx, "in_sample_fmt", AV_SAMPLE_FMT_S16, 0);
-
-    av_opt_set_int(
-        m_AudioSwrCtx, "out_channel_count", m_SnesConfig.audioChannels, 0);
-    av_opt_set_int(m_AudioSwrCtx, "out_channel_layout", AV_CH_LAYOUT_STEREO, 0);
-    av_opt_set_int(m_AudioSwrCtx, "out_sample_rate", kOutSampleRate, 0);
-    av_opt_set_sample_fmt(
-        m_AudioSwrCtx, "out_sample_fmt", m_AudioCodecCtx->sample_fmt, 0);
+    ret = swr_alloc_set_opts2(
+        &m_AudioSwrCtx,
+        // Output format
+        &layout,
+        m_AudioCodecCtx->sample_fmt,
+        kOutSampleRate,
+        // Input format
+        &layout,
+        AV_SAMPLE_FMT_S16,
+        m_SnesConfig.audioSampleRate,
+        0,
+        nullptr);
+    if (ret < 0) {
+        LOG_AVERROR("swr_alloc_set_opts2", ret);
+        goto close_swr;
+    }
 
     ret = swr_init(m_AudioSwrCtx);
     if (ret < 0) {
@@ -211,8 +233,6 @@ int VideoRecorder::initAudio()
 
 close_swr:
     swr_free(&m_AudioSwrCtx);
-close_codec:
-    avcodec_close(m_AudioCodecCtx);
 free_codecctx:
     avcodec_free_context(&m_AudioCodecCtx);
     m_AudioCodecCtx = nullptr;
@@ -227,7 +247,6 @@ int VideoRecorder::clearAudio()
 
     swr_free(&m_AudioSwrCtx);
 
-    avcodec_close(m_AudioCodecCtx);
     avcodec_free_context(&m_AudioCodecCtx);
     m_AudioCodecCtx = nullptr;
 
