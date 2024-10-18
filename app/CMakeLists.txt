@@ -112,11 +112,11 @@ if (WIN32)
     set(DEPS_BINARY_DIR ${PKG_SDL2_LIBDIR}/../bin)
 
     set(DLL_LIST
-        avcodec-59.dll
-        avformat-59.dll
-        avutil-57.dll
-        swresample-4.dll
-        swscale-6.dll
+        avcodec-61.dll
+        avformat-61.dll
+        avutil-59.dll
+        swresample-5.dll
+        swscale-8.dll
 
         SDL2.dll
     )

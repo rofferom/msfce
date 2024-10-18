@@ -144,9 +144,9 @@ build_opus() {
 build_ffmpeg() {
     local init_cwd=$(pwd)
 
-    local uri="https://ffmpeg.org/releases/ffmpeg-5.1.6.tar.xz"
-    local archive_root='ffmpeg-5.1.6'
-    local sha256="f4fa066278f7a47feab316fef905f4db0d5e9b589451949740f83972b30901bd"
+    local uri="https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz"
+    local archive_root='ffmpeg-7.1'
+    local sha256="40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6"
     local work_dir="$WORK_DIR/ffmpeg"
 
     # Get sources
