@@ -740,7 +740,7 @@ int main(int argc, char* argv[])
         DispatchMessage(&msg);
     }
 
-    run = false;
+    run.store(std::memory_order::memory_order_relaxed);
     snesLoop.join();
 
     return 0;
