@@ -79,6 +79,7 @@ private:
     size_t m_SnesTexturePitch;
     uint8_t* m_SnesTextureData = nullptr;
     uint8_t* m_SnesTextureWritter = nullptr;
+    ComPtr<ID3D11Texture2D> m_SnesStagingTexture;
     ComPtr<ID3D11Texture2D> m_SnesFramebuffer;
     ComPtr<ID3D11ShaderResourceView> m_SnesFramebufferSrv;
     ComPtr<ID3D11SamplerState> m_SnesFramebufferSampler;
@@ -184,16 +185,19 @@ int D3D11Renderer::render()
     // Upload SNES framebuffer
     D3D11_MAPPED_SUBRESOURCE mappedSnesFramebuffer;
     hr = m_Context->Map(
-        m_SnesFramebuffer.Get(),
+        m_SnesStagingTexture.Get(),
         0,
-        D3D11_MAP_WRITE_DISCARD,
+        D3D11_MAP_WRITE,
         0,
         &mappedSnesFramebuffer);
     assert(SUCCEEDED(hr));
 
     memcpy(mappedSnesFramebuffer.pData, m_SnesTextureData, m_SnesTextureSize);
 
-    m_Context->Unmap(m_SnesFramebuffer.Get(), 0);
+    m_Context->Unmap(m_SnesStagingTexture.Get(), 0);
+
+    m_Context->CopyResource(
+        m_SnesFramebuffer.Get(), m_SnesStagingTexture.Get());
 
     // Check for window resize
     if (m_WindowResized.exchange(
@@ -356,7 +360,6 @@ int D3D11Renderer::createSnesFramebuffer()
     m_SnesTextureSize = m_SnesTexturePitch * m_SnesConfig.displayHeight;
     m_SnesTextureData = new uint8_t[m_SnesTextureSize];
 
-    // Texture
     D3D11_TEXTURE2D_DESC desc = {};
     desc.Width = m_SnesConfig.displayWidth;
     desc.Height = m_SnesConfig.displayHeight;
@@ -365,9 +368,27 @@ int D3D11Renderer::createSnesFramebuffer()
     desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
     desc.SampleDesc.Count = 1;
     desc.SampleDesc.Quality = 0;
-    desc.Usage = D3D11_USAGE_DYNAMIC;
-    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    desc.Usage = D3D11_USAGE_STAGING;
+    desc.BindFlags = 0;
     desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+    desc.MiscFlags = 0;
+
+    hr = m_Device->CreateTexture2D(
+        &desc, nullptr, m_SnesStagingTexture.GetAddressOf());
+    assert(SUCCEEDED(hr));
+
+    // GPU texture
+    memset(&desc, 0, sizeof(desc));
+    desc.Width = m_SnesConfig.displayWidth;
+    desc.Height = m_SnesConfig.displayHeight;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.SampleDesc.Quality = 0;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    desc.CPUAccessFlags = 0;
     desc.MiscFlags = 0;
 
     hr = m_Device->CreateTexture2D(
